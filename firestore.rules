@@ -1,0 +1,40 @@
+// ==========================================================
+// REGLAS DE FIRESTORE
+// ==========================================================
+// Cómo usarlas:
+// 1. Ve a Firebase Console > Firestore Database > Reglas
+// 2. Reemplaza todo el contenido por lo de abajo
+// 3. Publica
+// ==========================================================
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Cada usuario solo puede crear/editar SU PROPIO documento.
+    // Cualquiera que esté logueado puede leer (para poder calcular el ranking).
+    match /usuarios/{usuarioId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == usuarioId;
+      allow update: if request.auth != null && request.auth.uid == usuarioId;
+      allow delete: if false;
+    }
+
+    // Cualquier usuario logueado puede registrar SU propio progreso.
+    // Nadie puede editar o borrar progreso ya guardado (evita hacer trampa).
+    match /progreso/{progresoId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.usuarioId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // El ranking diario lo puede leer cualquiera logueado,
+    // y se recalcula automáticamente cuando hace falta.
+    match /rankingDiario/{fecha} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+  }
+}

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Lectura</title>
+
+    <link rel="stylesheet"
+          href="estilos.css">
+
+    <!-- Firebase (versión compat, para usar sin bundler) -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
+</head>
+
+
+<body>
+
+
+<!-- ==========================
+     PANTALLA DE LOGIN
+=========================== -->
+<div id="pantallaLogin" class="pantallaAuth">
+    <div class="cajaAuth">
+        <h1>Lectura QR</h1>
+        <p>Inicia sesión para comenzar tu lectura y ganar premios.</p>
+        <button id="btnLoginGoogle" class="botonGoogle">
+            Iniciar sesión con Google
+        </button>
+    </div>
+</div>
+
+
+<!-- ==========================
+     PANTALLA DE REGISTRO (solo primera vez)
+=========================== -->
+<div id="pantallaRegistro" class="pantallaAuth" style="display:none;">
+    <div class="cajaAuth">
+        <h1>Un último paso</h1>
+        <p>Cuéntanos cómo vas a participar:</p>
+
+        <form id="formRegistro">
+
+            <label class="opcionTipo">
+                <input type="radio" name="tipoUsuario" value="particular" checked>
+                Participante particular
+            </label>
+            <br>
+            <label class="opcionTipo">
+                <input type="radio" name="tipoUsuario" value="estudiante">
+                Estudiante (compito por mi colegio)
+            </label>
+
+            <div id="camposEstudiante" style="display:none; margin-top:15px;">
+                <input type="text" id="inputColegio" placeholder="Nombre del colegio">
+                <input type="text" id="inputGrado" placeholder="Grado (ej. 5to primaria)">
+            </div>
+
+            <button type="submit">Continuar</button>
+
+        </form>
+    </div>
+</div>
+
+
+<div id="contenedor" style="display:none;">
+
+
+    <div id="temporizador">
+        03:00
+    </div>
+
+    <div style="text-align:center; margin-bottom:20px;">
+        <a href="ranking.html">Ver ranking de colegios</a>
+    </div>
+
+
+
+    <h1>
+        La importancia de la lectura
+    </h1>
+
+
+
+    <!-- ==========================
+         LECTURA
+    =========================== -->
+
+
+    <div id="lectura">
+
+
+        <p>
+            Érase una vez un hombre y su mujer que estaban sentados delante de su casa dispuestos a comer un pollo asado. Pero entonces el hombre vio a su anciano padre caminar hacia ellos. Rápidamente escondió el pollo, porque no quería compartirlo con su padre. El anciano llegó, se bebió un vaso de cerveza y se fue a casa. El hijo quiso volver a poner el pollo asado en la mesa, pero cuando lo tocó, el pollo se transformó en un gran pato que voló hacia la cara del hijo y no pensaba bajarse.
+        </p>
+
+
+        <p>
+            Cuando alguien intentó quitarle el pato, éste se aferró con saña. A nadie se le permitía tocarlo y el ingrato hijo tenía que alimentarlo todos los días; de lo contrario, lo habría hecho pedazos. Todos sus amigos intentaron liberarlo del animal, pero nada funcionó.
+        </p>
+
+
+        <p>
+            En cuanto alguien intentaba quitárselo, el pato clavaba sus uñas en la carne del hijo, que entonces gritaba de dolor: «¡No importa! Me duele demasiado». Pasó mucho tiempo antes de que el hombre se pusiera a pensar en la causa de este desastre. Y cuando por fin comprendió lo que había hecho mal, tardó mucho tiempo en asimilarlo.
+        </p>
+
+
+        <p>
+            Un rato después, volvieron a sentarse junto a la puerta principal con un pollo asado que pensaban comer. De nuevo vio a su viejo padre acercarse a ellos. Cuando se acercó, el hijo se levantó y caminó hacia él. El padre se asustó y le preguntó:
+        </p>
+
+
+        <p>
+            —Hijo mío, ¿por qué tienes ese feo pato en la cara? Quítatelo.
+        </p>
+
+
+        <p>
+            —Desgraciadamente —dijo el hijo—, no puedo y nadie puede.
+        </p>
+
+
+        <p>
+            Y cayó a los pies de su padre, confesó su avaricia y pidió perdón.
+        </p>
+
+
+        <p>
+            —Te perdono, hijo mío —dijo el padre.
+        </p>
+
+
+        <p>
+            Y en ese instante el pato se convirtió en el pollo asado.
+        </p>
+
+
+        <p>
+            Juntos comieron la comida.
+        </p>
+
+
+        <p>
+            —¡Sabe delicioso! —dijo el anciano—. Estos pollos están bien asados.
+        </p>
+
+
+        <p>
+            —Y a mí también me saben bien, porque me has perdonado —respondió el hijo.
+        </p>
+
+
+    </div>
+
+
+
+
+
+    <!-- ==========================
+         CUESTIONARIO
+    =========================== -->
+
+
+    <div id="cuestionario" style="display:none;">
+
+
+
+        <div id="temporizadorCuestionario">
+
+            Tiempo: 01:00
+
+        </div>
+
+
+
+        <h2>
+            Cuestionario
+        </h2>
+
+
+
+
+        <div class="pregunta">
+
+
+            <p>
+                1. ¿Qué escondió el hombre cuando vio llegar a su padre?
+            </p>
+
+
+            <label>
+                <input type="radio" name="p1" value="a">
+                Un vaso de cerveza
+            </label>
+
+            <br>
+
+
+            <label>
+                <input type="radio" name="p1" value="b">
+                El pollo asado
+            </label>
+
+            <br>
+
+
+            <label>
+                <input type="radio" name="p1" value="c">
+                Una comida diferente
+            </label>
+
+
+        </div>
+
+
+
+
+
+        <div class="pregunta">
+
+
+            <p>
+                2. ¿En qué se convirtió el pollo asado?
+            </p>
+
+
+            <label>
+                <input type="radio" name="p2" value="a">
+                En un perro
+            </label>
+
+            <br>
+
+
+            <label>
+                <input type="radio" name="p2" value="b">
+                En un pato
+            </label>
+
+            <br>
+
+
+            <label>
+                <input type="radio" name="p2" value="c">
+                En un gato
+            </label>
+
+
+        </div>
+
+
+
+
+
+        <div class="pregunta">
+
+
+            <p>
+                3. ¿Qué hizo finalmente el hijo?
+            </p>
+
+
+            <label>
+                <input type="radio" name="p3" value="a">
+                Vendió el pato
+            </label>
+
+            <br>
+
+
+            <label>
+                <input type="radio" name="p3" value="b">
+                Huyó de su casa
+            </label>
+
+            <br>
+
+
+            <label>
+                <input type="radio" name="p3" value="c">
+                Pidió perdón a su padre
+            </label>
+
+
+        </div>
+
+
+
+
+        <button onclick="calificar()">
+            Terminar cuestionario
+        </button>
+
+
+
+
+        <h2 id="resultado"></h2>
+
+
+        <h2 id="mensajeFinal"></h2>
+
+
+
+    </div>
+
+
+
+</div>
+
+
+
+
+<script src="firebase-init.js"></script>
+<script src="puntos.js"></script>
+<script src="script.js"></script>
+<script src="auth.js"></script>
+
+
+</body>
+
+
+</html>
