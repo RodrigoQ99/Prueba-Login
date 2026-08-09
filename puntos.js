@@ -19,6 +19,41 @@ const PREMIO_POR_NIVEL = {
 };
 
 /**
+ * Recalcula el ranking de colegios/grados y lo guarda en un solo documento
+ * que siempre representa el estado ACTUAL (no por día). Se llama automáticamente
+ * cada vez que alguien completa un cuestionario, así que el ranking queda
+ * al instante actualizado para quien esté viendo ranking.html.
+ */
+async function actualizarRankingActual() {
+    const snapshot = await db.collection("usuarios")
+        .where("tipo", "==", "estudiante")
+        .get();
+
+    const grupos = {};
+
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        const colegio = (data.colegio || "Sin colegio").trim();
+        const grado = (data.grado || "Sin grado").trim();
+        const clave = `${colegio}|||${grado}`;
+
+        if (!grupos[clave]) {
+            grupos[clave] = { colegio, grado, puntos: 0 };
+        }
+
+        grupos[clave].puntos += data.puntosTotales || 0;
+    });
+
+    const listaOrdenada = Object.values(grupos)
+        .sort((a, b) => b.puntos - a.puntos);
+
+    await db.collection("rankingActual").doc("actual").set({
+        lista: listaOrdenada,
+        actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    });
+}
+
+/**
  * Guarda el resultado de una lectura completada y suma los puntos
  * correspondientes al usuario actual.
  *
@@ -50,6 +85,9 @@ async function guardarProgreso(lecturaId, nivel, estrellas) {
         await db.collection("usuarios").doc(user.uid).update({
             puntosTotales: firebase.firestore.FieldValue.increment(puntosGanados)
         });
+
+        // 3. Recalcular el ranking al instante (solo hace falta si ganó puntos)
+        await actualizarRankingActual();
     }
 
     return { aprobo, puntosGanados, premio: PREMIO_POR_NIVEL[nivel] };
