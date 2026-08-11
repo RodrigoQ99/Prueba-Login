@@ -165,13 +165,27 @@ function moverTextoLectura(){
 
 
 
-    let inicioMovimiento = null; // marca de tiempo (ms) en que arranca el auto-scroll
+    // Posición propia del motor automático. A diferencia de calcularla
+    // con el tiempo absoluto transcurrido desde el inicio, aquí se va
+    // ACUMULANDO cuadro a cuadro — así, si el usuario se adelanta
+    // deslizando, el motor se sincroniza a esa posición y sigue avanzando
+    // desde ahí, en vez de quedar "pausado" esperando alcanzar la línea
+    // de tiempo original.
+    let posicionAutomatica = 0;
+
+    const velocidadPxPorMs =
+    distancia / (segundosMovimiento * 1000);
+
+
+
+    let inicioMovimiento = false;
+    let ultimoTimestamp = null;
 
 
 
     setTimeout(()=>{
 
-        inicioMovimiento = performance.now();
+        inicioMovimiento = true;
 
     }, ESPERA_INICIAL * 1000);
 
@@ -195,19 +209,25 @@ function moverTextoLectura(){
     function moverLectura(ahora){
 
 
-        if(inicioMovimiento !== null){
+        if(inicioMovimiento){
 
 
-            const segundosTranscurridos =
-            (ahora - inicioMovimiento) / 1000;
+            if(ultimoTimestamp === null){
+
+                ultimoTimestamp = ahora;
+
+            }
 
 
-            const proporcion =
-            Math.min(segundosTranscurridos / segundosMovimiento, 1);
+            const deltaMs = ahora - ultimoTimestamp;
+
+            ultimoTimestamp = ahora;
 
 
-            const posicionAutomatica =
-            proporcion * distancia;
+            posicionAutomatica = Math.min(
+                posicionAutomatica + (velocidadPxPorMs * deltaMs),
+                distancia
+            );
 
 
             aplicarPosicion(posicionAutomatica);
@@ -236,8 +256,12 @@ function moverTextoLectura(){
 
         }else{
 
-            // Deslizó hacia adelante: ese es el nuevo punto mínimo
+            // Deslizó hacia adelante: ese es el nuevo punto mínimo,
+            // y sincronizamos el motor automático a este punto para
+            // que continúe avanzando desde aquí sin pausarse.
             posicionMinima = lectura.scrollTop;
+
+            posicionAutomatica = Math.max(posicionAutomatica, posicionMinima);
 
         }
 
