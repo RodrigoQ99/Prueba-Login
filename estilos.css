@@ -9,11 +9,32 @@
 }
 
 
+:root{
+
+    --azul:#0a84ff;
+
+    --azul-oscuro:#0765c9;
+
+    --fondo:#f2f4f7;
+
+    --texto:#1c1f26;
+
+    --texto-suave:#5b6270;
+
+    --borde:#e3e6eb;
+
+    --sombra:0 4px 16px rgba(20,30,50,0.08);
+
+}
+
+
 body{
 
-    background:#f5f5f5;
+    background:var(--fondo);
 
-    font-family:Arial, Helvetica, sans-serif;
+    font-family:'Segoe UI', Arial, Helvetica, sans-serif;
+
+    color:var(--texto);
 
     -webkit-user-select:none;
 
@@ -46,7 +67,7 @@ body{
 
 #temporizador{
 
-    background:#0a84ff;
+    background:var(--azul);
 
     color:white;
 
@@ -56,9 +77,13 @@ body{
 
     padding:15px;
 
-    border-radius:10px;
+    border-radius:14px;
 
     margin-bottom:25px;
+
+    box-shadow:var(--sombra);
+
+    letter-spacing:1px;
 
 }
 
@@ -85,11 +110,13 @@ h1{
 
     height:500px;
 
-    overflow:hidden;
+    overflow-y:scroll;
+
+    overscroll-behavior:contain;
 
     background:white;
 
-    border-radius:10px;
+    border-radius:14px;
 
     padding:30px;
 
@@ -99,6 +126,10 @@ h1{
 
     scroll-behavior:auto;
 
+    box-shadow:var(--sombra);
+
+    border:1px solid var(--borde);
+
 }
 
 
@@ -106,6 +137,12 @@ h1{
 #lectura::-webkit-scrollbar{
 
     display:none;
+
+}
+
+#lectura{
+
+    scrollbar-width:none;
 
 }
 
@@ -130,9 +167,13 @@ p{
 
     padding:30px;
 
-    border-radius:10px;
+    border-radius:14px;
 
     font-size:clamp(17px,2.5vw,22px);
+
+    box-shadow:var(--sombra);
+
+    border:1px solid var(--borde);
 
 }
 
@@ -154,6 +195,22 @@ p{
 
     line-height:1.8;
 
+    padding:15px;
+
+    border-radius:10px;
+
+    background:#f8f9fb;
+
+}
+
+
+
+.pregunta p{
+
+    font-weight:600;
+
+    margin-bottom:12px;
+
 }
 
 
@@ -161,6 +218,10 @@ p{
 .pregunta label{
 
     cursor:pointer;
+
+    display:block;
+
+    padding:6px 0;
 
 }
 
@@ -184,7 +245,7 @@ button{
 
     margin:20px auto;
 
-    background:#0a84ff;
+    background:var(--azul);
 
     color:white;
 
@@ -192,11 +253,15 @@ button{
 
     padding:15px 30px;
 
-    border-radius:10px;
+    border-radius:12px;
 
     font-size:18px;
 
+    font-weight:600;
+
     cursor:pointer;
+
+    transition:opacity 0.15s, transform 0.1s;
 
 }
 
@@ -204,7 +269,15 @@ button{
 
 button:hover{
 
-    opacity:0.85;
+    opacity:0.9;
+
+}
+
+
+
+button:active{
+
+    transform:scale(0.98);
 
 }
 
@@ -332,6 +405,130 @@ button:hover{
 
 
 /* ==========================
+   MENÚ SUPERIOR
+========================== */
+
+.menuUsuario{
+    position:fixed;
+    top:18px;
+    right:18px;
+    z-index:1000;
+    -webkit-user-select:none;
+}
+
+.botonMenuToggle{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:white;
+    color:var(--texto);
+    border:1px solid var(--borde);
+    padding:10px 16px;
+    border-radius:30px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    box-shadow:var(--sombra);
+    margin:0;
+}
+
+.botonMenuToggle:hover{
+    opacity:1;
+    background:#fafbfc;
+}
+
+.menuNombreBoton{
+    max-width:120px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+
+.iconoMenu{
+    font-size:16px;
+}
+
+.panelMenu{
+    position:absolute;
+    top:calc(100% + 10px);
+    right:0;
+    background:white;
+    border-radius:14px;
+    box-shadow:var(--sombra);
+    border:1px solid var(--borde);
+    width:270px;
+    padding:20px;
+}
+
+.menuSeccion{
+    margin-bottom:15px;
+}
+
+.menuTitulo{
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    color:var(--texto-suave);
+    margin-bottom:10px;
+}
+
+.menuStat{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:8px 0;
+    font-size:14px;
+    border-bottom:1px solid var(--borde);
+}
+
+.menuStat:last-child{
+    border-bottom:none;
+}
+
+.menuStat strong{
+    color:var(--azul);
+    font-size:16px;
+}
+
+.menuLink{
+    display:block;
+    text-align:center;
+    background:var(--fondo);
+    color:var(--texto);
+    text-decoration:none;
+    padding:12px;
+    border-radius:10px;
+    font-weight:600;
+    font-size:14px;
+    margin-top:10px;
+}
+
+.menuLink:hover{
+    background:#e9ecf1;
+}
+
+.menuLinkBoton{
+    display:block;
+    width:100%;
+    text-align:center;
+    background:none;
+    color:#c0392b;
+    border:1px solid #f0d6d3;
+    padding:10px;
+    border-radius:10px;
+    font-size:13px;
+    font-weight:600;
+    margin:10px 0 0;
+    cursor:pointer;
+}
+
+.menuLinkBoton:hover{
+    background:#fdf1f0;
+    opacity:1;
+}
+
+
+/* ==========================
    CELULARES
 ========================== */
 
@@ -363,5 +560,22 @@ button:hover{
 
     }
 
+
+    .panelMenu{
+
+        width:calc(100vw - 36px);
+
+        right:-8px;
+
+    }
+
+
+    .menuUsuario{
+
+        top:12px;
+
+        right:12px;
+
+    }
 
 }

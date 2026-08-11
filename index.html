@@ -25,6 +25,39 @@
 
 
 <!-- ==========================
+     MENÚ SUPERIOR (perfil / progreso / ranking)
+=========================== -->
+<div id="menuUsuario" class="menuUsuario" style="display:none;">
+    <button id="btnMenuToggle" class="botonMenuToggle" aria-label="Abrir menú">
+        <span id="menuNombre" class="menuNombreBoton">Mi cuenta</span>
+        <span class="iconoMenu">☰</span>
+    </button>
+
+    <div id="panelMenu" class="panelMenu" style="display:none;">
+
+        <div class="menuSeccion">
+            <p class="menuTitulo">Mi progreso</p>
+
+            <div class="menuStat">
+                <span>Lecturas completadas</span>
+                <strong id="menuCompletadas">0</strong>
+            </div>
+
+            <div class="menuStat">
+                <span>Lecturas pendientes</span>
+                <strong id="menuPendientes">0 de 0</strong>
+            </div>
+        </div>
+
+        <a href="ranking.html" class="menuLink">🏆 Ver ranking de colegios</a>
+
+        <button id="btnCerrarSesionMenu" class="menuLinkBoton">Cerrar sesión</button>
+
+    </div>
+</div>
+
+
+<!-- ==========================
      PANTALLA DE LOGIN
 =========================== -->
 <div id="pantallaLogin" class="pantallaAuth">
@@ -59,8 +92,11 @@
             </label>
 
             <div id="camposEstudiante" style="display:none; margin-top:15px;">
-                <input type="text" id="inputColegio" placeholder="Nombre del colegio">
-                <input type="text" id="inputGrado" placeholder="Grado (ej. 5to primaria)">
+                <input type="text" id="inputColegio" placeholder="Nombre completo del colegio (ej. Colegio Unis)">
+                <small style="display:block; color:#888; margin:-8px 0 10px;">
+                    Escribe el nombre completo, igual que tus compañeros, para que sus puntos se sumen juntos.
+                </small>
+                <input type="text" id="inputGrado" placeholder="Grado (ej. 4to bachillerato)">
             </div>
 
             <button type="submit">Continuar</button>
@@ -75,10 +111,6 @@
 
     <div id="temporizador">
         03:00
-    </div>
-
-    <div style="text-align:center; margin-bottom:20px;">
-        <a href="ranking.html">Ver ranking de colegios</a>
     </div>
 
 
@@ -318,9 +350,11 @@
 
 
 <script src="firebase-init.js"></script>
+<script src="lecturas.js"></script>
 <script src="puntos.js"></script>
 <script src="script.js"></script>
 <script src="auth.js"></script>
+<script src="menu.js"></script>
 
 
 </body>

@@ -10,12 +10,45 @@
 
 <body>
 
+<!-- ==========================
+     MENÚ SUPERIOR (perfil / progreso / ranking)
+=========================== -->
+<div id="menuUsuario" class="menuUsuario" style="display:none;">
+    <button id="btnMenuToggle" class="botonMenuToggle" aria-label="Abrir menú">
+        <span id="menuNombre" class="menuNombreBoton">Mi cuenta</span>
+        <span class="iconoMenu">☰</span>
+    </button>
+
+    <div id="panelMenu" class="panelMenu" style="display:none;">
+
+        <div class="menuSeccion">
+            <p class="menuTitulo">Mi progreso</p>
+
+            <div class="menuStat">
+                <span>Lecturas completadas</span>
+                <strong id="menuCompletadas">0</strong>
+            </div>
+
+            <div class="menuStat">
+                <span>Lecturas pendientes</span>
+                <strong id="menuPendientes">0 de 0</strong>
+            </div>
+        </div>
+
+        <a href="ranking.html" class="menuLink">🏆 Ver ranking de colegios</a>
+
+        <button id="btnCerrarSesionMenu" class="menuLinkBoton">Cerrar sesión</button>
+
+    </div>
+</div>
+
+
 <div id="contenedorRanking">
 
     <h1>Ranking de Colegios</h1>
 
     <p style="text-align:center; color:#555; margin-bottom:25px;">
-        Se actualiza una vez al día.
+        Se actualiza al instante cada vez que alguien completa una lectura.
         <span id="fechaActualizacion"></span>
     </p>
 
@@ -33,7 +66,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script src="firebase-init.js"></script>
+<script src="lecturas.js"></script>
 <script src="ranking.js"></script>
+<script src="menu.js"></script>
 
 </body>
 </html>

@@ -12,14 +12,14 @@ const TIEMPO_LECTURA = 60;
 
 
 // Tiempo de espera antes de comenzar a mover el texto
-const ESPERA_INICIAL = 2;
+// (los "3 segundos de retraso" que mencionaste antes de que arranque)
+const ESPERA_INICIAL = 3;
 
 
-// Control de velocidad de lectura
-// 1 = velocidad normal
-// 0.5 = más lento
-// 2 = más rápido
-const VELOCIDAD_LECTURA = 0.9;
+// Margen de seguridad: el texto termina de moverse un poco antes de que
+// se acabe el tiempo total, para asegurar que SIEMPRE se alcance a leer
+// completo antes de que aparezca el cuestionario.
+const MARGEN_SEGURIDAD = 2;
 
 
 // Tiempo del cuestionario en segundos
@@ -127,6 +127,8 @@ function iniciarLectura(){
 
 // ==========================
 // MOVIMIENTO DE LA LECTURA
+// (avanza sola, sincronizada al tiempo; el usuario puede
+//  adelantarse deslizando hacia abajo, pero no puede regresar)
 // ==========================
 
 
@@ -147,65 +149,99 @@ function moverTextoLectura(){
 
 
 
-    const tiempoMovimiento =
-    (TIEMPO_LECTURA - ESPERA_INICIAL) * 1000;
+    // Segundos reales disponibles para que el texto termine de moverse,
+    // ya descontando la espera inicial y el margen de seguridad.
+    const segundosMovimiento = Math.max(
+        TIEMPO_LECTURA - ESPERA_INICIAL - MARGEN_SEGURIDAD,
+        1
+    );
 
 
 
-    let inicioMovimiento = false;
+    // posicionMinima = el punto más lejano al que se ha llegado,
+    // ya sea por el movimiento automático o porque el usuario deslizó
+    // hacia abajo. Nunca puede bajar de valor: así se bloquea el regreso.
+    let posicionMinima = 0;
+
+
+
+    let inicioMovimiento = null; // marca de tiempo (ms) en que arranca el auto-scroll
 
 
 
     setTimeout(()=>{
 
-
-        inicioMovimiento = true;
-
+        inicioMovimiento = performance.now();
 
     }, ESPERA_INICIAL * 1000);
 
 
 
-    let posicion = 0;
+    function aplicarPosicion(nuevaPosicion){
 
+        // nunca deja que la posición baje de lo ya alcanzado
+        if(nuevaPosicion > posicionMinima){
 
-
-    function moverLectura(){
-
-
-
-        if(inicioMovimiento){
-
-
-
-            let velocidad =
-
-            (distancia / tiempoMovimiento)
-
-            * VELOCIDAD_LECTURA;
-
-
-
-            posicion += velocidad * 20;
-
-
-
-            lectura.scrollTop = posicion;
-
-
+            posicionMinima = Math.min(nuevaPosicion, distancia);
 
         }
 
-
-
-        requestAnimationFrame(moverLectura);
-
+        lectura.scrollTop = posicionMinima;
 
     }
 
 
 
-    moverLectura();
+    function moverLectura(ahora){
+
+
+        if(inicioMovimiento !== null){
+
+
+            const segundosTranscurridos =
+            (ahora - inicioMovimiento) / 1000;
+
+
+            const proporcion =
+            Math.min(segundosTranscurridos / segundosMovimiento, 1);
+
+
+            const posicionAutomatica =
+            proporcion * distancia;
+
+
+            aplicarPosicion(posicionAutomatica);
+
+
+        }
+
+
+        requestAnimationFrame(moverLectura);
+
+    }
+
+
+    requestAnimationFrame(moverLectura);
+
+
+
+    // Permite deslizar hacia ABAJO para leer más rápido,
+    // pero bloquea cualquier intento de regresar hacia arriba.
+    lectura.addEventListener("scroll", ()=>{
+
+        if(lectura.scrollTop < posicionMinima){
+
+            // Intentó subir: lo regresamos al punto más lejano alcanzado
+            lectura.scrollTop = posicionMinima;
+
+        }else{
+
+            // Deslizó hacia adelante: ese es el nuevo punto mínimo
+            posicionMinima = lectura.scrollTop;
+
+        }
+
+    });
 
 }
 
