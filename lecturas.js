@@ -177,7 +177,7 @@ const CATALOGO_LECTURAS = [
         id: "odisea-polifemo",
         titulo: "La Odisea: Odiseo en la cueva de Polifemo",
         nivel: "dificil",
-        tiempoLectura: 420,
+        tiempoLectura: 480,
         tiempoCuestionario: 180,
         texto: [
             `Llegamos a la tierra de los Cíclopes, hombres soberbios y sin ley que, confiados en los dioses inmortales, no plantan árboles ni labran la tierra, sino que todo les nace sin semilla y sin arado... No tienen ágoras donde se reúnan para deliberar, ni leyes, sino que viven en las cumbres de las altas montañas, dentro de cuevas profundas, y cada uno gobierna a sus hijos y a sus mujeres, sin preocuparse los unos de los otros.`,
