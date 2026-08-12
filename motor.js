@@ -1,20 +1,13 @@
-// ==========================
-// CONFIGURACIÓN DEL SISTEMA
-// ==========================
-
-// Identificador único de ESTA lectura y su nivel de dificultad.
-// Cuando agregues más lecturas, cada una debe tener su propio ID.
-const LECTURA_ID = "importancia-de-la-lectura";
-const NIVEL_LECTURA = "facil"; // "facil" | "intermedio" | "dificil"
-
-// Tiempo total de lectura en segundos
-const TIEMPO_LECTURA = 60;
+// ==========================================================
+// MOTOR GENÉRICO DE LECTURA
+// ==========================================================
+// Esta misma lógica sirve para CUALQUIER lectura del catálogo.
+// Sabe cuál mostrar leyendo "?id=..." de la URL (ver lecturas.js).
+// ==========================================================
 
 
 // Tiempo de espera antes de comenzar a mover el texto
-// (los "3 segundos de retraso" que mencionaste antes de que arranque)
 const ESPERA_INICIAL = 3;
-
 
 // Margen de seguridad: el texto termina de moverse un poco antes de que
 // se acabe el tiempo total, para asegurar que SIEMPRE se alcance a leer
@@ -22,106 +15,127 @@ const ESPERA_INICIAL = 3;
 const MARGEN_SEGURIDAD = 2;
 
 
-// Tiempo del cuestionario en segundos
-const TIEMPO_CUESTIONARIO = 30;
-
-
-
 // ==========================
 // ELEMENTOS HTML
 // ==========================
 
 const temporizador = document.getElementById("temporizador");
-
+const tituloLectura = document.getElementById("tituloLectura");
 const lectura = document.getElementById("lectura");
-
 const cuestionario = document.getElementById("cuestionario");
-
-const temporizadorCuestionario =
-document.getElementById("temporizadorCuestionario");
-
+const listaPreguntas = document.getElementById("listaPreguntas");
+const temporizadorCuestionario = document.getElementById("temporizadorCuestionario");
 
 
 // ==========================
-// VARIABLES
+// CARGAR LA LECTURA SEGÚN EL QR (?id=...)
 // ==========================
 
-let tiempoRestante = TIEMPO_LECTURA;
+const parametros = new URLSearchParams(window.location.search);
+const idLecturaActual = parametros.get("id");
+const lecturaActual = obtenerLecturaPorId(idLecturaActual);
 
-let tiempoRestanteCuestionario =
-TIEMPO_CUESTIONARIO;
 
+// Variables que dependen de la lectura cargada
+let TIEMPO_LECTURA = 60;
+let TIEMPO_CUESTIONARIO = 30;
+
+let tiempoRestante = 0;
+let tiempoRestanteCuestionario = 0;
 
 let relojCuestionario;
 let reloj;
-
 
 
 // ==========================
 // TEMPORIZADOR LECTURA
 // ==========================
 
-
 function actualizarTemporizador(){
 
-
     let minutos = Math.floor(tiempoRestante / 60);
-
     let segundos = tiempoRestante % 60;
 
-
     minutos = String(minutos).padStart(2,"0");
-
     segundos = String(segundos).padStart(2,"0");
 
-
-
-    temporizador.textContent =
-    `${minutos}:${segundos}`;
-
-
+    temporizador.textContent = `${minutos}:${segundos}`;
 
     if(tiempoRestante > 0){
 
-
         tiempoRestante--;
-
 
     }else{
 
-
         clearInterval(reloj);
-
-
         mostrarCuestionario();
-
 
     }
 
-
 }
-
 
 
 // ==========================
 // INICIO CONTROLADO POR LOGIN
 // ==========================
-// Ya NO arranca solo al cargar el script: ahora auth.js llama a
-// iniciarLectura() recién cuando el usuario inició sesión (y, si es
-// la primera vez, cuando terminó de registrarse).
+// auth.js llama a esta función (con este mismo nombre) apenas el
+// usuario inició sesión o terminó de registrarse.
 
 function iniciarLectura(){
+
+    // Si el QR apunta a un ID que no existe en el catálogo
+    if(!lecturaActual){
+
+        document.body.innerHTML =
+            "<div style='text-align:center; margin-top:80px; font-family:sans-serif;'>" +
+            "<h1>Lectura no encontrada</h1>" +
+            "<p>El código QR que escaneaste no corresponde a ninguna lectura disponible.</p>" +
+            "<a href='index.html'>Volver al inicio</a>" +
+            "</div>";
+
+        return;
+
+    }
+
+    // Cargar los datos de esta lectura
+    TIEMPO_LECTURA = lecturaActual.tiempoLectura;
+    TIEMPO_CUESTIONARIO = lecturaActual.tiempoCuestionario || 30;
+
+    tiempoRestante = TIEMPO_LECTURA;
+    tiempoRestanteCuestionario = TIEMPO_CUESTIONARIO;
+
+    document.title = lecturaActual.titulo;
+    tituloLectura.textContent = lecturaActual.titulo;
+
+    // Pintar los párrafos del texto
+    lectura.innerHTML = lecturaActual.texto
+        .map(parrafo => `<p>${parrafo}</p>`)
+        .join("");
+
+    // Pintar las preguntas del cuestionario
+    listaPreguntas.innerHTML = lecturaActual.preguntas
+        .map((pregunta, indice) => `
+            <div class="pregunta">
+                <p>${indice + 1}. ${pregunta.pregunta}</p>
+                ${pregunta.opciones.map(opcion => `
+                    <label>
+                        <input type="radio" name="p${indice}" value="${opcion.valor}">
+                        ${opcion.texto}
+                    </label>
+                    <br>
+                `).join("")}
+            </div>
+        `).join("");
+
 
     // Mostrar tiempo inicial
     actualizarTemporizador();
 
     // Iniciar contador
-    reloj = setInterval(
-        actualizarTemporizador,
-        1000
-    );
+    reloj = setInterval(actualizarTemporizador, 1000);
 
     moverTextoLectura();
+
 }
 
 
@@ -131,119 +145,64 @@ function iniciarLectura(){
 //  adelantarse deslizando hacia abajo, pero no puede regresar)
 // ==========================
 
-
 function moverTextoLectura(){
 
+    const alturaTexto = lectura.scrollHeight;
+    const alturaCaja = lectura.clientHeight;
+    const distancia = alturaTexto - alturaCaja;
 
-    const alturaTexto =
-    lectura.scrollHeight;
-
-
-    const alturaCaja =
-    lectura.clientHeight;
-
-
-
-    const distancia =
-    alturaTexto - alturaCaja;
-
-
-
-    // Segundos reales disponibles para que el texto termine de moverse,
-    // ya descontando la espera inicial y el margen de seguridad.
     const segundosMovimiento = Math.max(
         TIEMPO_LECTURA - ESPERA_INICIAL - MARGEN_SEGURIDAD,
         1
     );
 
-
-
-    // posicionMinima = el punto más lejano al que se ha llegado,
-    // ya sea por el movimiento automático o porque el usuario deslizó
-    // hacia abajo. Nunca puede bajar de valor: así se bloquea el regreso.
     let posicionMinima = 0;
-
-
-
-    // Posición propia del motor automático. A diferencia de calcularla
-    // con el tiempo absoluto transcurrido desde el inicio, aquí se va
-    // ACUMULANDO cuadro a cuadro — así, si el usuario se adelanta
-    // deslizando, el motor se sincroniza a esa posición y sigue avanzando
-    // desde ahí, en vez de quedar "pausado" esperando alcanzar la línea
-    // de tiempo original.
     let posicionAutomatica = 0;
 
-    const velocidadPxPorMs =
-    distancia / (segundosMovimiento * 1000);
-
-
+    const velocidadPxPorMs = distancia / (segundosMovimiento * 1000);
 
     let inicioMovimiento = false;
     let ultimoTimestamp = null;
 
-
-
     setTimeout(()=>{
-
         inicioMovimiento = true;
-
     }, ESPERA_INICIAL * 1000);
-
-
 
     function aplicarPosicion(nuevaPosicion){
 
-        // nunca deja que la posición baje de lo ya alcanzado
         if(nuevaPosicion > posicionMinima){
-
             posicionMinima = Math.min(nuevaPosicion, distancia);
-
         }
 
         lectura.scrollTop = posicionMinima;
 
     }
 
-
-
     function moverLectura(ahora){
-
 
         if(inicioMovimiento){
 
-
             if(ultimoTimestamp === null){
-
                 ultimoTimestamp = ahora;
-
             }
 
-
             const deltaMs = ahora - ultimoTimestamp;
-
             ultimoTimestamp = ahora;
-
 
             posicionAutomatica = Math.min(
                 posicionAutomatica + (velocidadPxPorMs * deltaMs),
                 distancia
             );
 
-
             aplicarPosicion(posicionAutomatica);
 
-
         }
-
 
         requestAnimationFrame(moverLectura);
 
     }
 
-
     requestAnimationFrame(moverLectura);
-
-
 
     // Permite deslizar hacia ABAJO para leer más rápido,
     // pero bloquea cualquier intento de regresar hacia arriba.
@@ -251,16 +210,11 @@ function moverTextoLectura(){
 
         if(lectura.scrollTop < posicionMinima){
 
-            // Intentó subir: lo regresamos al punto más lejano alcanzado
             lectura.scrollTop = posicionMinima;
 
         }else{
 
-            // Deslizó hacia adelante: ese es el nuevo punto mínimo,
-            // y sincronizamos el motor automático a este punto para
-            // que continúe avanzando desde aquí sin pausarse.
             posicionMinima = lectura.scrollTop;
-
             posicionAutomatica = Math.max(posicionAutomatica, posicionMinima);
 
         }
@@ -270,209 +224,107 @@ function moverTextoLectura(){
 }
 
 
-
-
 // ==========================
 // MOSTRAR CUESTIONARIO
 // ==========================
 
-
 function mostrarCuestionario(){
 
-
-
     lectura.style.display = "none";
-
-
     cuestionario.style.display = "block";
-
-
     temporizador.textContent = "00:00";
-
-
 
     iniciarTemporizadorCuestionario();
 
-
 }
-
-
 
 
 // ==========================
 // TEMPORIZADOR CUESTIONARIO
 // ==========================
 
-
 function iniciarTemporizadorCuestionario(){
-
-
 
     relojCuestionario = setInterval(()=>{
 
+        let minutos = Math.floor(tiempoRestanteCuestionario / 60);
+        let segundos = tiempoRestanteCuestionario % 60;
 
-        let minutos =
-        Math.floor(tiempoRestanteCuestionario / 60);
+        minutos = String(minutos).padStart(2,"0");
+        segundos = String(segundos).padStart(2,"0");
 
-
-
-        let segundos =
-        tiempoRestanteCuestionario % 60;
-
-
-
-        minutos =
-        String(minutos).padStart(2,"0");
-
-
-
-        segundos =
-        String(segundos).padStart(2,"0");
-
-
-
-        temporizadorCuestionario.textContent =
-
-        `Tiempo: ${minutos}:${segundos}`;
-
-
-
+        temporizadorCuestionario.textContent = `Tiempo: ${minutos}:${segundos}`;
 
         if(tiempoRestanteCuestionario > 0){
 
-
             tiempoRestanteCuestionario--;
-
 
         }else{
 
-
             clearInterval(relojCuestionario);
-
-
             calificar();
-
 
         }
 
-
-
     },1000);
 
-
 }
-
 
 
 // ==========================
 // CALIFICAR CUESTIONARIO
 // ==========================
 
-
 async function calificar(){
-
-
 
     clearInterval(relojCuestionario);
 
-
-
     let estrellas = 0;
+    const totalPreguntas = lecturaActual.preguntas.length;
 
+    lecturaActual.preguntas.forEach((pregunta, indice) => {
 
+        const respuesta = document.querySelector(`input[name="p${indice}"]:checked`);
 
-    const respuesta1 =
-    document.querySelector('input[name="p1"]:checked');
-
-
-
-    const respuesta2 =
-    document.querySelector('input[name="p2"]:checked');
-
-
-
-    const respuesta3 =
-    document.querySelector('input[name="p3"]:checked');
-
-
-
-
-    // Respuestas correctas
-
-
-    if(respuesta1 && respuesta1.value === "b"){
-
-        estrellas++;
-
-    }
-
-
-
-    if(respuesta2 && respuesta2.value === "b"){
-
-        estrellas++;
-
-    }
-
-
-
-    if(respuesta3 && respuesta3.value === "c"){
-
-        estrellas++;
-
-    }
-
-
-
-
-    document.getElementById("resultado").innerHTML =
-
-    `Resultado: ${estrellas}/3 ⭐`;
-
-
-    // Guardar el progreso y sumar puntos en Firestore
-    const resultadoGuardado =
-    await guardarProgreso(LECTURA_ID, NIVEL_LECTURA, estrellas);
-
-
-    if(resultadoGuardado && resultadoGuardado.aprobo){
-
-
-
-        document.getElementById("mensajeFinal").innerHTML =
-
-        `¡Bien hecho! Ganaste: ${resultadoGuardado.premio} 🎉 ` +
-        `(+${resultadoGuardado.puntosGanados} puntos)`;
-
-
-
-    }else{
-
-
-
-        document.getElementById("mensajeFinal").innerHTML =
-
-        "Gracias por participar, te invitamos a continuar leyendo e intentando.";
-
-
-
-    }
-
-
-
-    // Bloquear respuestas después de calificar
-
-    let opciones =
-    document.querySelectorAll("input[type='radio']");
-
-
-
-    opciones.forEach(opcion=>{
-
-        opcion.disabled = true;
+        if(respuesta && respuesta.value === pregunta.correcta){
+            estrellas++;
+        }
 
     });
 
+    document.getElementById("resultado").innerHTML =
+        `Resultado: ${estrellas}/${totalPreguntas} ⭐`;
 
+    // Guardar el progreso y sumar puntos en Firestore
+    const resultadoGuardado = await guardarProgreso(
+        lecturaActual.id,
+        lecturaActual.nivel,
+        estrellas,
+        totalPreguntas
+    );
+
+    if(resultadoGuardado && resultadoGuardado.aprobo){
+
+        document.getElementById("mensajeFinal").innerHTML =
+            `¡Bien hecho! Ganaste: ${resultadoGuardado.premio} 🎉 ` +
+            `(+${resultadoGuardado.puntosGanados} puntos)`;
+
+    }else if(resultadoGuardado && resultadoGuardado.yaCompletada){
+
+        document.getElementById("mensajeFinal").innerHTML =
+            "Ya habías completado esta lectura antes, ¡pero qué bueno que la repasaste! " +
+            "(no se suman puntos dos veces por la misma lectura)";
+
+    }else{
+
+        document.getElementById("mensajeFinal").innerHTML =
+            "Gracias por participar, te invitamos a continuar leyendo e intentando.";
+
+    }
+
+    // Bloquear respuestas después de calificar
+    document.querySelectorAll("input[type='radio']").forEach(opcion => {
+        opcion.disabled = true;
+    });
 
 }

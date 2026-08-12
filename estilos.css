@@ -529,6 +529,63 @@ button:active{
 
 
 /* ==========================
+   MIS LECTURAS (pantalla de inicio)
+========================== */
+
+#listaLecturasInicio{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+}
+
+.tarjetaLectura{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:15px;
+    background:white;
+    border:1px solid var(--borde);
+    border-radius:14px;
+    padding:20px;
+    text-decoration:none;
+    color:var(--texto);
+    box-shadow:var(--sombra);
+    transition:transform 0.1s, box-shadow 0.15s;
+}
+
+.tarjetaLectura:hover{
+    transform:translateY(-2px);
+    box-shadow:0 6px 20px rgba(20,30,50,0.12);
+}
+
+.tarjetaTitulo{
+    font-weight:700;
+    font-size:16px;
+    margin-bottom:4px;
+}
+
+.tarjetaNivel{
+    font-size:13px;
+    color:var(--texto-suave);
+}
+
+.tarjetaEstado{
+    font-weight:600;
+    font-size:14px;
+    color:var(--azul);
+    white-space:nowrap;
+}
+
+.tarjetaCompletada{
+    opacity:0.75;
+}
+
+.tarjetaCompletada .tarjetaEstado{
+    color:#2e8b57;
+}
+
+
+/* ==========================
    CELULARES
 ========================== */
 

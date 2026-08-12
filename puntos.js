@@ -19,6 +19,27 @@ const PREMIO_POR_NIVEL = {
 };
 
 /**
+ * Normaliza texto para poder AGRUPAR correctamente aunque la gente
+ * escriba con mayúsculas distintas o espacios de más
+ * (ej. "unis", "Unis ", "UNIS " cuentan como el mismo grupo).
+ * Ojo: esto no soluciona que alguien escriba "Unis" y otro "Colegio Unis" —
+ * para eso ayuda el placeholder del formulario pidiendo el nombre completo.
+ */
+function normalizarTexto(texto) {
+    return (texto || "")
+        .trim()
+        .replace(/\s+/g, " ")
+        .toLowerCase();
+}
+
+function aTituloDeCaso(texto) {
+    return texto
+        .split(" ")
+        .map(palabra => palabra.charAt(0).toUpperCase() + palabra.slice(1))
+        .join(" ");
+}
+
+/**
  * Recalcula el ranking de colegios/grados y lo guarda en un solo documento
  * que siempre representa el estado ACTUAL (no por día). Se llama automáticamente
  * cada vez que alguien completa un cuestionario, así que el ranking queda
@@ -33,12 +54,17 @@ async function actualizarRankingActual() {
 
     snapshot.forEach(doc => {
         const data = doc.data();
-        const colegio = (data.colegio || "Sin colegio").trim();
-        const grado = (data.grado || "Sin grado").trim();
-        const clave = `${colegio}|||${grado}`;
+
+        const colegioNormalizado = normalizarTexto(data.colegio || "Sin colegio");
+        const gradoNormalizado = normalizarTexto(data.grado || "Sin grado");
+        const clave = `${colegioNormalizado}|||${gradoNormalizado}`;
 
         if (!grupos[clave]) {
-            grupos[clave] = { colegio, grado, puntos: 0 };
+            grupos[clave] = {
+                colegio: aTituloDeCaso(colegioNormalizado),
+                grado: aTituloDeCaso(gradoNormalizado),
+                puntos: 0
+            };
         }
 
         grupos[clave].puntos += data.puntosTotales || 0;
@@ -57,18 +83,31 @@ async function actualizarRankingActual() {
  * Guarda el resultado de una lectura completada y suma los puntos
  * correspondientes al usuario actual.
  *
- * @param {string} lecturaId - identificador único de la lectura (ver script.js)
+ * Evita que una misma lectura otorgue puntos más de una vez por usuario
+ * (si ya la había completado antes con éxito, esta vez no vuelve a sumar,
+ * aunque el intento sí se registra para tu historial).
+ *
+ * @param {string} lecturaId - identificador único de la lectura (ver lecturas.js)
  * @param {string} nivel - "facil" | "intermedio" | "dificil"
- * @param {number} estrellas - cuántas respuestas correctas obtuvo (0-3)
+ * @param {number} estrellas - cuántas respuestas correctas obtuvo
+ * @param {number} totalPreguntas - cuántas preguntas tenía esta lectura
  */
-async function guardarProgreso(lecturaId, nivel, estrellas) {
+async function guardarProgreso(lecturaId, nivel, estrellas, totalPreguntas) {
     const user = auth.currentUser;
     if (!user) return;
 
-    // Solo se otorgan puntos si respondió bien todo el cuestionario.
-    // (Puedes cambiar esta regla si prefieres dar puntos parciales.)
-    const aprobo = estrellas === 3;
-    const puntosGanados = aprobo ? PUNTOS_POR_NIVEL[nivel] : 0;
+    // ¿Ya había completado esta lectura con éxito antes?
+    const intentosPrevios = await db.collection("progreso")
+        .where("usuarioId", "==", user.uid)
+        .where("lecturaId", "==", lecturaId)
+        .get();
+
+    const yaCompletada = intentosPrevios.docs.some(doc => doc.data().puntosGanados > 0);
+
+    // Solo se otorgan puntos si respondió bien todo el cuestionario,
+    // Y si es la primera vez que la completa con éxito.
+    const aprobo = estrellas === totalPreguntas;
+    const puntosGanados = (aprobo && !yaCompletada) ? PUNTOS_POR_NIVEL[nivel] : 0;
 
     // 1. Registrar el intento en la colección "progreso"
     await db.collection("progreso").add({
@@ -76,11 +115,12 @@ async function guardarProgreso(lecturaId, nivel, estrellas) {
         lecturaId: lecturaId,
         nivel: nivel,
         estrellas: estrellas,
+        totalPreguntas: totalPreguntas,
         puntosGanados: puntosGanados,
         fecha: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    // 2. Sumar los puntos al total del usuario, si ganó puntos
+    // 2. Sumar los puntos al total del usuario, si ganó puntos NUEVOS
     if (puntosGanados > 0) {
         await db.collection("usuarios").doc(user.uid).update({
             puntosTotales: firebase.firestore.FieldValue.increment(puntosGanados)
@@ -90,5 +130,10 @@ async function guardarProgreso(lecturaId, nivel, estrellas) {
         await actualizarRankingActual();
     }
 
-    return { aprobo, puntosGanados, premio: PREMIO_POR_NIVEL[nivel] };
+    return {
+        aprobo: aprobo && !yaCompletada,
+        yaCompletada: aprobo && yaCompletada,
+        puntosGanados,
+        premio: PREMIO_POR_NIVEL[nivel]
+    };
 }
