@@ -97,6 +97,21 @@ function iniciarLectura(){
 
     }
 
+    // Si el usuario ya había ENTRADO antes a esta lectura en esta misma
+    // sesión del navegador (por ejemplo, se fue al menú y volvió), no se
+    // le permite reiniciar el texto ni el tiempo — evita que alguien
+    // "reinicie" la lectura saliendo y regresando.
+    const claveIntento = `lectura_iniciada_${lecturaActual.id}`;
+
+    if(sessionStorage.getItem(claveIntento)){
+
+        mostrarMensajeYaIntentado();
+        return;
+
+    }
+
+    sessionStorage.setItem(claveIntento, "en-progreso");
+
     // Cargar los datos de esta lectura
     TIEMPO_LECTURA = lecturaActual.tiempoLectura;
     TIEMPO_CUESTIONARIO = lecturaActual.tiempoCuestionario || 30;
@@ -140,6 +155,29 @@ function iniciarLectura(){
 
 
 // ==========================
+// MENSAJE SI YA HABÍA ENTRADO ANTES
+// ==========================
+
+function mostrarMensajeYaIntentado(){
+
+    document.getElementById("contenedor").innerHTML = `
+        <div style="text-align:center; padding:60px 20px;">
+            <h1>Gracias por participar 🙌</h1>
+            <p style="color:var(--texto-suave); margin-top:10px;">
+                Ya habías comenzado esta lectura en esta sesión.
+                Para evitar reinicios, no se puede volver a abrir.
+            </p>
+            <a href="index.html" class="menuLink"
+               style="display:inline-block; max-width:240px; margin:25px auto 0;">
+                ← Volver a mis lecturas
+            </a>
+        </div>
+    `;
+
+}
+
+
+// ==========================
 // MOVIMIENTO DE LA LECTURA
 // (avanza sola, sincronizada al tiempo; el usuario puede
 //  adelantarse deslizando hacia abajo, pero no puede regresar)
@@ -163,6 +201,9 @@ function moverTextoLectura(){
 
     let inicioMovimiento = false;
     let ultimoTimestamp = null;
+    let botonMostrado = false;
+
+    const btnIrCuestionario = document.getElementById("btnIrCuestionario");
 
     setTimeout(()=>{
         inicioMovimiento = true;
@@ -175,6 +216,16 @@ function moverTextoLectura(){
         }
 
         lectura.scrollTop = posicionMinima;
+
+        // Si ya se mostró todo el texto (por avance automático o porque
+        // el usuario se adelantó deslizando), habilitar el botón para
+        // pasar de una vez al cuestionario sin esperar el tiempo restante.
+        const yaSeVioTodo = distancia <= 0 || posicionMinima >= distancia;
+
+        if(!botonMostrado && yaSeVioTodo && btnIrCuestionario){
+            btnIrCuestionario.style.display = "block";
+            botonMostrado = true;
+        }
 
     }
 
@@ -217,9 +268,27 @@ function moverTextoLectura(){
             posicionMinima = lectura.scrollTop;
             posicionAutomatica = Math.max(posicionAutomatica, posicionMinima);
 
+            if(!botonMostrado && posicionMinima >= distancia && btnIrCuestionario){
+                btnIrCuestionario.style.display = "block";
+                botonMostrado = true;
+            }
+
         }
 
     });
+
+}
+
+
+// ==========================
+// PASAR AL CUESTIONARIO ANTES DE TIEMPO
+// (botón que aparece cuando ya se mostró todo el texto)
+// ==========================
+
+function pasarACuestionarioAhora(){
+
+    clearInterval(reloj);
+    mostrarCuestionario();
 
 }
 
@@ -233,6 +302,11 @@ function mostrarCuestionario(){
     lectura.style.display = "none";
     cuestionario.style.display = "block";
     temporizador.textContent = "00:00";
+
+    const btnIrCuestionario = document.getElementById("btnIrCuestionario");
+    if(btnIrCuestionario){
+        btnIrCuestionario.style.display = "none";
+    }
 
     iniciarTemporizadorCuestionario();
 
