@@ -12,12 +12,12 @@
 // ==========================================================
 
 const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_PROYECTO.firebaseapp.com",
-  projectId: "TU_PROYECTO",
-  storageBucket: "TU_PROYECTO.appspot.com",
-  messagingSenderId: "TU_SENDER_ID",
-  appId: "TU_APP_ID"
+  apiKey: "AIzaSyBjKswnJ0DDiOYKu4iA893yZq1JEAd9ji8",
+  authDomain: "lectura-3d24a.firebaseapp.com",
+  projectId: "lectura-3d24a",
+  storageBucket: "lectura-3d24a.firebasestorage.app",
+  messagingSenderId: "876952427697",
+  appId: "1:876952427697:web:7d89b564aebd8adec9d690"
 };
 
 firebase.initializeApp(firebaseConfig);
