@@ -79,57 +79,93 @@ const CATALOGO_LECTURAS = [
     // LECTURA 2 — INTERMEDIO (ejemplo para que veas el patrón)
     // ------------------------------------------------------
     {
-        id: "el-tesoro-de-la-biblioteca",
-        titulo: "El tesoro de la biblioteca",
+        id: "A la deriva" ,
+        titulo: "A la deriva (Horacio Quiroga)",
         nivel: "intermedio",
-        tiempoLectura: 180,
-        tiempoCuestionario: 40,
+        tiempoLectura: 300,
+        tiempoCuestionario: 120,
         texto: [
-            "En un pueblo pequeño rodeado de montañas, había una biblioteca vieja que casi nadie visitaba. Sus paredes de madera crujían con el viento, y el bibliotecario, don Efraín, pasaba las tardes solo, ordenando libros que parecían dormir en los estantes.",
-            "Un día, un grupo de niños entró corriendo, huyendo de la lluvia. Se sentaron en el suelo, empapados, sin saber qué hacer mientras esperaba a que escampara. Don Efraín, sin decir nada, les acercó un libro grande de tapa azul y lo abrió en la primera página.",
-            "—¿Quieren escuchar una historia mientras esperan? —preguntó.",
-            "Los niños, aburridos, aceptaron sin muchas ganas. Pero conforme don Efraín leía en voz alta, sus caras cambiaron. La historia hablaba de un mapa escondido, de un río que cambiaba de curso cada luna llena, y de un niño valiente que debía encontrar un tesoro antes de que el pueblo se quedara sin agua.",
-            "Cuando la lluvia paró, ninguno de los niños se quiso ir. Le pidieron a don Efraín que siguiera leyendo, y él sonrió como no lo hacía hacía mucho tiempo.",
-            "—Este libro tiene más de cien años —les dijo—, y ha esperado pacientemente a que alguien quisiera escucharlo.",
-            "Desde ese día, los niños volvieron cada tarde, incluso cuando no llovía. Le contaron a sus amigos, y poco a poco la biblioteca se fue llenando de risas, preguntas y páginas pasando.",
-            "Un año después, la pequeña biblioteca del pueblo ya no estaba vacía. Don Efraín decía, con orgullo, que el verdadero tesoro nunca estuvo escondido en un mapa: siempre estuvo en los estantes, esperando que alguien decidiera abrir un libro."
+             `El hombre pisó blanduzco, y en seguida sintió la mordedura en el pie. Saltó adelante, y al volverse con un juramento vio una yararacusú que arrollada sobre sí misma esperaba otro ataque.`,
+            `El hombre echó una veloz ojeada a su pie, donde dos gotitas de sangre engrosaban dificultosamente, y sacó el machete de la cintura. La víbora vio la amenaza, y hundió más la cabeza en el centro mismo de su espiral; pero el machete cayó de lomo, dislocándole las vértebras.`,
+            `El hombre se bajó hasta la mordedura, quitó las gotitas de sangre, y durante un instante contempló. Un dolor agudo nacía de los dos puntitos violetas, y comenzaba a invadir todo el pie. Apresuradamente se ligó el tobillo con su pañuelo y siguió por la picada hacia su rancho.`,
+            `El dolor en el pie aumentaba, con sensación de tirante abultamiento, y de pronto el hombre sintió dos o tres fulgurantes puntadas que como relámpagos habían irradiado desde la herida hasta la mitad de la pantorrilla. Movía la pierna con dificultad; una metálica sequedad de garganta, seguida de sed quemante, le arrancó un nuevo juramento.`,
+            `Llegó por fin al rancho, y se echó de brazos sobre la rueda de un trapiche. Los dos puntitos violeta desaparecían ahora en la monstruosa hinchazón del pie entero. La piel parecía adelgazada y a punto de ceder, de tensa. Quiso llamar a su mujer, y la voz se quebró en un ronco arrastre de garganta reseca. La sed lo devoraba.`,
+            `—¡Dorotea! —alcanzó a lanzar en un estertor—. ¡Dame caña!`,
+            `Su mujer corrió con un vaso lleno, que el hombre sorbió en tres tragos. Pero no había sentido gusto alguno.`,
+            `—¡Te pedí caña, no agua! —rugió de nuevo. ¡Dame caña!`,
+            `—¡Pero es caña, Paulino! —protestó la mujer espantada.`,
+            `—¡No, me diste agua! ¡Quiero caña, te digo!`,
+            `La mujer corrió otra vez, volviendo con la damajuana. El hombre tragó uno tras otro dos vasos, pero no sintió nada en la garganta.`,
+            `—Bueno; esto se pone feo —murmuró entonces, mirando su pie lívido y ya con lustre gangrenoso. Sobre la honda ligadura del pañuelo, la carne desbordaba como una monstruosa morcilla.`,
+            `Los dolores fulgurantes se sucedían en continuos relampagueos, y llegaban ahora a la ingle. La atroz sequedad de garganta que el aliento parecía caldear más, aumentaba a la par. Cuando pretendió incorporarse, un fulminante vómito lo mantuvo medio minuto con la frente apoyada en la rueda de palo.`,
+            `Pero el hombre no quería morir, y descendiendo hasta la costa subió a su canoa. Sentóse en la popa y comenzó a palear hasta el centro del Paraná. Allí la corriente del río, que en las inmediaciones del Iguazú corre seis millas, lo llevaría antes de cinco horas a Tacurú-Pucú.`,
+            `El hombre, con sombría energía, pudo efectivamente llegar hasta el medio del río; pero allí sus manos dormidas dejaron caer la pala en la canoa, y tras un nuevo vómito —de sangre esta vez— dirigió una mirada al sol que ya trasponía el monte.`,
+            `La pierna entera, hasta medio muslo, era ya un bloque deforme y durísimo que reventaba la ropa. El hombre cortó la ligadura y abrió el pantalón con su cuchillo: el bajo vientre desbordó hinchado, con grandes manchas lívidas y terriblemente doloroso. El hombre pensó que no podría jamás llegar él solo a Tacurú-Pucú, y se decidió a pedir ayuda a su compadre Alves, aunque hacía mucho tiempo que estaban disgustados.`,
+            `La corriente del río se precipitaba ahora hacia la costa brasileña, y el hombre pudo fácilmente atracar. Se arrastró por la picada en cuesta arriba, pero a los veinte metros, exhausto, quedó tendido de pecho.`,
+            `—¡Alves! —gritó con cuanta fuerza pudo; y prestó oído en vano.`,
+            `—¡Compadre Alves! ¡No me niegue este favor! —clamó de nuevo, alzando la cabeza del suelo. En el silencio de la selva no se oyó un solo rumor. El hombre tuvo aún valor para llegar hasta su canoa, y la corriente, cogiéndola de nuevo, la llevó velozmente a la deriva.`,
+            `El Paraná corre allí en el fondo de una inmensa hoya, cuyas paredes, altas de cien metros, encajonan fúnebremente el río. Desde las orillas bordeadas de negros bloques de basalto, asciende el bosque, negro también. Adelante, a los costados, detrás, la eterna muralla lúgubre, en cuyo fondo el río arremolinado se precipita en incesantes borbollones de agua fangosa. El paisaje es agresivo, y reina en él un silencio de muerte. Al atardecer, sin embargo, su belleza sombría y calma cobra una majestad única.`,
+            `El sol había caído ya cuando el hombre, semitendido en el fondo de la canoa, tuvo un violento escalofrío. Y de pronto, con asombro, enderezó pesadamente la cabeza: se sentía mejor. La pierna le dolía apenas, la sed disminuía, y su pecho, libre ya, se abría en lenta inspiración.`,
+            `El veneno comenzaba a irse, no había duda. Se hallaba casi bien, y aunque no tenía fuerzas para mover la mano, contaba con la caída del rocío para reponerse del todo. Calculó que antes de tres horas estaría en Tacurú-Pucú.`,
+            `El bienestar avanzaba, y con él una somnolencia llena de recuerdos. No sentía ya nada ni en la pierna ni en el vientre. ¿Viviría aún su compadre Gaona en Tacurú-Pucú? Acaso viera también a su ex patrón mister Dougald, y al recibidor del obraje.`,
+            `¿Llegaría pronto? El cielo, al poniente, se abría ahora en pantalla de oro, y el río se había coloreado también. Desde la costa paraguaya, ya entenebrecida, el monte dejaba caer sobre el río su frescura crepuscular, en penetrantes efluvios de azahar y miel silvestre. Una pareja de guacamayos cruzó muy alto y en silencio hacia el Paraguay.`,
+            `Allá abajo, sobre el río de oro, la canoa derivaba velozmente, girando a ratos sobre sí misma ante el borbollón de un remolino. El hombre que iba en ella se sentía cada vez mejor, y pensaba entretanto en el tiempo justo que había pasado sin ver a su ex patrón Dougald. ¿Tres años? Tal vez no, no tanto. ¿Dos años y nueve meses? Acaso. ¿Ocho meses y medio? Eso sí, seguramente.`,
+            `De pronto sintió que estaba helado hasta el pecho. ¿Qué sería? Y la respiración también...`,
+            `Al recibidor de maderas de mister Dougald, Lorenzo Cubilla, lo había conocido en Puerto Esperanza un viernes santo... ¿Viernes? Sí, o jueves...`,
+            `El hombre estiró lentamente los dedos de la mano.`,
+            `—Un jueves...`,
+            `Y cesó de respirar.`
         ],
         preguntas: [
             {
-                pregunta: "¿Por qué entraron los niños a la biblioteca la primera vez?",
+                pregunta: "¿Qué le mordió el pie al hombre al inicio del cuento?",
                 opciones: [
-                    { texto: "Porque querían leer", valor: "a" },
-                    { texto: "Porque estaban huyendo de la lluvia", valor: "b" },
-                    { texto: "Porque los mandó su maestra", valor: "c" }
-                ],
-                correcta: "b"
-            },
-            {
-                pregunta: "¿De qué trataba la historia que leyó don Efraín?",
-                opciones: [
-                    { texto: "De un mapa escondido y un tesoro", valor: "a" },
-                    { texto: "De un partido de fútbol", valor: "b" },
-                    { texto: "De un viaje en avión", valor: "c" }
+                    { texto: "Una yararacusú (una serpiente venenosa)", valor: "a" },
+                    { texto: "Una araña grande", valor: "b" },
+                    { texto: "Un escorpión", valor: "c" },
+                    { texto: "Un caimán", valor: "d" }
                 ],
                 correcta: "a"
             },
             {
-                pregunta: "¿Qué pasó con la biblioteca después de esa tarde?",
+                pregunta: "¿Por qué el hombre le reclamó a su esposa Dorotea que le había dado agua en vez de caña?",
                 opciones: [
-                    { texto: "Cerró para siempre", valor: "a" },
-                    { texto: "Se fue llenando de niños que volvían a leer", valor: "b" },
-                    { texto: "La convirtieron en una tienda", valor: "c" }
+                    { texto: "Porque el veneno ya le había quitado la capacidad de sentir sabores", valor: "a" },
+                    { texto: "Porque ella en verdad le dio agua por error", valor: "b" },
+                    { texto: "Porque quería emborracharse para soportar el dolor", valor: "c" },
+                    { texto: "Porque la caña se le había terminado en la casa", valor: "d" }
                 ],
-                correcta: "b"
+                correcta: "a"
             },
             {
-                pregunta: "Según don Efraín, ¿dónde estaba el verdadero tesoro?",
+                pregunta: "¿Por qué el hombre decidió subirse a la canoa y remar por el río?",
                 opciones: [
-                    { texto: "En el río que cambiaba de curso", valor: "a" },
-                    { texto: "En los estantes, esperando ser leído", valor: "b" },
-                    { texto: "Escondido en las montañas", valor: "c" }
+                    { texto: "Para intentar llegar más rápido a Tacurú-Pucú y buscar ayuda", valor: "a" },
+                    { texto: "Porque quería alejarse de su esposa tras la discusión", valor: "b" },
+                    { texto: "Porque pensó que el agua fría le calmaría el dolor", valor: "c" },
+                    { texto: "Porque escuchó a alguien llamándolo desde el otro lado del río", valor: "d" }
                 ],
-                correcta: "b"
+                correcta: "a"
+            },
+            {
+                pregunta: "¿Qué pasó cuando el hombre llamó a su compadre Alves pidiendo ayuda?",
+                opciones: [
+                    { texto: "Nadie respondió y tuvo que volver solo a la canoa", valor: "a" },
+                    { texto: "Alves lo escuchó y llegó a ayudarlo de inmediato", valor: "b" },
+                    { texto: "Alves le gritó que no lo ayudaría por su vieja pelea", valor: "c" },
+                    { texto: "Alves ya se había mudado de esa zona hace tiempo", valor: "d" }
+                ],
+                correcta: "a"
+            },
+            {
+                pregunta: "Al final del cuento, cuando el hombre siente que 'se sentía mejor', ¿qué está ocurriendo en realidad?",
+                opciones: [
+                    { texto: "Es una falsa mejoría; en realidad el veneno lo está matando y muere poco después", valor: "a" },
+                    { texto: "El veneno realmente ha dejado de hacer efecto y se salva", valor: "b" },
+                    { texto: "Ha llegado a Tacurú-Pucú y lo están atendiendo médicos", valor: "c" },
+                    { texto: "Está soñando todo el episodio de la mordedura", valor: "d" }
+                ],
+                correcta: "a"
             }
         ]
     },
@@ -141,7 +177,7 @@ const CATALOGO_LECTURAS = [
         id: "odisea-polifemo",
         titulo: "La Odisea: Odiseo en la cueva de Polifemo",
         nivel: "dificil",
-        tiempoLectura: 600,
+        tiempoLectura: 420,
         tiempoCuestionario: 180,
         texto: [
             `Llegamos a la tierra de los Cíclopes, hombres soberbios y sin ley que, confiados en los dioses inmortales, no plantan árboles ni labran la tierra, sino que todo les nace sin semilla y sin arado... No tienen ágoras donde se reúnan para deliberar, ni leyes, sino que viven en las cumbres de las altas montañas, dentro de cuevas profundas, y cada uno gobierna a sus hijos y a sus mujeres, sin preocuparse los unos de los otros.`,
