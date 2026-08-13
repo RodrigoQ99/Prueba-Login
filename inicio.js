@@ -26,16 +26,11 @@ async function cargarListaLecturas() {
         console.error("Error al cargar las lecturas desbloqueadas:", error);
     }
 
-    if (desbloqueadas.length === 0) {
-        contenedorLista.innerHTML =
-            "<p style='text-align:center;'>Todavía no has escaneado ningún código QR. " +
-            "¡Busca uno en tu golosina y comienza tu primera lectura! 🍬</p>";
-        if (cajaSugerencia) cajaSugerencia.style.display = "none";
-        return;
-    }
-
-    // Averiguar cuáles completó con éxito
+    // Averiguar cuáles completó con éxito (y de paso, cuáles tiene
+    // en su historial de progreso aunque sea de ANTES de que existiera
+    // el sistema de "desbloqueadas" — así no se pierden lecturas viejas)
     let idsCompletados = new Set();
+    let idsConProgreso = new Set();
 
     try {
         const snapshot = await db.collection("progreso")
@@ -44,6 +39,7 @@ async function cargarListaLecturas() {
 
         snapshot.forEach(doc => {
             const data = doc.data();
+            idsConProgreso.add(data.lecturaId);
             if (data.puntosGanados > 0) {
                 idsCompletados.add(data.lecturaId);
             }
@@ -53,9 +49,32 @@ async function cargarListaLecturas() {
         console.error("Error al cargar el progreso:", error);
     }
 
+    // Unir ambas fuentes: lo desbloqueado explícitamente + cualquier
+    // lectura que ya tenga en su historial (por compatibilidad con
+    // cuentas que ya tenían progreso antes de este cambio)
+    const desbloqueadasCompletas = Array.from(
+        new Set([...desbloqueadas, ...idsConProgreso])
+    );
+
+    // Si encontramos lecturas "de antes" que no estaban marcadas,
+    // las guardamos ahora para no tener que repetir este cálculo
+    if (desbloqueadasCompletas.length !== desbloqueadas.length) {
+        db.collection("usuarios").doc(user.uid)
+            .update({ lecturasDesbloqueadas: desbloqueadasCompletas })
+            .catch(error => console.error("No se pudo actualizar lecturasDesbloqueadas:", error));
+    }
+
+    if (desbloqueadasCompletas.length === 0) {
+        contenedorLista.innerHTML =
+            "<p style='text-align:center;'>Todavía no has escaneado ningún código QR. " +
+            "¡Busca uno en tu golosina y comienza tu primera lectura! 🍬</p>";
+        if (cajaSugerencia) cajaSugerencia.style.display = "none";
+        return;
+    }
+
     // Solo las lecturas que YA escaneó (no todo el catálogo)
     const lecturasDesbloqueadas = CATALOGO_LECTURAS.filter(
-        lectura => desbloqueadas.includes(lectura.id)
+        lectura => desbloqueadasCompletas.includes(lectura.id)
     );
 
     contenedorLista.innerHTML = lecturasDesbloqueadas.map(lectura => {
@@ -88,7 +107,7 @@ async function cargarListaLecturas() {
     );
 
     const pendientesPorDescubrir = CATALOGO_LECTURAS.filter(
-        lectura => !desbloqueadas.includes(lectura.id)
+        lectura => !desbloqueadasCompletas.includes(lectura.id)
     );
 
     if (todasCompletas && pendientesPorDescubrir.length > 0) {

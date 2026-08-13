@@ -362,7 +362,7 @@ function finalizarLectura(){
 // MENSAJE DE REPASO (lectura ya completada antes)
 // ==========================
 
-function mostrarMensajeRepaso(){
+async function mostrarMensajeRepaso(){
 
     lectura.style.display = "none";
     temporizador.textContent = "00:00";
@@ -385,7 +385,58 @@ function mostrarMensajeRepaso(){
         Ya habías completado esta lectura antes — ¡gracias por repasarla! 📖
     `;
 
+    // Como este QR ya lo habías escaneado, le sugerimos una lectura
+    // nueva al azar (si todavía le queda alguna por descubrir)
+    await mostrarSugerenciaAleatoria();
+
     mostrarBotonVolver();
+
+}
+
+
+// ==========================
+// SUGERIR UNA LECTURA NUEVA AL AZAR
+// (cuando el QR escaneado ya se había usado antes)
+// ==========================
+
+async function mostrarSugerenciaAleatoria(){
+
+    const user = auth.currentUser;
+    if(!user) return;
+
+    try{
+
+        const usuarioDoc = await db.collection("usuarios").doc(user.uid).get();
+        const desbloqueadas = (usuarioDoc.exists && usuarioDoc.data().lecturasDesbloqueadas) || [];
+
+        const pendientesPorDescubrir = CATALOGO_LECTURAS.filter(
+            l => !desbloqueadas.includes(l.id)
+        );
+
+        if(pendientesPorDescubrir.length === 0){
+            return; // ya descubrió todo el catálogo, no hay nada que sugerir
+        }
+
+        const sugerida = pendientesPorDescubrir[
+            Math.floor(Math.random() * pendientesPorDescubrir.length)
+        ];
+
+        const cajaSugerencia = document.createElement("div");
+        cajaSugerencia.className = "cajaSugerencia";
+        cajaSugerencia.style.marginTop = "20px";
+        cajaSugerencia.innerHTML = `
+            <p>🎲 Este código ya lo habías escaneado antes. ¡Prueba con algo nuevo!</p>
+            <a href="lectura.html?id=${encodeURIComponent(sugerida.id)}" class="menuLink"
+               style="display:inline-block; max-width:300px; margin:12px auto 0;">
+                Descubrir una nueva lectura sorpresa →
+            </a>
+        `;
+
+        cuestionario.appendChild(cajaSugerencia);
+
+    }catch(error){
+        console.error("No se pudo cargar la sugerencia aleatoria:", error);
+    }
 
 }
 
