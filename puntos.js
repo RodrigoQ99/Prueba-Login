@@ -40,6 +40,34 @@ function aTituloDeCaso(texto) {
 }
 
 /**
+ * Recalcula el RANKING PERSONAL (individual): todos los usuarios,
+ * particulares Y estudiantes, ordenados por puntos. Así cualquiera
+ * puede ver su propio puntaje comparado con los demás.
+ */
+async function actualizarRankingPersonal() {
+    const snapshot = await db.collection("usuarios").get();
+
+    const lista = [];
+
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        lista.push({
+            uid: doc.id,
+            nombre: data.nombre || "Anónimo",
+            tipo: data.tipo || "particular",
+            puntos: data.puntosTotales || 0
+        });
+    });
+
+    lista.sort((a, b) => b.puntos - a.puntos);
+
+    await db.collection("rankingPersonal").doc("actual").set({
+        lista: lista,
+        actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    });
+}
+
+/**
  * Recalcula el ranking de colegios/grados y lo guarda en un solo documento
  * que siempre representa el estado ACTUAL (no por día). Se llama automáticamente
  * cada vez que alguien completa un cuestionario, así que el ranking queda
@@ -126,8 +154,17 @@ async function guardarProgreso(lecturaId, nivel, estrellas, totalPreguntas) {
             puntosTotales: firebase.firestore.FieldValue.increment(puntosGanados)
         });
 
-        // 3. Recalcular el ranking al instante (solo hace falta si ganó puntos)
-        await actualizarRankingActual();
+        // 3. Recalcular el ranking personal SIEMPRE (aplica a todos:
+        //    particulares y estudiantes)
+        await actualizarRankingPersonal();
+
+        // 4. Recalcular el ranking de colegios solo si es estudiante
+        //    (actualizarRankingActual ya filtra por tipo "estudiante",
+        //    pero evitamos la llamada innecesaria si es particular)
+        const datosUsuario = (await db.collection("usuarios").doc(user.uid).get()).data();
+        if (datosUsuario && datosUsuario.tipo === "estudiante") {
+            await actualizarRankingActual();
+        }
     }
 
     return {

@@ -403,6 +403,16 @@ button:active{
     color:#0a84ff;
 }
 
+.filaRankingPropia{
+    border:2px solid var(--azul);
+}
+
+#contenedorRanking h2{
+    text-align:center;
+    margin-bottom:6px;
+    font-size:20px;
+}
+
 
 /* ==========================
    MENÚ SUPERIOR
@@ -582,6 +592,20 @@ button:active{
 
 .tarjetaCompletada .tarjetaEstado{
     color:#2e8b57;
+}
+
+.cajaSugerencia{
+    margin-top:20px;
+    background:white;
+    border:2px dashed var(--azul);
+    border-radius:14px;
+    padding:20px;
+    text-align:center;
+}
+
+.cajaSugerencia p{
+    font-weight:600;
+    margin:0;
 }
 
 

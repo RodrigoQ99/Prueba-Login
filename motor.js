@@ -68,7 +68,7 @@ function actualizarTemporizador(){
     }else{
 
         clearInterval(reloj);
-        mostrarCuestionario();
+        finalizarLectura();
 
     }
 
@@ -81,7 +81,11 @@ function actualizarTemporizador(){
 // auth.js llama a esta función (con este mismo nombre) apenas el
 // usuario inició sesión o terminó de registrarse.
 
-function iniciarLectura(){
+// Marca si ESTA lectura ya había sido completada con éxito antes
+// (se usa más abajo para permitir repasarla sin mostrar el cuestionario)
+let lecturaYaCompletadaAntes = false;
+
+async function iniciarLectura(){
 
     // Si el QR apunta a un ID que no existe en el catálogo
     if(!lecturaActual){
@@ -97,20 +101,59 @@ function iniciarLectura(){
 
     }
 
-    // Si el usuario ya había ENTRADO antes a esta lectura en esta misma
-    // sesión del navegador (por ejemplo, se fue al menú y volvió), no se
-    // le permite reiniciar el texto ni el tiempo — evita que alguien
-    // "reinicie" la lectura saliendo y regresando.
-    const claveIntento = `lectura_iniciada_${lecturaActual.id}`;
+    const user = auth.currentUser;
 
-    if(sessionStorage.getItem(claveIntento)){
+    // Marcar esta lectura como "desbloqueada" (escaneada), para que
+    // aparezca en "Mis lecturas". No importa si ya estaba desbloqueada:
+    // arrayUnion no la duplica.
+    if(user){
 
-        mostrarMensajeYaIntentado();
-        return;
+        db.collection("usuarios").doc(user.uid).update({
+            lecturasDesbloqueadas: firebase.firestore.FieldValue.arrayUnion(lecturaActual.id)
+        }).catch(error => console.error("No se pudo desbloquear la lectura:", error));
 
     }
 
-    sessionStorage.setItem(claveIntento, "en-progreso");
+    // ¿Ya la había completado con éxito antes? Si es así, se le va a
+    // permitir REPASAR el texto, pero no va a poder responder el
+    // cuestionario de nuevo (ver finalizarLectura más abajo).
+    if(user){
+
+        try{
+
+            const intentosPrevios = await db.collection("progreso")
+                .where("usuarioId", "==", user.uid)
+                .where("lecturaId", "==", lecturaActual.id)
+                .get();
+
+            lecturaYaCompletadaAntes = intentosPrevios.docs.some(
+                doc => doc.data().puntosGanados > 0
+            );
+
+        }catch(error){
+            console.error("No se pudo revisar el progreso previo:", error);
+        }
+
+    }
+
+    // El bloqueo de "una sola sesión" (para evitar reiniciar el tiempo
+    // saliendo y regresando) solo aplica a intentos que TODAVÍA no se
+    // han completado. Si ya la completó antes, puede reabrirla las
+    // veces que quiera para repasar.
+    if(!lecturaYaCompletadaAntes){
+
+        const claveIntento = `lectura_iniciada_${lecturaActual.id}`;
+
+        if(sessionStorage.getItem(claveIntento)){
+
+            mostrarMensajeYaIntentado();
+            return;
+
+        }
+
+        sessionStorage.setItem(claveIntento, "en-progreso");
+
+    }
 
     // Cargar los datos de esta lectura
     TIEMPO_LECTURA = lecturaActual.tiempoLectura;
@@ -288,7 +331,61 @@ function moverTextoLectura(){
 function pasarACuestionarioAhora(){
 
     clearInterval(reloj);
-    mostrarCuestionario();
+    finalizarLectura();
+
+}
+
+
+// ==========================
+// DECIDIR QUÉ MOSTRAR AL TERMINAR LA LECTURA
+// ==========================
+// Si es la primera vez → cuestionario normal.
+// Si ya la había completado antes → solo un mensaje de repaso,
+// sin poder volver a responder el cuestionario.
+
+function finalizarLectura(){
+
+    if(lecturaYaCompletadaAntes){
+
+        mostrarMensajeRepaso();
+
+    }else{
+
+        mostrarCuestionario();
+
+    }
+
+}
+
+
+// ==========================
+// MENSAJE DE REPASO (lectura ya completada antes)
+// ==========================
+
+function mostrarMensajeRepaso(){
+
+    lectura.style.display = "none";
+    temporizador.textContent = "00:00";
+
+    const btnIrCuestionario = document.getElementById("btnIrCuestionario");
+    if(btnIrCuestionario){
+        btnIrCuestionario.style.display = "none";
+    }
+
+    cuestionario.style.display = "block";
+    listaPreguntas.innerHTML = "";
+    document.getElementById("resultado").innerHTML = "";
+
+    const btnTerminar = document.getElementById("btnTerminarCuestionario");
+    if(btnTerminar){
+        btnTerminar.style.display = "none";
+    }
+
+    document.getElementById("mensajeFinal").innerHTML = `
+        Ya habías completado esta lectura antes — ¡gracias por repasarla! 📖
+    `;
+
+    mostrarBotonVolver();
 
 }
 
@@ -400,5 +497,35 @@ async function calificar(){
     document.querySelectorAll("input[type='radio']").forEach(opcion => {
         opcion.disabled = true;
     });
+
+    mostrarBotonVolver();
+
+}
+
+
+// ==========================
+// BOTÓN "VOLVER A MIS LECTURAS"
+// ==========================
+// Aparece siempre al terminar, ya sea que calificó el cuestionario
+// o que solo repasó una lectura ya completada antes.
+
+function mostrarBotonVolver(){
+
+    if(document.getElementById("btnVolverInicio")){
+        return; // ya está mostrado, no lo dupliques
+    }
+
+    const contenedorBoton = document.createElement("div");
+    contenedorBoton.style.textAlign = "center";
+    contenedorBoton.style.marginTop = "20px";
+
+    contenedorBoton.innerHTML = `
+        <a id="btnVolverInicio" href="index.html" class="menuLink"
+           style="display:inline-block; max-width:240px; margin:0 auto;">
+            ← Volver a mis lecturas
+        </a>
+    `;
+
+    cuestionario.appendChild(contenedorBoton);
 
 }
