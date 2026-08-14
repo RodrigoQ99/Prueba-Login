@@ -501,6 +501,8 @@ async function calificar(){
 
     clearInterval(relojCuestionario);
 
+    sessionStorage.removeItem(`lectura_iniciada_${lecturaActual.id}`);
+
     let estrellas = 0;
     const totalPreguntas = lecturaActual.preguntas.length;
 
