@@ -74,3 +74,57 @@ auth.onAuthStateChanged((user) => {
         menuUsuario.style.display = "none";
     }
 });
+
+
+// ==========================================================
+// MODAL "¿QUÉ ES ESTO?"
+// ==========================================================
+
+const btnQueEsEsto = document.getElementById("btnQueEsEsto");
+
+if (btnQueEsEsto) {
+    btnQueEsEsto.addEventListener("click", () => {
+        mostrarModalInfo();
+    });
+}
+
+function mostrarModalInfo() {
+
+    const overlay = document.createElement("div");
+    overlay.className = "modalOverlay";
+    overlay.innerHTML = `
+        <div class="modalCaja modalCajaInfo">
+            <h2>📚 ¿Qué es esto?</h2>
+            <p>
+                <strong>Lectura QR</strong> es una iniciativa para fomentar la lectura en Guatemala.
+                Cada golosina participante trae un código QR escondido que te lleva a una lectura
+                corta, con preguntas al final para comprobar que la leíste.
+            </p>
+            <p style="font-weight:600; margin-bottom:6px;">Niveles y premios:</p>
+            <ul>
+                <li>🟢 <strong>Fácil</strong> (~1 min) — premio simple</li>
+                <li>🟡 <strong>Intermedio</strong> (2-5 min) — premio de mayor nivel</li>
+                <li>🔴 <strong>Difícil</strong> (6-10 min) — mejores premios</li>
+            </ul>
+            <p>
+                Puedes participar como <strong>particular</strong> (compites por tu propio puntaje)
+                o como <strong>estudiante</strong> (compites también por tu colegio y grado, contra
+                otros colegios, por el premio mayor).
+            </p>
+            <p>
+                Tus puntos se guardan automáticamente con tu cuenta de Google, y puedes ver cómo vas
+                en el <strong>Ranking</strong> desde este mismo menú.
+            </p>
+            <button class="modalCerrar">Entendido</button>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
+
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+
+}

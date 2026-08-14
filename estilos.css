@@ -660,6 +660,7 @@ button:active{
     }
 
 }
+
 /* ==========================
    VER MI POSICIÓN (ranking)
 ========================== */
@@ -730,4 +731,47 @@ button:active{
     border-radius:10px;
     font-weight:600;
     cursor:pointer;
+}
+
+
+/* ==========================
+   MODAL "QUÉ ES ESTO"
+========================== */
+
+.modalCajaInfo{
+    max-width:420px;
+    text-align:left;
+    max-height:80vh;
+    overflow-y:auto;
+}
+
+.modalCajaInfo h2{
+    text-align:center;
+    margin-bottom:16px;
+}
+
+.modalCajaInfo p{
+    margin-bottom:12px;
+    line-height:1.6;
+    font-size:14px;
+}
+
+.modalCajaInfo ul{
+    margin:0 0 12px 20px;
+    padding:0;
+    font-size:14px;
+    line-height:1.8;
+}
+
+.modalCajaInfo .modalCerrar{
+    display:block;
+    width:100%;
+    margin-top:10px;
+}
+
+button.menuLink{
+    border:none;
+    cursor:pointer;
+    font-family:inherit;
+    width:100%;
 }

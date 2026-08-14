@@ -501,6 +501,10 @@ async function calificar(){
 
     clearInterval(relojCuestionario);
 
+    // Ya se calificó (sin importar si salió bien o mal): se borra la marca
+    // de "en progreso" para que, si falló, SÍ pueda volver a intentarlo.
+    // El bloqueo de "ya habías comenzado" solo debe aplicar si abandona
+    // a la mitad, sin llegar a calificar.
     sessionStorage.removeItem(`lectura_iniciada_${lecturaActual.id}`);
 
     let estrellas = 0;
