@@ -25,8 +25,8 @@ const CATALOGO_LECTURAS = [
     // LECTURA 1 — FÁCIL
     // ------------------------------------------------------
     {
-        id: "Lectura 1",
-        titulo: "El pollo asado",
+        id: "importancia-de-la-lectura",
+        titulo: "La importancia de la lectura",
         nivel: "facil",
         tiempoLectura: 60,
         tiempoCuestionario: 30,
