@@ -16,6 +16,9 @@ async function cargarListaLecturas() {
 
     if (!user) return;
 
+    // Trae el catálogo desde Firestore (solo hace la consulta la primera vez)
+    await cargarCatalogoLecturas();
+
     // Averiguar qué lecturas ha DESBLOQUEADO (escaneado) este usuario
     let desbloqueadas = [];
 
@@ -63,6 +66,8 @@ async function cargarListaLecturas() {
             .update({ lecturasDesbloqueadas: desbloqueadasCompletas })
             .catch(error => console.error("No se pudo actualizar lecturasDesbloqueadas:", error));
     }
+
+    if (typeof inicializarAdminIndex === "function") inicializarAdminIndex();
 
     if (desbloqueadasCompletas.length === 0) {
         contenedorLista.innerHTML =

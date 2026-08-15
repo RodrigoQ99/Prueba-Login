@@ -54,6 +54,7 @@ async function cargarDatosMenu(user) {
             }
         });
 
+        await cargarCatalogoLecturas();
         const totalLecturas = CATALOGO_LECTURAS.length;
         const completadas = idsCompletados.size;
         const pendientes = Math.max(totalLecturas - completadas, 0);

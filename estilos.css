@@ -835,3 +835,37 @@ button.menuLink{
     opacity:0.55;
     cursor:not-allowed;
 }
+
+
+/* ==========================
+   PANEL DE ADMINISTRADOR
+========================== */
+
+.modalCajaAdmin{
+    max-width:560px;
+    max-height:90vh;
+}
+
+.modalCajaAdmin label{
+    display:block;
+    font-weight:600;
+    font-size:14px;
+    margin-top:4px;
+}
+
+.botonAdminChico{
+    display:inline-block;
+    width:auto;
+    margin:0;
+    padding:8px 14px;
+    font-size:14px;
+    background:var(--fondo);
+    color:var(--texto);
+    border:1px solid var(--borde);
+}
+
+.botonPeligro{
+    background:#fdf1f0;
+    color:#c0392b;
+    border:1px solid #f0d6d3;
+}

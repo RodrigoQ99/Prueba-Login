@@ -33,7 +33,14 @@ const temporizadorCuestionario = document.getElementById("temporizadorCuestionar
 
 const parametros = new URLSearchParams(window.location.search);
 const idLecturaActual = parametros.get("id");
-const lecturaActual = obtenerLecturaPorId(idLecturaActual);
+
+// Se asigna dentro de iniciarLectura(), una vez que el catálogo ya se
+// trajo de Firestore (ver cargarCatalogoLecturas en lecturas.js).
+let lecturaActual = null;
+
+// Preguntas elegidas al azar del banco de esta lectura para ESTA sesión
+// (se guardan aquí para poder calificar contra las mismas que se mostraron).
+let preguntasSeleccionadas = [];
 
 
 // Variables que dependen de la lectura cargada
@@ -86,6 +93,10 @@ function actualizarTemporizador(){
 let lecturaYaCompletadaAntes = false;
 
 async function iniciarLectura(){
+
+    // Trae el catálogo desde Firestore (solo hace la consulta la primera vez)
+    await cargarCatalogoLecturas();
+    lecturaActual = obtenerLecturaPorId(idLecturaActual);
 
     // Si el QR apunta a un ID que no existe en el catálogo
     if(!lecturaActual){
@@ -165,13 +176,24 @@ async function iniciarLectura(){
     document.title = lecturaActual.titulo;
     tituloLectura.textContent = lecturaActual.titulo;
 
+    if (typeof mostrarBotonEditarLectura === "function") {
+        mostrarBotonEditarLectura(lecturaActual);
+    }
+
     // Pintar los párrafos del texto
     lectura.innerHTML = lecturaActual.texto
         .map(parrafo => `<p>${parrafo}</p>`)
         .join("");
 
+    // Elegir al azar las preguntas de esta sesión, del banco de la lectura
+    // (así cada usuario ve una combinación distinta y es más difícil copiarse)
+    preguntasSeleccionadas = elegirPreguntasAlAzar(
+        lecturaActual.bancoPreguntas,
+        lecturaActual.preguntasAMostrar
+    );
+
     // Pintar las preguntas del cuestionario
-    listaPreguntas.innerHTML = lecturaActual.preguntas
+    listaPreguntas.innerHTML = preguntasSeleccionadas
         .map((pregunta, indice) => `
             <div class="pregunta">
                 <p>${indice + 1}. ${pregunta.pregunta}</p>
@@ -508,9 +530,9 @@ async function calificar(){
     sessionStorage.removeItem(`lectura_iniciada_${lecturaActual.id}`);
 
     let estrellas = 0;
-    const totalPreguntas = lecturaActual.preguntas.length;
+    const totalPreguntas = preguntasSeleccionadas.length;
 
-    lecturaActual.preguntas.forEach((pregunta, indice) => {
+    preguntasSeleccionadas.forEach((pregunta, indice) => {
 
         const respuesta = document.querySelector(`input[name="p${indice}"]:checked`);
 

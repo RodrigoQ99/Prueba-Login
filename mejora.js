@@ -7,6 +7,9 @@ async function cargarPantallaMejora() {
     const user = auth.currentUser;
     if (!user) return;
 
+    // Trae el catálogo y el rango de edades desde Firestore (cacheados)
+    await Promise.all([cargarCatalogoMejora(), cargarRangoEdades()]);
+
     const usuarioDoc = await db.collection("usuarios").doc(user.uid).get();
     const datos = usuarioDoc.exists ? usuarioDoc.data() : {};
 
@@ -24,14 +27,17 @@ async function cargarPantallaMejora() {
 // MODAL PARA ELEGIR / CAMBIAR EDAD
 // ==========================================================
 
-function mostrarModalEdad(esPrimeraVez) {
+async function mostrarModalEdad(esPrimeraVez) {
+
+    await cargarRangoEdades();
 
     const overlay = document.createElement("div");
     overlay.className = "modalOverlay";
 
-    const opciones = [10, 11, 12, 13, 14, 15]
-        .map(edad => `<option value="${edad}">${edad} años</option>`)
-        .join("");
+    const opciones = [];
+    for (let edad = RANGO_EDADES.min; edad <= RANGO_EDADES.max; edad++) {
+        opciones.push(`<option value="${edad}">${edad} años</option>`);
+    }
 
     overlay.innerHTML = `
         <div class="modalCaja modalCajaInfo" style="text-align:center;">
@@ -43,7 +49,7 @@ function mostrarModalEdad(esPrimeraVez) {
             </p>
             <select id="selectEdad" style="width:100%; padding:10px; margin:15px 0; border-radius:8px; border:1px solid #ccc;">
                 <option value="" disabled selected>Selecciona tu edad</option>
-                ${opciones}
+                ${opciones.join("")}
             </select>
             <button id="btnConfirmarEdad">Confirmar</button>
             ${esPrimeraVez ? "" : "<button class='modalCerrar' style='background:white; color:var(--texto-suave); border:1px solid var(--borde); margin-top:10px;'>Cancelar</button>"}
@@ -89,6 +95,8 @@ function renderizarListaMejora(edadActual, completadas) {
     encabezado.textContent = `Edad actual: ${edadActual} años`;
 
     const listaDeEstaEdad = CATALOGO_MEJORA[edadActual] || [];
+
+    if (typeof inicializarAdminMejora === "function") inicializarAdminMejora(edadActual);
 
     if (listaDeEstaEdad.length === 0) {
         contenedor.innerHTML = `

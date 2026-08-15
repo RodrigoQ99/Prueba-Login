@@ -1,0 +1,742 @@
+// ==========================================================
+// PANEL DE ADMINISTRADOR
+// ==========================================================
+// Todo lo relacionado a agregar, editar y borrar lecturas (de ambos
+// sistemas) vive en este único archivo. Se incluye en las 4 páginas
+// que muestran o contienen lecturas: index.html, lectura.html,
+// mejora.html y lectura-mejorar.html.
+//
+// CÓMO SE IDENTIFICA AL ADMINISTRADOR:
+// Por su correo de Google. Nadie más ve estos controles, y las reglas
+// de Firestore (firestore.rules) también exigen este mismo correo para
+// poder escribir en las colecciones de lecturas — así que aunque
+// alguien manipulara el código desde el navegador, Firestore rechazaría
+// el cambio si no inició sesión con este correo exacto.
+// ==========================================================
+
+const EMAIL_ADMIN = "joserodrigo.jrqd@gmail.com";
+
+function esAdmin() {
+    return !!(auth.currentUser && auth.currentUser.email === EMAIL_ADMIN);
+}
+
+
+// ==========================================================
+// BANCO DE PREGUNTAS: ELEGIR AL AZAR
+// ==========================================================
+// Dado un banco de preguntas (ej. 10) y cuántas mostrar (ej. 3),
+// devuelve esa cantidad elegida al azar. Cada usuario ve una
+// combinación distinta, así que es más difícil copiarse entre ellos.
+
+function elegirPreguntasAlAzar(banco, cantidad) {
+
+    const copia = [...(banco || [])];
+
+    for (let i = copia.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copia[i], copia[j]] = [copia[j], copia[i]];
+    }
+
+    const n = Math.min(cantidad || copia.length, copia.length);
+    return copia.slice(0, n);
+
+}
+
+
+// ==========================================================
+// EDITOR DE BANCO DE PREGUNTAS (usado dentro de los formularios)
+// ==========================================================
+// "preguntas" es un arreglo que se modifica EN SITIO (mismo patrón que
+// el resto del proyecto usa para no complicar el manejo de estado).
+
+function construirEditorPreguntas(contenedor, preguntas) {
+
+    function render() {
+
+        contenedor.innerHTML = preguntas.map((pregunta, pi) => `
+            <div style="border:1px solid var(--borde); border-radius:10px; padding:15px; margin-bottom:15px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <strong>Pregunta ${pi + 1}</strong>
+                    <button type="button" class="botonAdminChico botonPeligro" data-accion="quitar-pregunta" data-pi="${pi}">🗑️ Quitar</button>
+                </div>
+                <textarea data-accion="texto-pregunta" data-pi="${pi}" rows="2"
+                          placeholder="Escribe la pregunta"
+                          style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--borde); margin-bottom:10px; font-family:inherit;"
+                >${pregunta.pregunta || ""}</textarea>
+                ${pregunta.opciones.map((opcion, oi) => `
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                        <input type="radio" name="correcta-${pi}" data-accion="marcar-correcta" data-pi="${pi}" data-oi="${oi}"
+                               ${pregunta.correcta === opcion.valor ? "checked" : ""}>
+                        <input type="text" data-accion="texto-opcion" data-pi="${pi}" data-oi="${oi}"
+                               value="${(opcion.texto || "").replace(/"/g, "&quot;")}"
+                               placeholder="Texto de esta opción"
+                               style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--borde);">
+                        <button type="button" class="botonAdminChico botonPeligro" data-accion="quitar-opcion" data-pi="${pi}" data-oi="${oi}">✕</button>
+                    </div>
+                `).join("")}
+                <button type="button" class="botonAdminChico" data-accion="agregar-opcion" data-pi="${pi}" style="margin-top:4px;">+ Agregar opción</button>
+            </div>
+        `).join("") + `<button type="button" data-accion="agregar-pregunta" style="width:100%;">+ Agregar pregunta</button>`;
+
+    }
+
+    contenedor.addEventListener("input", (e) => {
+
+        const pi = Number(e.target.dataset.pi);
+
+        if (e.target.dataset.accion === "texto-pregunta") {
+            preguntas[pi].pregunta = e.target.value;
+        }
+
+        if (e.target.dataset.accion === "texto-opcion") {
+            const oi = Number(e.target.dataset.oi);
+            preguntas[pi].opciones[oi].texto = e.target.value;
+        }
+
+    });
+
+    contenedor.addEventListener("change", (e) => {
+
+        if (e.target.dataset.accion === "marcar-correcta") {
+            const pi = Number(e.target.dataset.pi);
+            const oi = Number(e.target.dataset.oi);
+            preguntas[pi].correcta = preguntas[pi].opciones[oi].valor;
+        }
+
+    });
+
+    contenedor.addEventListener("click", (e) => {
+
+        const accion = e.target.dataset.accion;
+        if (!accion) return;
+
+        const letras = "abcdefghij";
+
+        if (accion === "agregar-pregunta") {
+
+            preguntas.push({
+                pregunta: "",
+                opciones: [
+                    { texto: "", valor: "a" },
+                    { texto: "", valor: "b" },
+                    { texto: "", valor: "c" }
+                ],
+                correcta: "a"
+            });
+
+        } else if (accion === "quitar-pregunta") {
+
+            preguntas.splice(Number(e.target.dataset.pi), 1);
+
+        } else if (accion === "agregar-opcion") {
+
+            const pi = Number(e.target.dataset.pi);
+            const letra = letras[preguntas[pi].opciones.length] || `x${preguntas[pi].opciones.length}`;
+            preguntas[pi].opciones.push({ texto: "", valor: letra });
+
+        } else if (accion === "quitar-opcion") {
+
+            const pi = Number(e.target.dataset.pi);
+            const oi = Number(e.target.dataset.oi);
+            const eraCorrecta = preguntas[pi].opciones[oi].valor === preguntas[pi].correcta;
+
+            preguntas[pi].opciones.splice(oi, 1);
+
+            if (eraCorrecta && preguntas[pi].opciones[0]) {
+                preguntas[pi].correcta = preguntas[pi].opciones[0].valor;
+            }
+
+        } else {
+
+            return; // clic en algo sin acción (ej. una opción de texto), no re-renderizar
+
+        }
+
+        render();
+
+    });
+
+    render();
+
+}
+
+
+// ==========================================================
+// FORMULARIO: CREAR / EDITAR LECTURA (sistema de premios QR)
+// ==========================================================
+
+function abrirFormularioLectura(lecturaExistente, alGuardar) {
+
+    const esNueva = !lecturaExistente;
+    const preguntas = esNueva
+        ? []
+        : JSON.parse(JSON.stringify(lecturaExistente.bancoPreguntas || []));
+
+    const overlay = document.createElement("div");
+    overlay.className = "modalOverlay";
+    overlay.innerHTML = `
+        <div class="modalCaja modalCajaInfo modalCajaAdmin">
+            <h2>${esNueva ? "➕ Nueva lectura" : "✏️ Editar lectura"}</h2>
+            <form id="formLecturaAdmin">
+
+                <label>ID único (sin espacios ni tildes, ej. "leyenda-del-quetzal")</label>
+                <input type="text" id="campoId" required
+                       value="${esNueva ? "" : lecturaExistente.id}" ${esNueva ? "" : "readonly"}
+                       style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+                <label>Título</label>
+                <input type="text" id="campoTitulo" required
+                       value="${esNueva ? "" : (lecturaExistente.titulo || "").replace(/"/g, "&quot;")}"
+                       style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+                <label>Nivel</label>
+                <select id="campoNivel" style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+                    <option value="facil">Fácil (sugerido: 45-60 seg de lectura)</option>
+                    <option value="intermedio">Intermedio (sugerido: 120-300 seg)</option>
+                    <option value="dificil">Difícil (sugerido: 360-600 seg)</option>
+                </select>
+
+                <label>Tiempo de lectura (segundos)</label>
+                <input type="number" id="campoTiempoLectura" min="10" required
+                       value="${esNueva ? 60 : lecturaExistente.tiempoLectura}"
+                       style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+                <label>Tiempo de cuestionario (segundos)</label>
+                <input type="number" id="campoTiempoCuestionario" min="10" required
+                       value="${esNueva ? 30 : lecturaExistente.tiempoCuestionario}"
+                       style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+                <label>Texto (separa cada párrafo con una línea en blanco)</label>
+                <textarea id="campoTexto" rows="10" required
+                          style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde); font-family:inherit;"
+                >${esNueva ? "" : (lecturaExistente.texto || []).join("\n\n")}</textarea>
+
+                <label>¿Cuántas preguntas se muestran por sesión? (al azar, del banco de abajo)</label>
+                <input type="number" id="campoPreguntasAMostrar" min="1"
+                       value="${esNueva ? "" : lecturaExistente.preguntasAMostrar}"
+                       style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+                <label>Orden dentro del catálogo (0 = primero)</label>
+                <input type="number" id="campoOrden" min="0"
+                       value="${esNueva ? "" : (lecturaExistente.orden ?? "")}"
+                       style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+                <h3 style="margin-top:10px;">Banco de preguntas</h3>
+                <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
+                    Marca con el círculo cuál opción es la correcta de cada pregunta.
+                </p>
+                <div id="editorPreguntas"></div>
+
+                <div style="display:flex; gap:10px; margin-top:20px;">
+                    <button type="submit" style="flex:1;">${esNueva ? "Crear lectura" : "Guardar cambios"}</button>
+                    <button type="button" class="modalCerrar" style="flex:1; background:white; border:1px solid var(--borde); color:var(--texto-suave);">Cancelar</button>
+                </div>
+
+            </form>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    overlay.querySelector("#campoNivel").value = esNueva ? "facil" : (lecturaExistente.nivel || "facil");
+
+    construirEditorPreguntas(overlay.querySelector("#editorPreguntas"), preguntas);
+
+    overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+
+    overlay.querySelector("#formLecturaAdmin").addEventListener("submit", async (e) => {
+
+        e.preventDefault();
+
+        const id = overlay.querySelector("#campoId").value.trim();
+
+        // El formato solo se exige para lecturas NUEVAS. Las que ya existen
+        // conservan el ID con el que salieron los códigos QR impresos,
+        // aunque tengan espacios u otros caracteres de antes de este panel.
+        if (esNueva) {
+
+            if (!/^[a-z0-9-]+$/i.test(id)) {
+                alert("El ID solo puede tener letras, números y guiones, sin espacios ni tildes.");
+                return;
+            }
+
+            if (CATALOGO_LECTURAS.some(l => l.id === id)) {
+                alert("Ya existe una lectura con ese ID. Elige otro.");
+                return;
+            }
+
+        }
+
+        if (preguntas.length === 0) {
+            alert("Agrega al menos una pregunta antes de guardar.");
+            return;
+        }
+
+        const texto = overlay.querySelector("#campoTexto").value
+            .split(/\n\s*\n/)
+            .map(p => p.trim())
+            .filter(p => p.length > 0);
+
+        if (texto.length === 0) {
+            alert("El texto de la lectura no puede estar vacío.");
+            return;
+        }
+
+        const preguntasAMostrarInput = Number(overlay.querySelector("#campoPreguntasAMostrar").value) || preguntas.length;
+        const ordenInput = overlay.querySelector("#campoOrden").value;
+
+        const datos = {
+            titulo: overlay.querySelector("#campoTitulo").value.trim(),
+            nivel: overlay.querySelector("#campoNivel").value,
+            tiempoLectura: Number(overlay.querySelector("#campoTiempoLectura").value),
+            tiempoCuestionario: Number(overlay.querySelector("#campoTiempoCuestionario").value),
+            texto: texto,
+            bancoPreguntas: preguntas,
+            preguntasAMostrar: Math.min(preguntasAMostrarInput, preguntas.length),
+            orden: ordenInput !== "" ? Number(ordenInput) : CATALOGO_LECTURAS.length
+        };
+
+        try {
+            await db.collection("lecturas").doc(id).set(datos);
+            await cargarCatalogoLecturas(true);
+            overlay.remove();
+            if (alGuardar) alGuardar();
+        } catch (error) {
+            console.error("No se pudo guardar la lectura:", error);
+            alert("No se pudo guardar la lectura. Intenta de nuevo.");
+        }
+
+    });
+
+}
+
+async function eliminarLectura(id, alEliminar) {
+
+    if (!confirm(`¿Seguro que quieres eliminar la lectura "${id}"? Esta acción no se puede deshacer.`)) {
+        return;
+    }
+
+    try {
+        await db.collection("lecturas").doc(id).delete();
+        await cargarCatalogoLecturas(true);
+        if (alEliminar) alEliminar();
+    } catch (error) {
+        console.error("No se pudo eliminar la lectura:", error);
+        alert("No se pudo eliminar la lectura.");
+    }
+
+}
+
+
+// ==========================================================
+// FORMULARIO: CREAR / EDITAR LECTURA (sistema "Mejorar la lectura")
+// ==========================================================
+
+function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
+
+    const esNueva = !lecturaExistente;
+    const preguntas = esNueva
+        ? []
+        : JSON.parse(JSON.stringify(lecturaExistente.bancoPreguntas || []));
+
+    const opcionesEdad = [];
+    for (let e = RANGO_EDADES.min; e <= RANGO_EDADES.max; e++) {
+        opcionesEdad.push(`<option value="${e}">${e} años</option>`);
+    }
+
+    const overlay = document.createElement("div");
+    overlay.className = "modalOverlay";
+    overlay.innerHTML = `
+        <div class="modalCaja modalCajaInfo modalCajaAdmin">
+            <h2>${esNueva ? "➕ Nueva lectura de práctica" : "✏️ Editar lectura de práctica"}</h2>
+            <form id="formMejoraAdmin">
+
+                <label>ID único (sin espacios ni tildes, ej. "mejora-12-1")</label>
+                <input type="text" id="campoId" required
+                       value="${esNueva ? "" : lecturaExistente.id}" ${esNueva ? "" : "readonly"}
+                       style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+                <label>Título</label>
+                <input type="text" id="campoTitulo" required
+                       value="${esNueva ? "" : (lecturaExistente.titulo || "").replace(/"/g, "&quot;")}"
+                       style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+                <label>Edad</label>
+                <select id="campoEdad" style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+                    ${opcionesEdad.join("")}
+                </select>
+
+                <label>Texto (separa cada párrafo con una línea en blanco)</label>
+                <textarea id="campoTexto" rows="10" required
+                          style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde); font-family:inherit;"
+                >${esNueva ? "" : (lecturaExistente.texto || []).join("\n\n")}</textarea>
+
+                <label>¿Cuántas preguntas se muestran por sesión? (al azar, del banco de abajo)</label>
+                <input type="number" id="campoPreguntasAMostrar" min="1"
+                       value="${esNueva ? "" : lecturaExistente.preguntasAMostrar}"
+                       style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+                <label>Orden dentro de esta edad (0 = primero, se desbloquea antes)</label>
+                <input type="number" id="campoOrden" min="0"
+                       value="${esNueva ? "" : (lecturaExistente.orden ?? "")}"
+                       style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+                <h3 style="margin-top:10px;">Banco de preguntas</h3>
+                <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
+                    Marca con el círculo cuál opción es la correcta de cada pregunta.
+                </p>
+                <div id="editorPreguntas"></div>
+
+                <div style="display:flex; gap:10px; margin-top:20px;">
+                    <button type="submit" style="flex:1;">${esNueva ? "Crear lectura" : "Guardar cambios"}</button>
+                    <button type="button" class="modalCerrar" style="flex:1; background:white; border:1px solid var(--borde); color:var(--texto-suave);">Cancelar</button>
+                </div>
+
+            </form>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    overlay.querySelector("#campoEdad").value = String(esNueva ? edadPorDefecto : lecturaExistente.edad);
+
+    construirEditorPreguntas(overlay.querySelector("#editorPreguntas"), preguntas);
+
+    overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+
+    overlay.querySelector("#formMejoraAdmin").addEventListener("submit", async (e) => {
+
+        e.preventDefault();
+
+        const id = overlay.querySelector("#campoId").value.trim();
+        const edad = Number(overlay.querySelector("#campoEdad").value);
+        const listaDeEsaEdad = CATALOGO_MEJORA[edad] || [];
+
+        // El formato solo se exige para lecturas NUEVAS (ver misma nota
+        // en abrirFormularioLectura).
+        if (esNueva) {
+
+            if (!/^[a-z0-9-]+$/i.test(id)) {
+                alert("El ID solo puede tener letras, números y guiones, sin espacios ni tildes.");
+                return;
+            }
+
+            if (listaDeEsaEdad.some(l => l.id === id)) {
+                alert("Ya existe una lectura con ese ID. Elige otro.");
+                return;
+            }
+
+        }
+
+        if (preguntas.length === 0) {
+            alert("Agrega al menos una pregunta antes de guardar.");
+            return;
+        }
+
+        const texto = overlay.querySelector("#campoTexto").value
+            .split(/\n\s*\n/)
+            .map(p => p.trim())
+            .filter(p => p.length > 0);
+
+        if (texto.length === 0) {
+            alert("El texto de la lectura no puede estar vacío.");
+            return;
+        }
+
+        const preguntasAMostrarInput = Number(overlay.querySelector("#campoPreguntasAMostrar").value) || preguntas.length;
+        const ordenInput = overlay.querySelector("#campoOrden").value;
+
+        const datos = {
+            edad: edad,
+            titulo: overlay.querySelector("#campoTitulo").value.trim(),
+            texto: texto,
+            bancoPreguntas: preguntas,
+            preguntasAMostrar: Math.min(preguntasAMostrarInput, preguntas.length),
+            orden: ordenInput !== "" ? Number(ordenInput) : listaDeEsaEdad.length
+        };
+
+        try {
+            await db.collection("mejoraLecturas").doc(id).set(datos);
+            await cargarCatalogoMejora(true);
+            overlay.remove();
+            if (alGuardar) alGuardar();
+        } catch (error) {
+            console.error("No se pudo guardar la lectura de práctica:", error);
+            alert("No se pudo guardar la lectura. Intenta de nuevo.");
+        }
+
+    });
+
+}
+
+async function eliminarMejoraLectura(id, alEliminar) {
+
+    if (!confirm(`¿Seguro que quieres eliminar la lectura "${id}"? Esta acción no se puede deshacer.`)) {
+        return;
+    }
+
+    try {
+        await db.collection("mejoraLecturas").doc(id).delete();
+        await cargarCatalogoMejora(true);
+        if (alEliminar) alEliminar();
+    } catch (error) {
+        console.error("No se pudo eliminar la lectura de práctica:", error);
+        alert("No se pudo eliminar la lectura.");
+    }
+
+}
+
+
+// ==========================================================
+// FORMULARIO: RANGO DE EDADES (Mejorar la lectura)
+// ==========================================================
+
+async function abrirFormularioRangoEdades(alGuardar) {
+
+    await cargarRangoEdades();
+
+    const overlay = document.createElement("div");
+    overlay.className = "modalOverlay";
+    overlay.innerHTML = `
+        <div class="modalCaja modalCajaInfo" style="text-align:center;">
+            <h2>⚙️ Rango de edades</h2>
+            <p>Define entre qué edades pueden elegir los usuarios en "Mejorar la lectura".</p>
+
+            <label style="display:block; text-align:left; margin-top:10px;">Edad mínima</label>
+            <input type="number" id="campoEdadMin" min="5" max="18" value="${RANGO_EDADES.min}"
+                   style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+            <label style="display:block; text-align:left;">Edad máxima</label>
+            <input type="number" id="campoEdadMax" min="5" max="18" value="${RANGO_EDADES.max}"
+                   style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+            <button id="btnGuardarRango">Guardar</button>
+            <button class="modalCerrar" style="background:white; border:1px solid var(--borde); color:var(--texto-suave); margin-top:10px;">Cancelar</button>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
+
+    overlay.querySelector("#btnGuardarRango").addEventListener("click", async () => {
+
+        const min = Number(overlay.querySelector("#campoEdadMin").value);
+        const max = Number(overlay.querySelector("#campoEdadMax").value);
+
+        if (!min || !max || min > max) {
+            alert("Revisa los valores: la edad mínima debe ser menor o igual a la máxima.");
+            return;
+        }
+
+        try {
+            await db.collection("configuracion").doc("rangoEdades").set({ min, max });
+            await cargarRangoEdades(true);
+            overlay.remove();
+            if (alGuardar) alGuardar();
+        } catch (error) {
+            console.error("No se pudo guardar el rango de edades:", error);
+            alert("No se pudo guardar el rango de edades.");
+        }
+
+    });
+
+}
+
+
+// ==========================================================
+// PANEL EN "MIS LECTURAS" (index.html)
+// ==========================================================
+
+function inicializarAdminIndex() {
+
+    if (!esAdmin()) return;
+
+    const contenedor = document.getElementById("contenedor");
+    const panelExistente = document.getElementById("panelAdminIndex");
+    if (panelExistente) panelExistente.remove();
+
+    const panel = document.createElement("div");
+    panel.id = "panelAdminIndex";
+    panel.style.marginTop = "35px";
+    panel.innerHTML = `
+        <hr style="margin:30px 0; border:none; border-top:1px solid var(--borde);">
+        <h2 style="text-align:center;">🔧 Panel de administrador</h2>
+        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:15px 0;">
+            <button id="btnNuevaLectura" style="max-width:280px;">+ Agregar lectura nueva</button>
+            ${(typeof DATOS_ORIGINALES_LECTURAS !== "undefined" && CATALOGO_LECTURAS.length === 0)
+                ? `<button id="btnMigrarDatos" style="max-width:280px; background:#2e9e5b;">🚀 Migrar datos antiguos</button>`
+                : ""}
+        </div>
+        <div id="listaAdminLecturas"></div>
+    `;
+    contenedor.appendChild(panel);
+
+    document.getElementById("btnNuevaLectura").addEventListener("click", () => {
+        abrirFormularioLectura(null, () => inicializarAdminIndex());
+    });
+
+    const btnMigrar = document.getElementById("btnMigrarDatos");
+    if (btnMigrar) {
+        btnMigrar.addEventListener("click", () => migrarDatosOriginales());
+    }
+
+    renderizarListaAdminLecturas();
+
+}
+
+function renderizarListaAdminLecturas() {
+
+    const cont = document.getElementById("listaAdminLecturas");
+    if (!cont) return;
+
+    cont.innerHTML = CATALOGO_LECTURAS.map(lectura => `
+        <div class="tarjetaLectura" style="cursor:default;">
+            <div class="tarjetaInfo">
+                <p class="tarjetaTitulo">${lectura.titulo}</p>
+                <p class="tarjetaNivel">Nivel ${lectura.nivel} · ${(lectura.bancoPreguntas || []).length} preguntas en el banco (muestra ${lectura.preguntasAMostrar})</p>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="botonAdminChico" data-editar="${lectura.id}">✏️</button>
+                <button type="button" class="botonAdminChico botonPeligro" data-eliminar="${lectura.id}">🗑️</button>
+            </div>
+        </div>
+    `).join("") || "<p style='text-align:center;'>Todavía no hay lecturas en el catálogo.</p>";
+
+    cont.querySelectorAll("[data-editar]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const lectura = CATALOGO_LECTURAS.find(l => l.id === btn.dataset.editar);
+            abrirFormularioLectura(lectura, () => inicializarAdminIndex());
+        });
+    });
+
+    cont.querySelectorAll("[data-eliminar]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            eliminarLectura(btn.dataset.eliminar, () => inicializarAdminIndex());
+        });
+    });
+
+}
+
+
+// ==========================================================
+// PANEL EN "MEJORAR LA LECTURA" (mejora.html)
+// ==========================================================
+
+function inicializarAdminMejora(edadActual) {
+
+    if (!esAdmin()) return;
+
+    const contenedor = document.getElementById("contenedor");
+    const panelExistente = document.getElementById("panelAdminMejora");
+    if (panelExistente) panelExistente.remove();
+
+    const panel = document.createElement("div");
+    panel.id = "panelAdminMejora";
+    panel.style.marginTop = "35px";
+    panel.innerHTML = `
+        <hr style="margin:30px 0; border:none; border-top:1px solid var(--borde);">
+        <h2 style="text-align:center;">🔧 Panel de administrador</h2>
+        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:15px 0;">
+            <button id="btnNuevaMejora" style="max-width:260px;">+ Agregar lectura (edad ${edadActual})</button>
+            <button id="btnEditarRango" style="max-width:260px; background:white; color:var(--azul); border:2px solid var(--azul);">⚙️ Editar rango de edades</button>
+        </div>
+        <div id="listaAdminMejora"></div>
+    `;
+    contenedor.appendChild(panel);
+
+    document.getElementById("btnNuevaMejora").addEventListener("click", () => {
+        abrirFormularioMejora(null, edadActual, () => inicializarAdminMejora(edadActual));
+    });
+
+    document.getElementById("btnEditarRango").addEventListener("click", () => {
+        abrirFormularioRangoEdades(() => inicializarAdminMejora(edadActual));
+    });
+
+    renderizarListaAdminMejora(edadActual);
+
+}
+
+function renderizarListaAdminMejora(edadActual) {
+
+    const cont = document.getElementById("listaAdminMejora");
+    if (!cont) return;
+
+    const lista = CATALOGO_MEJORA[edadActual] || [];
+
+    cont.innerHTML = lista.map(lectura => `
+        <div class="tarjetaLectura" style="cursor:default;">
+            <div class="tarjetaInfo">
+                <p class="tarjetaTitulo">${lectura.titulo}</p>
+                <p class="tarjetaNivel">${(lectura.bancoPreguntas || []).length} preguntas en el banco (muestra ${lectura.preguntasAMostrar})</p>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="botonAdminChico" data-editar="${lectura.id}">✏️</button>
+                <button type="button" class="botonAdminChico botonPeligro" data-eliminar="${lectura.id}">🗑️</button>
+            </div>
+        </div>
+    `).join("") || "<p style='text-align:center;'>Todavía no hay lecturas para esta edad.</p>";
+
+    cont.querySelectorAll("[data-editar]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const lectura = lista.find(l => l.id === btn.dataset.editar);
+            abrirFormularioMejora(lectura, edadActual, () => inicializarAdminMejora(edadActual));
+        });
+    });
+
+    cont.querySelectorAll("[data-eliminar]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            eliminarMejoraLectura(btn.dataset.eliminar, () => inicializarAdminMejora(edadActual));
+        });
+    });
+
+}
+
+
+// ==========================================================
+// BOTÓN "EDITAR ESTA LECTURA" DENTRO DE lectura.html / lectura-mejorar.html
+// ==========================================================
+
+function mostrarBotonEditarLectura(lectura) {
+
+    if (!esAdmin()) return;
+    if (document.getElementById("btnEditarLecturaAdmin")) return;
+
+    const btn = document.createElement("button");
+    btn.id = "btnEditarLecturaAdmin";
+    btn.type = "button";
+    btn.textContent = "✏️ Editar esta lectura (admin)";
+    btn.style.cssText = "max-width:280px; margin:10px auto; display:block; background:white; color:var(--azul); border:2px solid var(--azul);";
+    btn.addEventListener("click", () => {
+        abrirFormularioLectura(lectura, () => location.reload());
+    });
+
+    const titulo = document.getElementById("tituloLectura");
+    if (titulo) titulo.insertAdjacentElement("afterend", btn);
+
+}
+
+function mostrarBotonEditarMejora(lectura) {
+
+    if (!esAdmin()) return;
+    if (document.getElementById("btnEditarLecturaAdmin")) return;
+
+    const btn = document.createElement("button");
+    btn.id = "btnEditarLecturaAdmin";
+    btn.type = "button";
+    btn.textContent = "✏️ Editar esta lectura (admin)";
+    btn.style.cssText = "max-width:280px; margin:10px auto; display:block; background:white; color:var(--azul); border:2px solid var(--azul);";
+    btn.addEventListener("click", () => {
+        abrirFormularioMejora(lectura, lectura.edad, () => location.reload());
+    });
+
+    const titulo = document.getElementById("tituloLecturaMejora");
+    if (titulo) titulo.insertAdjacentElement("afterend", btn);
+
+}

@@ -21,12 +21,18 @@ const mensajeFinalMejora = document.getElementById("mensajeFinalMejora");
 
 const parametrosMejora = new URLSearchParams(window.location.search);
 const idLecturaMejora = parametrosMejora.get("id");
-const ubicacion = ubicarLecturaMejora(idLecturaMejora);
+
+// Se asigna dentro de iniciarLectura(), una vez que el catálogo ya se
+// trajo de Firestore (ver cargarCatalogoMejora en mejora-lecturas.js).
+let ubicacion = null;
 
 let segundosTranscurridos = 0;
 let cronometroInterval = null;
 let yaAvanzoAlCuestionario = false;
 let listaPalabrasTexto = [];
+
+// Preguntas elegidas al azar del banco de esta lectura para ESTA sesión.
+let preguntasSeleccionadasMejora = [];
 
 
 // ==========================
@@ -48,6 +54,10 @@ function normalizarPalabra(palabra) {
 // ==========================
 
 async function iniciarLectura() {
+
+    // Trae el catálogo y el rango de edades desde Firestore (cacheados)
+    await Promise.all([cargarCatalogoMejora(), cargarRangoEdades()]);
+    ubicacion = ubicarLecturaMejora(idLecturaMejora);
 
     if (!ubicacion) {
 
@@ -97,6 +107,10 @@ async function iniciarLectura() {
     const lectura = ubicacion.lectura;
     document.title = lectura.titulo;
     tituloLecturaMejora.textContent = lectura.titulo;
+
+    if (typeof mostrarBotonEditarMejora === "function") {
+        mostrarBotonEditarMejora(lectura);
+    }
 
     textoLecturaMejora.innerHTML = lectura.texto
         .map(parrafo => `<p>${parrafo}</p>`)
@@ -268,7 +282,12 @@ function avanzarAlCuestionario() {
 
     cuestionarioMejora.style.display = "block";
 
-    listaPreguntasMejora.innerHTML = ubicacion.lectura.preguntas
+    preguntasSeleccionadasMejora = elegirPreguntasAlAzar(
+        ubicacion.lectura.bancoPreguntas,
+        ubicacion.lectura.preguntasAMostrar
+    );
+
+    listaPreguntasMejora.innerHTML = preguntasSeleccionadasMejora
         .map((pregunta, indice) => `
             <div class="pregunta">
                 <p>${indice + 1}. ${pregunta.pregunta}</p>
@@ -291,7 +310,7 @@ function avanzarAlCuestionario() {
 
 async function calificarMejora() {
 
-    const preguntas = ubicacion.lectura.preguntas;
+    const preguntas = preguntasSeleccionadasMejora;
     let correctas = 0;
 
     preguntas.forEach((pregunta, indice) => {
@@ -341,7 +360,7 @@ async function calificarMejora() {
     const listaDeEstaEdad = CATALOGO_MEJORA[ubicacion.edad] || [];
     const eraLaUltima = ubicacion.indice === listaDeEstaEdad.length - 1;
 
-    if (eraLaUltima && ubicacion.edad < 15) {
+    if (eraLaUltima && ubicacion.edad < RANGO_EDADES.max) {
 
         const nuevaEdad = ubicacion.edad + 1;
 
