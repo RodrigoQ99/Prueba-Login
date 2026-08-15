@@ -382,7 +382,7 @@ async function mostrarMensajeRepaso(){
     }
 
     document.getElementById("mensajeFinal").innerHTML = `
-        Ya habías completado esta lectura antes — ¡gracias por repasarla! 📖
+        Ya habías completado esta lectura antes, recuerda que no se suman puntos dos veces por la misma lectura 📖
     `;
 
     // Como este QR ya lo habías escaneado, le sugerimos una lectura
