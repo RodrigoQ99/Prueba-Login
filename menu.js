@@ -35,7 +35,7 @@ if (btnCerrarSesionMenu) {
 
 async function cargarDatosMenu(user) {
     menuUsuario.style.display = "block";
-    menuNombre.textContent = user.displayName || user.email || "";
+    menuNombre.textContent = user.displayName || user.email || "Mi cuenta";
 
     try {
         // Trae todos los intentos del usuario y cuenta, en el navegador,
