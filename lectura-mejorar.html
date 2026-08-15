@@ -4,16 +4,10 @@
 <head>
 
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mejorar la lectura</title>
+    <link rel="stylesheet" href="estilos.css">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
-    <title>Lectura</title>
-
-    <link rel="stylesheet"
-          href="estilos.css">
-
-    <!-- Firebase (versión compat, para usar sin bundler) -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -25,7 +19,7 @@
 
 
 <!-- ==========================
-     MENÚ SUPERIOR (perfil / progreso / ranking)
+     MENÚ SUPERIOR
 =========================== -->
 <div id="menuUsuario" class="menuUsuario" style="display:none;">
     <button id="btnMenuToggle" class="botonMenuToggle" aria-label="Abrir menú">
@@ -51,9 +45,7 @@
 
         <a href="index.html" class="menuLink">📚 Mis lecturas</a>
         <a href="mejora.html" class="menuLink">📈 Mejorar la lectura</a>
-
         <button id="btnQueEsEsto" class="menuLink">💡 ¿Qué es esto?</button>
-
         <a href="ranking.html" class="menuLink">🏆 Ver ranking</a>
 
         <button id="btnCerrarSesionMenu" class="menuLinkBoton">Cerrar sesión</button>
@@ -112,84 +104,75 @@
 
 
 <div id="contenedor" style="display:none;">
+<div id="contenedorMejora">
 
+    <div id="cronometro" class="cronometroMejora">00:00</div>
 
-    <div id="temporizador">
-        00:00
-    </div>
+    <h1 id="tituloLecturaMejora">Cargando...</h1>
 
+    <div id="textoLecturaMejora" class="textoLibre"></div>
 
-
-    <h1 id="tituloLectura">
-        Cargando...
-    </h1>
-
-
-
-    <!-- ==========================
-         LECTURA (se llena automáticamente según el QR)
-    =========================== -->
-
-
-    <div id="lectura">
-    </div>
-
-
-    <button id="btnIrCuestionario"
-            onclick="pasarACuestionarioAhora()"
-            style="display:none;">
-        Ya terminé de leer → Ir al cuestionario
+    <button id="btnContinuarCuestionario" style="display:none;">
+        ✅ Continuar al cuestionario
     </button>
 
+    <!-- Checkpoint al minuto -->
+    <div id="cajaCheckpoint" class="cajaCheckpoint" style="display:none;">
 
+        <p style="font-weight:600; text-align:center; margin-bottom:15px;">
+            ¡Se cumplió el minuto! ¿Cómo te fue?
+        </p>
 
+        <button id="btnLogreLeerTodo">
+            🏁 Logré leer todo
+        </button>
 
-    <!-- ==========================
-         CUESTIONARIO (se llena automáticamente)
-    =========================== -->
+        <p style="text-align:center; margin:15px 0 8px; color:var(--texto-suave);">
+            o, si no terminaste:
+        </p>
 
+        <form id="formUltimasPalabras">
+            <input type="text" id="inputUltimasPalabras"
+                   placeholder="Escribe las últimas 3 palabras que leíste">
+            <div id="errorUltimasPalabras" class="errorTexto" style="display:none;"></div>
+            <button type="submit">Calcular mis palabras por minuto</button>
+        </form>
 
-    <div id="cuestionario" style="display:none;">
+    </div>
 
+    <!-- Resultado de palabras por minuto (si no terminó) -->
+    <div id="cajaResultadoPpm" class="cajaCheckpoint" style="display:none;">
+        <div id="resultadoPpm" style="text-align:center;"></div>
+        <button id="btnIntentarDeNuevo">🔄 Intentar de nuevo</button>
+        <a href="mejora.html" class="menuLink"
+           style="display:inline-block; max-width:260px; margin:15px auto 0;">
+            ← Volver a Mejorar la lectura
+        </a>
+    </div>
 
+    <!-- Cuestionario -->
+    <div id="cuestionarioMejora" style="display:none;">
 
-        <div id="temporizadorCuestionario">
-            Tiempo: 00:00
-        </div>
+        <h2>Cuestionario</h2>
 
+        <div id="listaPreguntasMejora"></div>
 
-
-        <h2>
-            Cuestionario
-        </h2>
-
-
-        <div id="listaPreguntas">
-        </div>
-
-
-        <button id="btnTerminarCuestionario" onclick="calificar()">
+        <button id="btnCalificarMejora" onclick="calificarMejora()">
             Terminar cuestionario
         </button>
 
-
-        <h2 id="resultado"></h2>
-
-        <h2 id="mensajeFinal"></h2>
-
+        <div id="mensajeFinalMejora" style="text-align:center;"></div>
 
     </div>
 
-
 </div>
-
-
+</div>
 
 
 <script src="firebase-init.js"></script>
 <script src="lecturas.js"></script>
-<script src="puntos.js"></script>
-<script src="motor.js"></script>
+<script src="mejora-lecturas.js"></script>
+<script src="motor-mejorar.js"></script>
 <script src="auth.js"></script>
 <script src="menu.js"></script>
 
