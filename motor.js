@@ -540,8 +540,8 @@ async function calificar(){
     }else if(resultadoGuardado && resultadoGuardado.yaCompletada){
 
         document.getElementById("mensajeFinal").innerHTML =
-            "Ya habías completado esta lectura antes, ¡pero qué bueno que la repasaste! " +
-            "(no se suman puntos dos veces por la misma lectura)";
+            "Ya habías completado esta lectura antes, recuerda que no se suman puntos dos veces por la misma lectura" +
+            "(Te invitamos a seguir escaneando y participando)";
 
     }else{
 
