@@ -94,7 +94,9 @@ function mostrarModalInfo() {
     overlay.className = "modalOverlay";
     overlay.innerHTML = `
         <div class="modalCaja modalCajaInfo">
-            <h2>📚 ¿Qué es esto?</h2>
+            <h2>¿Qué es esto?</h2>
+
+            <p style="font-weight:600; margin-bottom:6px;">Lectura QR</p>
             <p>
                 <strong>Lectura QR</strong> es una iniciativa para fomentar la lectura en Guatemala.
                 Cada golosina participante trae un código QR escondido que te lleva a una lectura
@@ -102,19 +104,31 @@ function mostrarModalInfo() {
             </p>
             <p style="font-weight:600; margin-bottom:6px;">Niveles y premios:</p>
             <ul>
-                <li>🟢 <strong>Fácil</strong> (~1 min) — premio simple</li>
-                <li>🟡 <strong>Intermedio</strong> (2-5 min) — premio de mayor nivel</li>
-                <li>🔴 <strong>Difícil</strong> (6-10 min) — mejores premios</li>
+                <li><strong>Fácil</strong> — lectura corta, premio simple</li>
+                <li><strong>Intermedio</strong> — lectura media, premio de mayor nivel</li>
+                <li><strong>Difícil</strong> — lectura larga, mejores premios</li>
             </ul>
             <p>
-                Puedes participar como <strong>particular</strong> (compites por tu propio puntaje)
-                o como <strong>estudiante</strong> (compites también por tu colegio y grado, contra
-                otros colegios, por el premio mayor).
+                Puedes participar como <strong>particular</strong>, compitiendo por tu propio puntaje,
+                o como <strong>estudiante</strong>, compitiendo también por tu colegio y grado contra
+                otros colegios por el premio mayor.
             </p>
             <p>
                 Tus puntos se guardan automáticamente con tu cuenta de Google, y puedes ver cómo vas
                 en el <strong>Ranking</strong> desde este mismo menú.
             </p>
+
+            <p style="font-weight:600; margin:20px 0 6px;">Mejorar la lectura</p>
+            <p>
+                <strong>Mejorar la lectura</strong> es un sistema aparte, sin premios ni ranking. Lees
+                un texto a tu propio ritmo y, al minuto, te pedimos las últimas palabras que leíste
+                para calcular cuántas palabras por minuto lees.
+            </p>
+            <p>
+                Las lecturas están organizadas por edad y se desbloquean en orden: al completar una
+                pasas a la siguiente. Puedes intentarlo las veces que quieras, sin límite.
+            </p>
+
             <button class="modalCerrar">Entendido</button>
         </div>
     `;

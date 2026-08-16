@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+
 *{
 
     margin:0;
@@ -15,9 +17,11 @@
 
     --azul-oscuro:#0765c9;
 
-    --fondo:#f2f4f7;
+    --fondo:#f7f1e3;
 
-    --texto:#1c1f26;
+    --fondo-lectura:#dfeaf6;
+
+    --texto:#2d2d2d;
 
     --texto-suave:#5b6270;
 
@@ -32,9 +36,11 @@ body{
 
     background:var(--fondo);
 
-    font-family:'Segoe UI', Arial, Helvetica, sans-serif;
+    font-family:'Atkinson Hyperlegible', 'Segoe UI', Arial, Helvetica, sans-serif;
 
     color:var(--texto);
+
+    line-height:1.6;
 
     -webkit-user-select:none;
 
@@ -114,13 +120,13 @@ h1{
 
     overscroll-behavior:contain;
 
-    background:white;
+    background:var(--fondo-lectura);
 
     border-radius:14px;
 
     padding:30px;
 
-    line-height:1.9;
+    line-height:1.6;
 
     font-size:clamp(18px,2.5vw,22px);
 
@@ -193,13 +199,13 @@ p{
 
     margin-bottom:35px;
 
-    line-height:1.8;
+    line-height:1.7;
 
     padding:15px;
 
     border-radius:10px;
 
-    background:#f8f9fb;
+    background:#eef4fa;
 
 }
 
@@ -760,7 +766,7 @@ button:active{
     margin:0 0 12px 20px;
     padding:0;
     font-size:14px;
-    line-height:1.8;
+    line-height:1.7;
 }
 
 .modalCajaInfo .modalCerrar{
@@ -796,10 +802,10 @@ button.menuLink{
 .textoLibre{
     height:420px;
     overflow-y:auto;
-    background:white;
+    background:var(--fondo-lectura);
     border-radius:14px;
     padding:30px;
-    line-height:1.9;
+    line-height:1.6;
     font-size:clamp(17px,2.3vw,20px);
     box-shadow:var(--sombra);
     border:1px solid var(--borde);

@@ -179,7 +179,7 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
             <h2>${esNueva ? "➕ Nueva lectura" : "✏️ Editar lectura"}</h2>
             <form id="formLecturaAdmin">
 
-                <label>ID único (sin espacios ni tildes, ej. "leyenda-del-quetzal")</label>
+                <label>ID de la lectura</label>
                 <input type="text" id="campoId" required
                        value="${esNueva ? "" : lecturaExistente.id}" ${esNueva ? "" : "readonly"}
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
@@ -191,32 +191,32 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
 
                 <label>Nivel</label>
                 <select id="campoNivel" style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
-                    <option value="facil">Fácil (sugerido: 45-60 seg de lectura)</option>
-                    <option value="intermedio">Intermedio (sugerido: 120-300 seg)</option>
-                    <option value="dificil">Difícil (sugerido: 360-600 seg)</option>
+                    <option value="facil">Fácil</option>
+                    <option value="intermedio">Intermedio</option>
+                    <option value="dificil">Difícil</option>
                 </select>
 
-                <label>Tiempo de lectura (segundos)</label>
+                <label>Tiempo de lectura en segundos</label>
                 <input type="number" id="campoTiempoLectura" min="10" required
                        value="${esNueva ? 60 : lecturaExistente.tiempoLectura}"
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
-                <label>Tiempo de cuestionario (segundos)</label>
+                <label>Tiempo de cuestionario en segundos</label>
                 <input type="number" id="campoTiempoCuestionario" min="10" required
                        value="${esNueva ? 30 : lecturaExistente.tiempoCuestionario}"
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
-                <label>Texto (separa cada párrafo con una línea en blanco)</label>
+                <label>Texto</label>
                 <textarea id="campoTexto" rows="10" required
                           style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde); font-family:inherit;"
                 >${esNueva ? "" : (lecturaExistente.texto || []).join("\n\n")}</textarea>
 
-                <label>¿Cuántas preguntas se muestran por sesión? (al azar, del banco de abajo)</label>
+                <label>Cuántas preguntas se muestran por sesión</label>
                 <input type="number" id="campoPreguntasAMostrar" min="1"
                        value="${esNueva ? "" : lecturaExistente.preguntasAMostrar}"
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
-                <label>Orden dentro del catálogo (0 = primero)</label>
+                <label>Orden dentro del catálogo</label>
                 <input type="number" id="campoOrden" min="0"
                        value="${esNueva ? "" : (lecturaExistente.orden ?? "")}"
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
@@ -354,7 +354,7 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
             <h2>${esNueva ? "➕ Nueva lectura de práctica" : "✏️ Editar lectura de práctica"}</h2>
             <form id="formMejoraAdmin">
 
-                <label>ID único (sin espacios ni tildes, ej. "mejora-12-1")</label>
+                <label>ID de la lectura</label>
                 <input type="text" id="campoId" required
                        value="${esNueva ? "" : lecturaExistente.id}" ${esNueva ? "" : "readonly"}
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
@@ -369,17 +369,17 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
                     ${opcionesEdad.join("")}
                 </select>
 
-                <label>Texto (separa cada párrafo con una línea en blanco)</label>
+                <label>Texto</label>
                 <textarea id="campoTexto" rows="10" required
                           style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde); font-family:inherit;"
                 >${esNueva ? "" : (lecturaExistente.texto || []).join("\n\n")}</textarea>
 
-                <label>¿Cuántas preguntas se muestran por sesión? (al azar, del banco de abajo)</label>
+                <label>Cuántas preguntas se muestran por sesión</label>
                 <input type="number" id="campoPreguntasAMostrar" min="1"
                        value="${esNueva ? "" : lecturaExistente.preguntasAMostrar}"
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
-                <label>Orden dentro de esta edad (0 = primero, se desbloquea antes)</label>
+                <label>Orden dentro de esta edad</label>
                 <input type="number" id="campoOrden" min="0"
                        value="${esNueva ? "" : (lecturaExistente.orden ?? "")}"
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
@@ -711,7 +711,7 @@ function mostrarBotonEditarLectura(lectura) {
     const btn = document.createElement("button");
     btn.id = "btnEditarLecturaAdmin";
     btn.type = "button";
-    btn.textContent = "✏️ Editar esta lectura (admin)";
+    btn.textContent = "✏️ Editar esta lectura";
     btn.style.cssText = "max-width:280px; margin:10px auto; display:block; background:white; color:var(--azul); border:2px solid var(--azul);";
     btn.addEventListener("click", () => {
         abrirFormularioLectura(lectura, () => location.reload());
@@ -730,7 +730,7 @@ function mostrarBotonEditarMejora(lectura) {
     const btn = document.createElement("button");
     btn.id = "btnEditarLecturaAdmin";
     btn.type = "button";
-    btn.textContent = "✏️ Editar esta lectura (admin)";
+    btn.textContent = "✏️ Editar esta lectura";
     btn.style.cssText = "max-width:280px; margin:10px auto; display:block; background:white; color:var(--azul); border:2px solid var(--azul);";
     btn.addEventListener("click", () => {
         abrirFormularioMejora(lectura, lectura.edad, () => location.reload());

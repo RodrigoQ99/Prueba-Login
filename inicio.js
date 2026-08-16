@@ -19,21 +19,28 @@ async function cargarListaLecturas() {
     // Trae el catálogo desde Firestore (solo hace la consulta la primera vez)
     await cargarCatalogoLecturas();
 
-    // Averiguar qué lecturas ha DESBLOQUEADO (escaneado) este usuario
+    // Averiguar qué lecturas ha DESBLOQUEADO (escaneado) este usuario,
+    // y cuántos intentos de lectura ha usado en cada una
     let desbloqueadas = [];
+    let intentosLecturaPorId = {};
 
     try {
         const usuarioDoc = await db.collection("usuarios").doc(user.uid).get();
-        desbloqueadas = (usuarioDoc.exists && usuarioDoc.data().lecturasDesbloqueadas) || [];
+        const datosUsuario = usuarioDoc.exists ? usuarioDoc.data() : {};
+        desbloqueadas = datosUsuario.lecturasDesbloqueadas || [];
+        intentosLecturaPorId = datosUsuario.intentosLectura || {};
     } catch (error) {
         console.error("Error al cargar las lecturas desbloqueadas:", error);
     }
 
     // Averiguar cuáles completó con éxito (y de paso, cuáles tiene
     // en su historial de progreso aunque sea de ANTES de que existiera
-    // el sistema de "desbloqueadas" — así no se pierden lecturas viejas)
+    // el sistema de "desbloqueadas" — así no se pierden lecturas viejas),
+    // cuántas veces respondió el cuestionario de cada una, y su mejor resultado
     let idsCompletados = new Set();
     let idsConProgreso = new Set();
+    let intentosCuestionarioPorId = {};
+    let mejorResultadoPorId = {};
 
     try {
         const snapshot = await db.collection("progreso")
@@ -45,6 +52,13 @@ async function cargarListaLecturas() {
             idsConProgreso.add(data.lecturaId);
             if (data.puntosGanados > 0) {
                 idsCompletados.add(data.lecturaId);
+            }
+
+            intentosCuestionarioPorId[data.lecturaId] = (intentosCuestionarioPorId[data.lecturaId] || 0) + 1;
+
+            const mejorActual = mejorResultadoPorId[data.lecturaId];
+            if (!mejorActual || data.estrellas > mejorActual.estrellas) {
+                mejorResultadoPorId[data.lecturaId] = { estrellas: data.estrellas, total: data.totalPreguntas };
             }
         });
 
@@ -87,16 +101,29 @@ async function cargarListaLecturas() {
         const completada = idsCompletados.has(lectura.id);
         const nivelTexto = NOMBRE_NIVEL[lectura.nivel] || lectura.nivel;
 
+        const intentosLectura = intentosLecturaPorId[lectura.id] || 0;
+        const intentosCuestionario = intentosCuestionarioPorId[lectura.id] || 0;
+        const sinOportunidades = !completada && (
+            intentosCuestionario >= MAX_INTENTOS_CUESTIONARIO ||
+            intentosLectura >= MAX_INTENTOS_LECTURA
+        );
+
+        let estado = "Comenzar →";
+        if (completada) {
+            estado = "✅ Completada";
+        } else if (sinOportunidades) {
+            const mejor = mejorResultadoPorId[lectura.id];
+            estado = mejor ? `Resultado: ${mejor.estrellas}/${mejor.total} ⭐` : "Sin oportunidades";
+        }
+
         return `
             <a href="lectura.html?id=${encodeURIComponent(lectura.id)}"
-               class="tarjetaLectura ${completada ? "tarjetaCompletada" : ""}">
+               class="tarjetaLectura ${completada ? "tarjetaCompletada" : ""} ${sinOportunidades ? "tarjetaBloqueada" : ""}">
                 <div class="tarjetaInfo">
                     <p class="tarjetaTitulo">${lectura.titulo}</p>
                     <p class="tarjetaNivel">Nivel ${nivelTexto}</p>
                 </div>
-                <span class="tarjetaEstado">
-                    ${completada ? "✅ Completada" : "Comenzar →"}
-                </span>
+                <span class="tarjetaEstado">${estado}</span>
             </a>
         `;
 

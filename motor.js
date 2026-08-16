@@ -92,6 +92,11 @@ function actualizarTemporizador(){
 // (se usa más abajo para permitir repasarla sin mostrar el cuestionario)
 let lecturaYaCompletadaAntes = false;
 
+// Cuántas veces ha enviado el cuestionario de ESTA lectura (en cualquier
+// intento de lectura anterior). Viene de contar los documentos en
+// "progreso", y se sigue sumando en vivo si reintenta en esta misma sesión.
+let intentosCuestionarioUsados = 0;
+
 async function iniciarLectura(){
 
     // Trae el catálogo desde Firestore (solo hace la consulta la primera vez)
@@ -112,6 +117,8 @@ async function iniciarLectura(){
 
     }
 
+    document.title = lecturaActual.titulo;
+
     const user = auth.currentUser;
 
     // Marcar esta lectura como "desbloqueada" (escaneada), para que
@@ -125,21 +132,32 @@ async function iniciarLectura(){
 
     }
 
-    // ¿Ya la había completado con éxito antes? Si es así, se le va a
-    // permitir REPASAR el texto, pero no va a poder responder el
-    // cuestionario de nuevo (ver finalizarLectura más abajo).
+    let intentosLecturaUsados = 0;
+
     if(user){
 
         try{
 
-            const intentosPrevios = await db.collection("progreso")
-                .where("usuarioId", "==", user.uid)
-                .where("lecturaId", "==", lecturaActual.id)
-                .get();
+            const [intentosPrevios, usuarioDoc] = await Promise.all([
+                db.collection("progreso")
+                    .where("usuarioId", "==", user.uid)
+                    .where("lecturaId", "==", lecturaActual.id)
+                    .get(),
+                db.collection("usuarios").doc(user.uid).get()
+            ]);
 
+            // ¿Ya la había completado con éxito antes? Si es así, se le va a
+            // permitir REPASAR el texto las veces que quiera, sin límite de
+            // intentos ni cuestionario (ver finalizarLectura más abajo).
             lecturaYaCompletadaAntes = intentosPrevios.docs.some(
                 doc => doc.data().puntosGanados > 0
             );
+
+            intentosCuestionarioUsados = intentosPrevios.size;
+
+            const datosUsuario = usuarioDoc.exists ? usuarioDoc.data() : {};
+            intentosLecturaUsados =
+                (datosUsuario.intentosLectura && datosUsuario.intentosLectura[lecturaActual.id]) || 0;
 
         }catch(error){
             console.error("No se pudo revisar el progreso previo:", error);
@@ -147,33 +165,153 @@ async function iniciarLectura(){
 
     }
 
-    // El bloqueo de "una sola sesión" (para evitar reiniciar el tiempo
-    // saliendo y regresando) solo aplica a intentos que TODAVÍA no se
-    // han completado. Si ya la completó antes, puede reabrirla las
-    // veces que quiera para repasar.
-    if(!lecturaYaCompletadaAntes){
+    if(lecturaYaCompletadaAntes){
+        arrancarLecturaCronometrada();
+        return;
+    }
 
-        const claveIntento = `lectura_iniciada_${lecturaActual.id}`;
+    if(intentosCuestionarioUsados >= MAX_INTENTOS_CUESTIONARIO || intentosLecturaUsados >= MAX_INTENTOS_LECTURA){
+        mostrarSinOportunidades();
+        return;
+    }
 
-        if(sessionStorage.getItem(claveIntento)){
+    mostrarPantallaInicio(intentosLecturaUsados);
 
-            mostrarMensajeYaIntentado();
-            return;
+}
 
+
+// ==========================
+// PANTALLA PREVIA A CADA INTENTO
+// ==========================
+// Se muestra siempre antes de empezar a leer (también la primera vez),
+// para que el usuario sepa en qué intento va. Solo al hacer clic se
+// registra el intento y arranca el tiempo de lectura.
+
+function mostrarPantallaInicio(intentosLecturaUsados){
+
+    ocultarElementosLectura();
+
+    const numeroIntento = intentosLecturaUsados + 1;
+    let textoBoton;
+
+    if(numeroIntento === 1){
+        textoBoton = "Responder cuestionario";
+    }else if(numeroIntento === 2){
+        textoBoton = "Continuar a intento 2/3";
+    }else{
+        textoBoton = "Continuar al último intento";
+    }
+
+    const pantalla = obtenerPantallaIntento();
+    pantalla.style.display = "block";
+    pantalla.innerHTML = `
+        <div style="text-align:center; padding:60px 20px;">
+            <h1>${lecturaActual.titulo}</h1>
+            <p style="color:var(--texto-suave); margin-top:10px;">
+                Intento ${numeroIntento} de ${MAX_INTENTOS_LECTURA}
+            </p>
+            <button id="btnComenzarIntento" style="max-width:280px; margin:20px auto 0;">
+                ${textoBoton}
+            </button>
+        </div>
+    `;
+
+    document.getElementById("btnComenzarIntento").addEventListener("click", registrarIntentoYComenzar);
+
+}
+
+async function registrarIntentoYComenzar(){
+
+    const pantalla = document.getElementById("pantallaIntento");
+    if(pantalla) pantalla.style.display = "none";
+
+    const user = auth.currentUser;
+
+    if(user){
+
+        try{
+            await db.collection("usuarios").doc(user.uid).update({
+                [`intentosLectura.${lecturaActual.id}`]: firebase.firestore.FieldValue.increment(1)
+            });
+        }catch(error){
+            console.error("No se pudo registrar el intento de lectura:", error);
         }
-
-        sessionStorage.setItem(claveIntento, "en-progreso");
 
     }
 
-    // Cargar los datos de esta lectura
+    mostrarElementosLectura();
+    arrancarLecturaCronometrada();
+
+}
+
+
+// ==========================
+// SIN MÁS OPORTUNIDADES
+// ==========================
+
+async function mostrarSinOportunidades(){
+
+    ocultarElementosLectura();
+
+    const pantalla = obtenerPantallaIntento();
+    pantalla.style.display = "block";
+    pantalla.innerHTML = `
+        <div style="text-align:center; padding:60px 20px;">
+            <h1>${lecturaActual.titulo}</h1>
+            <p style="color:var(--texto-suave); margin-top:10px;">
+                Ya usaste tus oportunidades para esta lectura.
+            </p>
+            <div id="sugerenciaSinOportunidades"></div>
+            <a href="index.html" class="menuLink"
+               style="display:inline-block; max-width:240px; margin:25px auto 0;">
+                ← Volver a mis lecturas
+            </a>
+        </div>
+    `;
+
+    await mostrarSugerenciaAleatoria(document.getElementById("sugerenciaSinOportunidades"));
+
+}
+
+function obtenerPantallaIntento(){
+
+    let pantalla = document.getElementById("pantallaIntento");
+
+    if(!pantalla){
+        pantalla = document.createElement("div");
+        pantalla.id = "pantallaIntento";
+        document.getElementById("contenedor").prepend(pantalla);
+    }
+
+    return pantalla;
+
+}
+
+function ocultarElementosLectura(){
+    temporizador.style.display = "none";
+    tituloLectura.style.display = "none";
+    lectura.style.display = "none";
+}
+
+function mostrarElementosLectura(){
+    temporizador.style.display = "";
+    tituloLectura.style.display = "";
+    lectura.style.display = "";
+}
+
+
+// ==========================
+// ARRANCAR LA LECTURA CRONOMETRADA
+// ==========================
+
+function arrancarLecturaCronometrada(){
+
     TIEMPO_LECTURA = lecturaActual.tiempoLectura;
     TIEMPO_CUESTIONARIO = lecturaActual.tiempoCuestionario || 30;
 
     tiempoRestante = TIEMPO_LECTURA;
     tiempoRestanteCuestionario = TIEMPO_CUESTIONARIO;
 
-    document.title = lecturaActual.titulo;
     tituloLectura.textContent = lecturaActual.titulo;
 
     if (typeof mostrarBotonEditarLectura === "function") {
@@ -192,7 +330,20 @@ async function iniciarLectura(){
         lecturaActual.preguntasAMostrar
     );
 
-    // Pintar las preguntas del cuestionario
+    renderizarPreguntas();
+
+    // Mostrar tiempo inicial
+    actualizarTemporizador();
+
+    // Iniciar contador
+    reloj = setInterval(actualizarTemporizador, 1000);
+
+    moverTextoLectura();
+
+}
+
+function renderizarPreguntas(){
+
     listaPreguntas.innerHTML = preguntasSeleccionadas
         .map((pregunta, indice) => `
             <div class="pregunta">
@@ -206,38 +357,6 @@ async function iniciarLectura(){
                 `).join("")}
             </div>
         `).join("");
-
-
-    // Mostrar tiempo inicial
-    actualizarTemporizador();
-
-    // Iniciar contador
-    reloj = setInterval(actualizarTemporizador, 1000);
-
-    moverTextoLectura();
-
-}
-
-
-// ==========================
-// MENSAJE SI YA HABÍA ENTRADO ANTES
-// ==========================
-
-function mostrarMensajeYaIntentado(){
-
-    document.getElementById("contenedor").innerHTML = `
-        <div style="text-align:center; padding:60px 20px;">
-            <h1>Gracias por participar 🙌</h1>
-            <p style="color:var(--texto-suave); margin-top:10px;">
-                Ya habías comenzado esta lectura en esta sesión.
-                Para evitar reinicios, no se puede volver a abrir.
-            </p>
-            <a href="index.html" class="menuLink"
-               style="display:inline-block; max-width:240px; margin:25px auto 0;">
-                ← Volver a mis lecturas
-            </a>
-        </div>
-    `;
 
 }
 
@@ -404,7 +523,7 @@ async function mostrarMensajeRepaso(){
     }
 
     document.getElementById("mensajeFinal").innerHTML = `
-        Ya habías completado esta lectura antes, recuerda que no se suman puntos dos veces por la misma lectura 📖
+        Ya habías completado esta lectura antes, recuerda que no se suman puntos dos veces por la misma lectura.
     `;
 
     // Como este QR ya lo habías escaneado, le sugerimos una lectura
@@ -418,10 +537,13 @@ async function mostrarMensajeRepaso(){
 
 // ==========================
 // SUGERIR UNA LECTURA NUEVA AL AZAR
-// (cuando el QR escaneado ya se había usado antes)
+// (cuando el QR escaneado ya se había usado antes, o cuando se
+// agotaron las oportunidades)
 // ==========================
 
-async function mostrarSugerenciaAleatoria(){
+async function mostrarSugerenciaAleatoria(contenedorDestino){
+
+    contenedorDestino = contenedorDestino || cuestionario;
 
     const user = auth.currentUser;
     if(!user) return;
@@ -447,14 +569,14 @@ async function mostrarSugerenciaAleatoria(){
         cajaSugerencia.className = "cajaSugerencia";
         cajaSugerencia.style.marginTop = "20px";
         cajaSugerencia.innerHTML = `
-            <p>🎲 Este código ya lo habías escaneado antes. ¡Prueba con algo nuevo!</p>
+            <p>🎲 Prueba con algo nuevo:</p>
             <a href="lectura.html?id=${encodeURIComponent(sugerida.id)}" class="menuLink"
                style="display:inline-block; max-width:300px; margin:12px auto 0;">
                 Descubrir una nueva lectura sorpresa →
             </a>
         `;
 
-        cuestionario.appendChild(cajaSugerencia);
+        contenedorDestino.appendChild(cajaSugerencia);
 
     }catch(error){
         console.error("No se pudo cargar la sugerencia aleatoria:", error);
@@ -523,11 +645,7 @@ async function calificar(){
 
     clearInterval(relojCuestionario);
 
-    // Ya se calificó (sin importar si salió bien o mal): se borra la marca
-    // de "en progreso" para que, si falló, SÍ pueda volver a intentarlo.
-    // El bloqueo de "ya habías comenzado" solo debe aplicar si abandona
-    // a la mitad, sin llegar a calificar.
-    sessionStorage.removeItem(`lectura_iniciada_${lecturaActual.id}`);
+    intentosCuestionarioUsados++;
 
     let estrellas = 0;
     const totalPreguntas = preguntasSeleccionadas.length;
@@ -553,31 +671,82 @@ async function calificar(){
         totalPreguntas
     );
 
+    // Bloquear respuestas mientras se decide qué sigue
+    document.querySelectorAll("input[type='radio']").forEach(opcion => {
+        opcion.disabled = true;
+    });
+    document.getElementById("btnTerminarCuestionario").style.display = "none";
+
     if(resultadoGuardado && resultadoGuardado.aprobo){
 
         document.getElementById("mensajeFinal").innerHTML =
             `¡Bien hecho! Ganaste: ${resultadoGuardado.premio} 🎉 ` +
             `(+${resultadoGuardado.puntosGanados} puntos)`;
 
+        mostrarBotonVolver();
+
     }else if(resultadoGuardado && resultadoGuardado.yaCompletada){
 
         document.getElementById("mensajeFinal").innerHTML =
-            "Ya habías completado esta lectura antes, recuerda que no se suman puntos dos veces por la misma lectura" +
-            "(Te invitamos a seguir escaneando y participando)";
+            "Ya habías completado esta lectura antes, recuerda que no se suman puntos dos veces por la misma lectura.";
+
+        mostrarBotonVolver();
+
+    }else if(intentosCuestionarioUsados < MAX_INTENTOS_CUESTIONARIO){
+
+        mostrarBotonReintentarCuestionario();
 
     }else{
 
         document.getElementById("mensajeFinal").innerHTML =
-            "Gracias por participar, te invitamos a continuar leyendo e intentando.";
+            `Ese fue tu último intento para el cuestionario. Tu resultado: ${estrellas}/${totalPreguntas} ⭐`;
+
+        mostrarBotonVolver();
 
     }
 
-    // Bloquear respuestas después de calificar
-    document.querySelectorAll("input[type='radio']").forEach(opcion => {
-        opcion.disabled = true;
+}
+
+
+// ==========================
+// REINTENTAR CUESTIONARIO
+// (cuando falló pero todavía le queda otra oportunidad)
+// ==========================
+
+function mostrarBotonReintentarCuestionario(){
+
+    const contenedorBoton = document.createElement("div");
+    contenedorBoton.id = "cajaReintentarCuestionario";
+    contenedorBoton.style.textAlign = "center";
+    contenedorBoton.style.marginTop = "15px";
+    contenedorBoton.innerHTML = `<button id="btnReintentarCuestionario">Intentar de nuevo</button>`;
+
+    cuestionario.appendChild(contenedorBoton);
+
+    document.getElementById("btnReintentarCuestionario").addEventListener("click", () => {
+        contenedorBoton.remove();
+        reintentarCuestionario();
     });
 
-    mostrarBotonVolver();
+}
+
+function reintentarCuestionario(){
+
+    preguntasSeleccionadas = elegirPreguntasAlAzar(
+        lecturaActual.bancoPreguntas,
+        lecturaActual.preguntasAMostrar
+    );
+
+    renderizarPreguntas();
+
+    document.getElementById("resultado").innerHTML = "";
+    document.getElementById("mensajeFinal").innerHTML = "";
+
+    const btnTerminar = document.getElementById("btnTerminarCuestionario");
+    btnTerminar.style.display = "";
+
+    tiempoRestanteCuestionario = TIEMPO_CUESTIONARIO;
+    iniciarTemporizadorCuestionario();
 
 }
 
