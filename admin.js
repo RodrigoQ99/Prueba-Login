@@ -603,6 +603,8 @@ function renderizarListaAdminLecturas() {
                 <p class="tarjetaNivel">Nivel ${lectura.nivel} · ${(lectura.bancoPreguntas || []).length} preguntas en el banco (muestra ${lectura.preguntasAMostrar})</p>
             </div>
             <div style="display:flex; gap:8px;">
+                <a href="lectura.html?id=${encodeURIComponent(lectura.id)}" target="_blank" class="botonAdminChico" title="Abrir">🔗</a>
+                <button type="button" class="botonAdminChico" data-qr="${lectura.id}" title="Generar QR">▦</button>
                 <button type="button" class="botonAdminChico" data-editar="${lectura.id}">✏️</button>
                 <button type="button" class="botonAdminChico botonPeligro" data-eliminar="${lectura.id}">🗑️</button>
             </div>
@@ -620,6 +622,61 @@ function renderizarListaAdminLecturas() {
         btn.addEventListener("click", () => {
             eliminarLectura(btn.dataset.eliminar, () => inicializarAdminIndex());
         });
+    });
+
+    cont.querySelectorAll("[data-qr]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const lectura = CATALOGO_LECTURAS.find(l => l.id === btn.dataset.qr);
+            mostrarModalQR(lectura, "lectura.html");
+        });
+    });
+
+}
+
+
+// ==========================================================
+// GENERAR CÓDIGO QR DE UNA LECTURA
+// ==========================================================
+// Arma la URL completa de esta lectura (usando el mismo dominio donde
+// está publicado el sitio, sea cual sea) y la convierte en un código QR
+// listo para descargar e imprimir.
+
+function mostrarModalQR(lectura, pagina) {
+
+    const base = window.location.href.replace(/[^/]*$/, "");
+    const url = `${base}${pagina}?id=${encodeURIComponent(lectura.id)}`;
+
+    const overlay = document.createElement("div");
+    overlay.className = "modalOverlay";
+    overlay.innerHTML = `
+        <div class="modalCaja modalCajaInfo" style="text-align:center;">
+            <h2>Código QR</h2>
+            <p style="font-weight:600; margin-bottom:15px;">${lectura.titulo}</p>
+            <div id="contenedorQR" style="display:flex; justify-content:center;"></div>
+            <p style="font-size:12px; word-break:break-all; color:var(--texto-suave); margin:15px 0;">${url}</p>
+            <button id="btnDescargarQR">Descargar QR</button>
+            <button class="modalCerrar" style="background:white; border:1px solid var(--borde); color:var(--texto-suave); margin-top:10px;">Cerrar</button>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
+
+    const contenedorQR = overlay.querySelector("#contenedorQR");
+
+    new QRCode(contenedorQR, {
+        text: url,
+        width: 260,
+        height: 260,
+        correctLevel: QRCode.CorrectLevel.M
+    });
+
+    overlay.querySelector("#btnDescargarQR").addEventListener("click", () => {
+        const canvas = contenedorQR.querySelector("canvas");
+        const enlace = document.createElement("a");
+        enlace.download = `qr-${lectura.id}.png`;
+        enlace.href = canvas.toDataURL("image/png");
+        enlace.click();
     });
 
 }
@@ -677,6 +734,7 @@ function renderizarListaAdminMejora(edadActual) {
                 <p class="tarjetaNivel">${(lectura.bancoPreguntas || []).length} preguntas en el banco (muestra ${lectura.preguntasAMostrar})</p>
             </div>
             <div style="display:flex; gap:8px;">
+                <a href="lectura-mejorar.html?id=${encodeURIComponent(lectura.id)}" target="_blank" class="botonAdminChico" title="Abrir">🔗</a>
                 <button type="button" class="botonAdminChico" data-editar="${lectura.id}">✏️</button>
                 <button type="button" class="botonAdminChico botonPeligro" data-eliminar="${lectura.id}">🗑️</button>
             </div>

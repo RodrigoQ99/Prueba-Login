@@ -165,7 +165,12 @@ async function iniciarLectura(){
 
     }
 
-    if(lecturaYaCompletadaAntes){
+    // El administrador puede entrar a cualquier lectura (incluso las que
+    // no ha escaneado) las veces que quiera, sin gastar sus propios
+    // intentos — para poder revisar y probar el contenido libremente.
+    const accesoAdmin = typeof esAdmin === "function" && esAdmin();
+
+    if(lecturaYaCompletadaAntes || accesoAdmin){
         arrancarLecturaCronometrada();
         return;
     }

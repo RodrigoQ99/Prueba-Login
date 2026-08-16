@@ -890,6 +890,9 @@ button.menuLink{
     background:var(--fondo);
     color:var(--texto);
     border:1px solid var(--borde);
+    text-decoration:none;
+    cursor:pointer;
+    border-radius:12px;
 }
 
 .botonPeligro{
