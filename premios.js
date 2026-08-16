@@ -15,6 +15,11 @@ async function cargarMisPremios() {
 
     await cargarCatalogoLecturas();
 
+    // Rellena cualquier premio que le falte (lecturas que aprobó ANTES de
+    // que existiera este sistema de premios, y por eso nunca generaron
+    // su código de canje).
+    await reconciliarPremiosFaltantes(user);
+
     const contenedor = document.getElementById("listaPremios");
 
     let premios = [];
@@ -71,6 +76,65 @@ async function cargarMisPremios() {
             btn.disabled = true;
         });
     });
+
+}
+
+// ==========================================================
+// RELLENAR PREMIOS FALTANTES
+// ==========================================================
+// Compara sus lecturas APROBADAS (progreso con puntosGanados > 0)
+// contra los premios que ya tiene, y crea los que falten — para
+// cuentas que aprobaron lecturas antes de que existiera este sistema.
+
+async function reconciliarPremiosFaltantes(user) {
+
+    let nivelPorLecturaAprobada = {};
+
+    try {
+
+        const snapshot = await db.collection("progreso")
+            .where("usuarioId", "==", user.uid)
+            .get();
+
+        snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            if (data.puntosGanados > 0) {
+                nivelPorLecturaAprobada[data.lecturaId] = data.nivel;
+            }
+        });
+
+    } catch (error) {
+        console.error("No se pudo revisar tu progreso:", error);
+        return;
+    }
+
+    const idsAprobados = Object.keys(nivelPorLecturaAprobada);
+    if (idsAprobados.length === 0) return;
+
+    let idsConPremio = new Set();
+
+    try {
+
+        const snapshot = await db.collection("premios")
+            .where("usuarioId", "==", user.uid)
+            .get();
+
+        idsConPremio = new Set(snapshot.docs.map(doc => doc.data().lecturaId));
+
+    } catch (error) {
+        console.error("No se pudieron revisar tus premios existentes:", error);
+        return;
+    }
+
+    const faltantes = idsAprobados.filter(id => !idsConPremio.has(id));
+
+    for (const lecturaId of faltantes) {
+        try {
+            await crearPremioCanjeable(user, lecturaId, nivelPorLecturaAprobada[lecturaId]);
+        } catch (error) {
+            console.error(`No se pudo crear el premio faltante de "${lecturaId}":`, error);
+        }
+    }
 
 }
 
