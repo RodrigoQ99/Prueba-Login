@@ -3,6 +3,19 @@
 // ==========================================================
 // Esta misma lógica sirve para CUALQUIER lectura del catálogo.
 // Sabe cuál mostrar leyendo "?id=..." de la URL (ver lecturas.js).
+//
+// Cada lectura se puede intentar UNA SOLA VEZ (leer + responder el
+// cuestionario). La oportunidad se marca como usada apenas el usuario
+// hace clic en "Comenzar" — así que si sale de la página antes de
+// terminar el cuestionario, la pierde igual. Después de usada, puede
+// volver a LEER el texto las veces que quiera, pero el cuestionario
+// queda bloqueado (ver mostrarRepasoBloqueado).
+//
+// Excepción — bono de completista: si el usuario ya desbloqueó
+// (escaneó) TODAS las lecturas del catálogo y vuelve a abrir una que
+// ya usó, se le regala una oportunidad extra en una lectura al azar de
+// las que había fallado (ver revisarBonoDeCompletista). Cada lectura
+// solo puede recibir ese bono una vez.
 // ==========================================================
 
 
@@ -75,7 +88,7 @@ function actualizarTemporizador(){
     }else{
 
         clearInterval(reloj);
-        finalizarLectura();
+        mostrarCuestionario();
 
     }
 
@@ -87,15 +100,6 @@ function actualizarTemporizador(){
 // ==========================
 // auth.js llama a esta función (con este mismo nombre) apenas el
 // usuario inició sesión o terminó de registrarse.
-
-// Marca si ESTA lectura ya había sido completada con éxito antes
-// (se usa más abajo para permitir repasarla sin mostrar el cuestionario)
-let lecturaYaCompletadaAntes = false;
-
-// Cuántas veces ha enviado el cuestionario de ESTA lectura (en cualquier
-// intento de lectura anterior). Viene de contar los documentos en
-// "progreso", y se sigue sumando en vivo si reintenta en esta misma sesión.
-let intentosCuestionarioUsados = 0;
 
 async function iniciarLectura(){
 
@@ -132,80 +136,136 @@ async function iniciarLectura(){
 
     }
 
-    let intentosLecturaUsados = 0;
-
-    if(user){
-
-        try{
-
-            const [intentosPrevios, usuarioDoc] = await Promise.all([
-                db.collection("progreso")
-                    .where("usuarioId", "==", user.uid)
-                    .where("lecturaId", "==", lecturaActual.id)
-                    .get(),
-                db.collection("usuarios").doc(user.uid).get()
-            ]);
-
-            // ¿Ya la había completado con éxito antes? Si es así, se le va a
-            // permitir REPASAR el texto las veces que quiera, sin límite de
-            // intentos ni cuestionario (ver finalizarLectura más abajo).
-            lecturaYaCompletadaAntes = intentosPrevios.docs.some(
-                doc => doc.data().puntosGanados > 0
-            );
-
-            intentosCuestionarioUsados = intentosPrevios.size;
-
-            const datosUsuario = usuarioDoc.exists ? usuarioDoc.data() : {};
-            intentosLecturaUsados =
-                (datosUsuario.intentosLectura && datosUsuario.intentosLectura[lecturaActual.id]) || 0;
-
-        }catch(error){
-            console.error("No se pudo revisar el progreso previo:", error);
-        }
-
-    }
-
     // El administrador puede entrar a cualquier lectura (incluso las que
-    // no ha escaneado) las veces que quiera, sin gastar sus propios
-    // intentos — para poder revisar y probar el contenido libremente.
+    // no ha escaneado) las veces que quiera, sin gastar su propia
+    // oportunidad — para poder revisar y probar el contenido libremente.
     const accesoAdmin = typeof esAdmin === "function" && esAdmin();
 
-    if(lecturaYaCompletadaAntes || accesoAdmin){
+    if(accesoAdmin){
         arrancarLecturaCronometrada();
         return;
     }
 
-    if(intentosCuestionarioUsados >= MAX_INTENTOS_CUESTIONARIO || intentosLecturaUsados >= MAX_INTENTOS_LECTURA){
-        mostrarSinOportunidades();
+    if(!user) return;
+
+    let datosUsuario = {};
+    let yaAprobada = false;
+
+    try{
+
+        const [usuarioDoc, intentosPrevios] = await Promise.all([
+            db.collection("usuarios").doc(user.uid).get(),
+            db.collection("progreso")
+                .where("usuarioId", "==", user.uid)
+                .where("lecturaId", "==", lecturaActual.id)
+                .get()
+        ]);
+
+        datosUsuario = usuarioDoc.exists ? usuarioDoc.data() : {};
+        yaAprobada = intentosPrevios.docs.some(doc => doc.data().puntosGanados > 0);
+
+    }catch(error){
+        console.error("No se pudo revisar tu progreso:", error);
+    }
+
+    // Si ya la había aprobado antes, siempre es repaso bloqueado (puede
+    // releer, pero no responder el cuestionario de nuevo) — sin importar
+    // cómo haya quedado registrado el intento, así una cuenta con
+    // progreso de antes de este sistema no se queda viendo la
+    // advertencia de "1 oportunidad" en una lectura que ya ganó.
+    if(yaAprobada){
+        mostrarRepasoBloqueado(null);
         return;
     }
 
-    mostrarPantallaInicio(intentosLecturaUsados);
+    const lecturasIntentadas = datosUsuario.lecturasIntentadas || [];
+    const yaIntentada = lecturasIntentadas.includes(lecturaActual.id);
+    const bonoActivo = datosUsuario.bonoActivo || null;
+
+    // Primera vez que abre esta lectura: su única oportunidad normal.
+    if(!yaIntentada){
+        mostrarPantallaInicio(false);
+        return;
+    }
+
+    // Ya la había intentado, pero tiene un bono activo justo en ESTA lectura.
+    if(bonoActivo === lecturaActual.id){
+        mostrarPantallaInicio(true);
+        return;
+    }
+
+    // Ya la intentó y no tiene bono aquí. ¿Le toca un bono de completista?
+    if(!bonoActivo){
+        const otorgado = await revisarBonoDeCompletista(user, datosUsuario, lecturasIntentadas);
+        if(otorgado) return;
+    }
+
+    mostrarRepasoBloqueado(bonoActivo);
 
 }
 
 
 // ==========================
-// PANTALLA PREVIA A CADA INTENTO
+// BONO DE COMPLETISTA
 // ==========================
-// Se muestra siempre antes de empezar a leer (también la primera vez),
-// para que el usuario sepa en qué intento va. Solo al hacer clic se
-// registra el intento y arranca el tiempo de lectura.
+// Si ya desbloqueó TODAS las lecturas del catálogo y vuelve a abrir una
+// que ya usó, se le regala una oportunidad extra en una lectura al azar
+// de las que había fallado (y que todavía no había recibido su bono).
+// Cada lectura solo puede recibir este bono una vez.
 
-function mostrarPantallaInicio(intentosLecturaUsados){
+async function revisarBonoDeCompletista(user, datosUsuario, lecturasIntentadas){
+
+    const desbloqueadas = datosUsuario.lecturasDesbloqueadas || [];
+
+    const todasDesbloqueadas = CATALOGO_LECTURAS.length > 0 &&
+        CATALOGO_LECTURAS.every(l => desbloqueadas.includes(l.id));
+
+    if(!todasDesbloqueadas) return false;
+
+    const bonosUsados = datosUsuario.bonosUsados || [];
+
+    let aprobadas = [];
+
+    try{
+
+        const snapshot = await db.collection("progreso")
+            .where("usuarioId", "==", user.uid)
+            .get();
+
+        aprobadas = snapshot.docs
+            .filter(doc => doc.data().puntosGanados > 0)
+            .map(doc => doc.data().lecturaId);
+
+    }catch(error){
+        console.error("No se pudo revisar tus lecturas aprobadas:", error);
+        return false;
+    }
+
+    const candidatas = lecturasIntentadas.filter(
+        id => !aprobadas.includes(id) && !bonosUsados.includes(id)
+    );
+
+    if(candidatas.length === 0) return false;
+
+    const elegidaId = candidatas[Math.floor(Math.random() * candidatas.length)];
+
+    try{
+        await db.collection("usuarios").doc(user.uid).update({ bonoActivo: elegidaId });
+    }catch(error){
+        console.error("No se pudo otorgar el bono:", error);
+        return false;
+    }
+
+    mostrarPantallaBono(elegidaId);
+    return true;
+
+}
+
+function mostrarPantallaBono(elegidaId){
 
     ocultarElementosLectura();
 
-    const numeroIntento = intentosLecturaUsados + 1;
-    let textoBoton;
-
-    if(numeroIntento === 1){
-        textoBoton = "Responder cuestionario";
-    }else if(numeroIntento === 2){
-        textoBoton = "Continuar a intento 2/3";
-    }else{
-        textoBoton = "Continuar al último intento";
-    }
+    const elegida = obtenerLecturaPorId(elegidaId);
 
     const pantalla = obtenerPantallaIntento();
     pantalla.style.display = "block";
@@ -213,19 +273,55 @@ function mostrarPantallaInicio(intentosLecturaUsados){
         <div style="text-align:center; padding:60px 20px;">
             <h1>${lecturaActual.titulo}</h1>
             <p style="color:var(--texto-suave); margin-top:10px;">
-                Intento ${numeroIntento} de ${MAX_INTENTOS_LECTURA}
+                🎉 Ya descubriste todo el catálogo. Como premio, te devolvemos
+                una oportunidad en una lectura que te había fallado:
+            </p>
+            <a href="lectura.html?id=${encodeURIComponent(elegidaId)}" class="menuLink"
+               style="display:inline-block; max-width:300px; margin:20px auto 0;">
+                ${elegida ? elegida.titulo : "Ir a la lectura"} →
+            </a>
+            <a href="index.html" class="menuLink"
+               style="display:inline-block; max-width:240px; margin:10px auto 0; background:white; border:1px solid var(--borde); color:var(--texto-suave);">
+                ← Volver a mis lecturas
+            </a>
+        </div>
+    `;
+
+}
+
+
+// ==========================
+// PANTALLA PREVIA (1 SOLA OPORTUNIDAD)
+// ==========================
+// Se muestra antes de empezar a leer. Solo al hacer clic en "Comenzar"
+// se registra la oportunidad como usada y arranca el tiempo de lectura.
+
+function mostrarPantallaInicio(esBono){
+
+    ocultarElementosLectura();
+
+    const pantalla = obtenerPantallaIntento();
+    pantalla.style.display = "block";
+    pantalla.innerHTML = `
+        <div style="text-align:center; padding:60px 20px;">
+            <h1>${lecturaActual.titulo}</h1>
+            <p style="color:var(--texto-suave); margin-top:10px;">
+                ⚠️ ${esBono ? "Esta es tu oportunidad extra" : "Solo tienes 1 oportunidad"} para esta lectura.
+                Si sales antes de terminar el cuestionario, la pierdes.
             </p>
             <button id="btnComenzarIntento" style="max-width:280px; margin:20px auto 0;">
-                ${textoBoton}
+                Comenzar
             </button>
         </div>
     `;
 
-    document.getElementById("btnComenzarIntento").addEventListener("click", registrarIntentoYComenzar);
+    document.getElementById("btnComenzarIntento").addEventListener(
+        "click", () => registrarIntentoYComenzar(esBono)
+    );
 
 }
 
-async function registrarIntentoYComenzar(){
+async function registrarIntentoYComenzar(esBono){
 
     const pantalla = document.getElementById("pantallaIntento");
     if(pantalla) pantalla.style.display = "none";
@@ -234,12 +330,19 @@ async function registrarIntentoYComenzar(){
 
     if(user){
 
+        const cambios = {
+            lecturasIntentadas: firebase.firestore.FieldValue.arrayUnion(lecturaActual.id)
+        };
+
+        if(esBono){
+            cambios.bonoActivo = firebase.firestore.FieldValue.delete();
+            cambios.bonosUsados = firebase.firestore.FieldValue.arrayUnion(lecturaActual.id);
+        }
+
         try{
-            await db.collection("usuarios").doc(user.uid).update({
-                [`intentosLectura.${lecturaActual.id}`]: firebase.firestore.FieldValue.increment(1)
-            });
+            await db.collection("usuarios").doc(user.uid).update(cambios);
         }catch(error){
-            console.error("No se pudo registrar el intento de lectura:", error);
+            console.error("No se pudo registrar la oportunidad:", error);
         }
 
     }
@@ -251,30 +354,56 @@ async function registrarIntentoYComenzar(){
 
 
 // ==========================
-// SIN MÁS OPORTUNIDADES
+// REPASO BLOQUEADO (ya se usó la oportunidad de esta lectura)
 // ==========================
+// Puede releer el texto libremente, pero no hay camino al cuestionario.
 
-async function mostrarSinOportunidades(){
+function mostrarRepasoBloqueado(bonoPendiente){
 
-    ocultarElementosLectura();
+    temporizador.style.display = "none";
+
+    tituloLectura.style.display = "";
+    tituloLectura.textContent = lecturaActual.titulo;
+
+    lectura.style.display = "";
+    lectura.innerHTML = lecturaActual.texto
+        .map(parrafo => `<p>${parrafo}</p>`)
+        .join("");
+    lectura.scrollTop = 0;
+
+    const btnIrCuestionario = document.getElementById("btnIrCuestionario");
+    if(btnIrCuestionario) btnIrCuestionario.style.display = "none";
+
+    if (typeof mostrarBotonEditarLectura === "function") {
+        mostrarBotonEditarLectura(lecturaActual);
+    }
+
+    let notaBono = "";
+
+    if(bonoPendiente){
+        const elegida = obtenerLecturaPorId(bonoPendiente);
+        notaBono = `
+            <p style="margin-top:10px;">
+                🎁 Tienes una oportunidad extra pendiente en:
+                <a href="lectura.html?id=${encodeURIComponent(bonoPendiente)}">${elegida ? elegida.titulo : "una lectura"}</a>
+            </p>
+        `;
+    }
 
     const pantalla = obtenerPantallaIntento();
     pantalla.style.display = "block";
     pantalla.innerHTML = `
-        <div style="text-align:center; padding:60px 20px;">
-            <h1>${lecturaActual.titulo}</h1>
-            <p style="color:var(--texto-suave); margin-top:10px;">
-                Ya usaste tus oportunidades para esta lectura.
+        <div style="text-align:center; padding-bottom:10px;">
+            <p style="color:var(--texto-suave);">
+                Ya usaste tu oportunidad para el cuestionario de esta lectura.
             </p>
-            <div id="sugerenciaSinOportunidades"></div>
+            ${notaBono}
             <a href="index.html" class="menuLink"
-               style="display:inline-block; max-width:240px; margin:25px auto 0;">
+               style="display:inline-block; max-width:240px; margin:15px auto 0;">
                 ← Volver a mis lecturas
             </a>
         </div>
     `;
-
-    await mostrarSugerenciaAleatoria(document.getElementById("sugerenciaSinOportunidades"));
 
 }
 
@@ -477,115 +606,7 @@ function moverTextoLectura(){
 function pasarACuestionarioAhora(){
 
     clearInterval(reloj);
-    finalizarLectura();
-
-}
-
-
-// ==========================
-// DECIDIR QUÉ MOSTRAR AL TERMINAR LA LECTURA
-// ==========================
-// Si es la primera vez → cuestionario normal.
-// Si ya la había completado antes → solo un mensaje de repaso,
-// sin poder volver a responder el cuestionario.
-
-function finalizarLectura(){
-
-    if(lecturaYaCompletadaAntes){
-
-        mostrarMensajeRepaso();
-
-    }else{
-
-        mostrarCuestionario();
-
-    }
-
-}
-
-
-// ==========================
-// MENSAJE DE REPASO (lectura ya completada antes)
-// ==========================
-
-async function mostrarMensajeRepaso(){
-
-    lectura.style.display = "none";
-    temporizador.textContent = "00:00";
-
-    const btnIrCuestionario = document.getElementById("btnIrCuestionario");
-    if(btnIrCuestionario){
-        btnIrCuestionario.style.display = "none";
-    }
-
-    cuestionario.style.display = "block";
-    listaPreguntas.innerHTML = "";
-    document.getElementById("resultado").innerHTML = "";
-
-    const btnTerminar = document.getElementById("btnTerminarCuestionario");
-    if(btnTerminar){
-        btnTerminar.style.display = "none";
-    }
-
-    document.getElementById("mensajeFinal").innerHTML = `
-        Ya habías completado esta lectura antes, recuerda que no se suman puntos dos veces por la misma lectura.
-    `;
-
-    // Como este QR ya lo habías escaneado, le sugerimos una lectura
-    // nueva al azar (si todavía le queda alguna por descubrir)
-    await mostrarSugerenciaAleatoria();
-
-    mostrarBotonVolver();
-
-}
-
-
-// ==========================
-// SUGERIR UNA LECTURA NUEVA AL AZAR
-// (cuando el QR escaneado ya se había usado antes, o cuando se
-// agotaron las oportunidades)
-// ==========================
-
-async function mostrarSugerenciaAleatoria(contenedorDestino){
-
-    contenedorDestino = contenedorDestino || cuestionario;
-
-    const user = auth.currentUser;
-    if(!user) return;
-
-    try{
-
-        const usuarioDoc = await db.collection("usuarios").doc(user.uid).get();
-        const desbloqueadas = (usuarioDoc.exists && usuarioDoc.data().lecturasDesbloqueadas) || [];
-
-        const pendientesPorDescubrir = CATALOGO_LECTURAS.filter(
-            l => !desbloqueadas.includes(l.id)
-        );
-
-        if(pendientesPorDescubrir.length === 0){
-            return; // ya descubrió todo el catálogo, no hay nada que sugerir
-        }
-
-        const sugerida = pendientesPorDescubrir[
-            Math.floor(Math.random() * pendientesPorDescubrir.length)
-        ];
-
-        const cajaSugerencia = document.createElement("div");
-        cajaSugerencia.className = "cajaSugerencia";
-        cajaSugerencia.style.marginTop = "20px";
-        cajaSugerencia.innerHTML = `
-            <p>🎲 Prueba con algo nuevo:</p>
-            <a href="lectura.html?id=${encodeURIComponent(sugerida.id)}" class="menuLink"
-               style="display:inline-block; max-width:300px; margin:12px auto 0;">
-                Descubrir una nueva lectura sorpresa →
-            </a>
-        `;
-
-        contenedorDestino.appendChild(cajaSugerencia);
-
-    }catch(error){
-        console.error("No se pudo cargar la sugerencia aleatoria:", error);
-    }
+    mostrarCuestionario();
 
 }
 
@@ -650,8 +671,6 @@ async function calificar(){
 
     clearInterval(relojCuestionario);
 
-    intentosCuestionarioUsados++;
-
     let estrellas = 0;
     const totalPreguntas = preguntasSeleccionadas.length;
 
@@ -668,7 +687,7 @@ async function calificar(){
     document.getElementById("resultado").innerHTML =
         `Resultado: ${estrellas}/${totalPreguntas} ⭐`;
 
-    // Guardar el progreso y sumar puntos en Firestore
+    // Guardar el progreso, sumar puntos y generar el código de premio en Firestore
     const resultadoGuardado = await guardarProgreso(
         lecturaActual.id,
         lecturaActual.nivel,
@@ -676,7 +695,7 @@ async function calificar(){
         totalPreguntas
     );
 
-    // Bloquear respuestas mientras se decide qué sigue
+    // Bloquear respuestas después de calificar
     document.querySelectorAll("input[type='radio']").forEach(opcion => {
         opcion.disabled = true;
     });
@@ -686,72 +705,21 @@ async function calificar(){
 
         document.getElementById("mensajeFinal").innerHTML =
             `¡Bien hecho! Ganaste: ${resultadoGuardado.premio} 🎉 ` +
-            `(+${resultadoGuardado.puntosGanados} puntos)`;
-
-        mostrarBotonVolver();
+            `(+${resultadoGuardado.puntosGanados} puntos). Ve a "Mis premios" para canjearlo.`;
 
     }else if(resultadoGuardado && resultadoGuardado.yaCompletada){
 
         document.getElementById("mensajeFinal").innerHTML =
             "Ya habías completado esta lectura antes, recuerda que no se suman puntos dos veces por la misma lectura.";
 
-        mostrarBotonVolver();
-
-    }else if(intentosCuestionarioUsados < MAX_INTENTOS_CUESTIONARIO){
-
-        mostrarBotonReintentarCuestionario();
-
     }else{
 
         document.getElementById("mensajeFinal").innerHTML =
-            `Ese fue tu último intento para el cuestionario. Tu resultado: ${estrellas}/${totalPreguntas} ⭐`;
-
-        mostrarBotonVolver();
+            `Esa era tu única oportunidad para esta lectura. Tu resultado: ${estrellas}/${totalPreguntas} ⭐`;
 
     }
 
-}
-
-
-// ==========================
-// REINTENTAR CUESTIONARIO
-// (cuando falló pero todavía le queda otra oportunidad)
-// ==========================
-
-function mostrarBotonReintentarCuestionario(){
-
-    const contenedorBoton = document.createElement("div");
-    contenedorBoton.id = "cajaReintentarCuestionario";
-    contenedorBoton.style.textAlign = "center";
-    contenedorBoton.style.marginTop = "15px";
-    contenedorBoton.innerHTML = `<button id="btnReintentarCuestionario">Intentar de nuevo</button>`;
-
-    cuestionario.appendChild(contenedorBoton);
-
-    document.getElementById("btnReintentarCuestionario").addEventListener("click", () => {
-        contenedorBoton.remove();
-        reintentarCuestionario();
-    });
-
-}
-
-function reintentarCuestionario(){
-
-    preguntasSeleccionadas = elegirPreguntasAlAzar(
-        lecturaActual.bancoPreguntas,
-        lecturaActual.preguntasAMostrar
-    );
-
-    renderizarPreguntas();
-
-    document.getElementById("resultado").innerHTML = "";
-    document.getElementById("mensajeFinal").innerHTML = "";
-
-    const btnTerminar = document.getElementById("btnTerminarCuestionario");
-    btnTerminar.style.display = "";
-
-    tiempoRestanteCuestionario = TIEMPO_CUESTIONARIO;
-    iniciarTemporizadorCuestionario();
+    mostrarBotonVolver();
 
 }
 
@@ -759,8 +727,6 @@ function reintentarCuestionario(){
 // ==========================
 // BOTÓN "VOLVER A MIS LECTURAS"
 // ==========================
-// Aparece siempre al terminar, ya sea que calificó el cuestionario
-// o que solo repasó una lectura ya completada antes.
 
 function mostrarBotonVolver(){
 

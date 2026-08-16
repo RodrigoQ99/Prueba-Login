@@ -552,6 +552,179 @@ async function abrirFormularioRangoEdades(alGuardar) {
 
 
 // ==========================================================
+// FORMULARIO: PREMIOS POR NIVEL
+// ==========================================================
+
+async function abrirFormularioPremios(alGuardar) {
+
+    await cargarPremioPorNivel();
+
+    const overlay = document.createElement("div");
+    overlay.className = "modalOverlay";
+    overlay.innerHTML = `
+        <div class="modalCaja modalCajaInfo" style="text-align:center;">
+            <h2>🏆 Premios por nivel</h2>
+            <p>Define qué gana cada quien según el nivel de la lectura que aprobó.</p>
+
+            <label style="display:block; text-align:left; margin-top:10px;">Fácil</label>
+            <input type="text" id="campoPremioFacil" value="${(PREMIO_POR_NIVEL.facil || "").replace(/"/g, "&quot;")}"
+                   style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+            <label style="display:block; text-align:left;">Intermedio</label>
+            <input type="text" id="campoPremioIntermedio" value="${(PREMIO_POR_NIVEL.intermedio || "").replace(/"/g, "&quot;")}"
+                   style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+            <label style="display:block; text-align:left;">Difícil</label>
+            <input type="text" id="campoPremioDificil" value="${(PREMIO_POR_NIVEL.dificil || "").replace(/"/g, "&quot;")}"
+                   style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+            <button id="btnGuardarPremios">Guardar</button>
+            <button class="modalCerrar" style="background:white; border:1px solid var(--borde); color:var(--texto-suave); margin-top:10px;">Cancelar</button>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
+
+    overlay.querySelector("#btnGuardarPremios").addEventListener("click", async () => {
+
+        const facil = overlay.querySelector("#campoPremioFacil").value.trim();
+        const intermedio = overlay.querySelector("#campoPremioIntermedio").value.trim();
+        const dificil = overlay.querySelector("#campoPremioDificil").value.trim();
+
+        if (!facil || !intermedio || !dificil) {
+            alert("Completa los 3 premios.");
+            return;
+        }
+
+        try {
+            await db.collection("configuracion").doc("premios").set({ facil, intermedio, dificil });
+            await cargarPremioPorNivel(true);
+            overlay.remove();
+            if (alGuardar) alGuardar();
+        } catch (error) {
+            console.error("No se pudo guardar los premios:", error);
+            alert("No se pudo guardar los premios.");
+        }
+
+    });
+
+}
+
+
+// ==========================================================
+// FORMULARIO: LISTA DE PREMIADORES
+// ==========================================================
+
+let PREMIADORES = { emails: ["joserodrigo.jrqd@gmail.com"] };
+let _promesaPremiadores = null;
+
+function cargarPremiadores(forzarRecarga) {
+
+    if (_promesaPremiadores && !forzarRecarga) {
+        return _promesaPremiadores;
+    }
+
+    _promesaPremiadores = db.collection("configuracion").doc("premiadores")
+        .get()
+        .then(doc => {
+            if (doc.exists) PREMIADORES = doc.data();
+            return PREMIADORES;
+        })
+        .catch(error => {
+            console.error("No se pudo cargar la lista de premiadores:", error);
+            return PREMIADORES;
+        });
+
+    return _promesaPremiadores;
+
+}
+
+async function abrirFormularioPremiadores(alGuardar) {
+
+    await cargarPremiadores();
+
+    const overlay = document.createElement("div");
+    overlay.className = "modalOverlay";
+    overlay.innerHTML = `
+        <div class="modalCaja modalCajaInfo" style="text-align:center;">
+            <h2>🎟️ Premiadores</h2>
+            <p>Correos de Google autorizados para entrar a la página de canje de premios.</p>
+            <div id="listaPremiadores" style="text-align:left; margin:15px 0;"></div>
+            <div style="display:flex; gap:8px;">
+                <input type="email" id="campoNuevoPremiador" placeholder="correo@gmail.com"
+                       style="flex:1; padding:10px; border-radius:8px; border:1px solid var(--borde);">
+                <button id="btnAgregarPremiador" style="width:auto; margin:0; padding:10px 16px;">+ Agregar</button>
+            </div>
+            <button class="modalCerrar" style="background:white; border:1px solid var(--borde); color:var(--texto-suave); margin-top:15px;">Cerrar</button>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    overlay.querySelector(".modalCerrar").addEventListener("click", () => {
+        overlay.remove();
+        if (alGuardar) alGuardar();
+    });
+
+    function render() {
+
+        const lista = overlay.querySelector("#listaPremiadores");
+        const emails = PREMIADORES.emails || [];
+
+        lista.innerHTML = emails.map(email => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--borde);">
+                <span style="font-size:14px;">${email}</span>
+                <button type="button" class="botonAdminChico botonPeligro" data-quitar="${email}">🗑️</button>
+            </div>
+        `).join("") || "<p style='color:var(--texto-suave); font-size:14px;'>Todavía no hay premiadores.</p>";
+
+        lista.querySelectorAll("[data-quitar]").forEach(btn => {
+            btn.addEventListener("click", async () => {
+                try {
+                    await db.collection("configuracion").doc("premiadores").set({
+                        emails: firebase.firestore.FieldValue.arrayRemove(btn.dataset.quitar)
+                    }, { merge: true });
+                    await cargarPremiadores(true);
+                    render();
+                } catch (error) {
+                    console.error("No se pudo quitar el premiador:", error);
+                    alert("No se pudo quitar el premiador.");
+                }
+            });
+        });
+
+    }
+
+    render();
+
+    overlay.querySelector("#btnAgregarPremiador").addEventListener("click", async () => {
+
+        const campo = overlay.querySelector("#campoNuevoPremiador");
+        const email = campo.value.trim().toLowerCase();
+
+        if (!email || !email.includes("@")) {
+            alert("Escribe un correo válido.");
+            return;
+        }
+
+        try {
+            await db.collection("configuracion").doc("premiadores").set({
+                emails: firebase.firestore.FieldValue.arrayUnion(email)
+            }, { merge: true });
+            await cargarPremiadores(true);
+            campo.value = "";
+            render();
+        } catch (error) {
+            console.error("No se pudo agregar el premiador:", error);
+            alert("No se pudo agregar el premiador.");
+        }
+
+    });
+
+}
+
+
+// ==========================================================
 // PANEL EN "MIS LECTURAS" (index.html)
 // ==========================================================
 
@@ -571,6 +744,8 @@ function inicializarAdminIndex() {
         <h2 style="text-align:center;">🔧 Panel de administrador</h2>
         <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:15px 0;">
             <button id="btnNuevaLectura" style="max-width:280px;">+ Agregar lectura nueva</button>
+            <button id="btnEditarPremios" style="max-width:260px; background:white; color:var(--azul); border:2px solid var(--azul);">🏆 Editar premios</button>
+            <button id="btnEditarPremiadores" style="max-width:260px; background:white; color:var(--azul); border:2px solid var(--azul);">🎟️ Editar premiadores</button>
             ${(typeof DATOS_ORIGINALES_LECTURAS !== "undefined" && CATALOGO_LECTURAS.length === 0)
                 ? `<button id="btnMigrarDatos" style="max-width:280px; background:#2e9e5b;">🚀 Migrar datos antiguos</button>`
                 : ""}
@@ -581,6 +756,14 @@ function inicializarAdminIndex() {
 
     document.getElementById("btnNuevaLectura").addEventListener("click", () => {
         abrirFormularioLectura(null, () => inicializarAdminIndex());
+    });
+
+    document.getElementById("btnEditarPremios").addEventListener("click", () => {
+        abrirFormularioPremios(() => inicializarAdminIndex());
+    });
+
+    document.getElementById("btnEditarPremiadores").addEventListener("click", () => {
+        abrirFormularioPremiadores(() => inicializarAdminIndex());
     });
 
     const btnMigrar = document.getElementById("btnMigrarDatos");

@@ -15,11 +15,6 @@
 let CATALOGO_LECTURAS = [];
 let _promesaCatalogoLecturas = null;
 
-// Oportunidades totales por lectura (compartido entre motor.js e
-// inicio.js). Se guardan en la cuenta del usuario, no en el navegador.
-const MAX_INTENTOS_LECTURA = 3;
-const MAX_INTENTOS_CUESTIONARIO = 2;
-
 /**
  * Trae el catálogo completo de lecturas desde Firestore y lo guarda en
  * CATALOGO_LECTURAS. Solo hace la consulta una vez (la cachea); pasa

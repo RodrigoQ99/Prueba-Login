@@ -20,15 +20,18 @@ async function cargarListaLecturas() {
     await cargarCatalogoLecturas();
 
     // Averiguar qué lecturas ha DESBLOQUEADO (escaneado) este usuario,
-    // y cuántos intentos de lectura ha usado en cada una
+    // cuáles ya intentó (su única oportunidad, usada o no) y si tiene
+    // una oportunidad extra activa (bono de completista)
     let desbloqueadas = [];
-    let intentosLecturaPorId = {};
+    let lecturasIntentadas = [];
+    let bonoActivo = null;
 
     try {
         const usuarioDoc = await db.collection("usuarios").doc(user.uid).get();
         const datosUsuario = usuarioDoc.exists ? usuarioDoc.data() : {};
         desbloqueadas = datosUsuario.lecturasDesbloqueadas || [];
-        intentosLecturaPorId = datosUsuario.intentosLectura || {};
+        lecturasIntentadas = datosUsuario.lecturasIntentadas || [];
+        bonoActivo = datosUsuario.bonoActivo || null;
     } catch (error) {
         console.error("Error al cargar las lecturas desbloqueadas:", error);
     }
@@ -36,10 +39,9 @@ async function cargarListaLecturas() {
     // Averiguar cuáles completó con éxito (y de paso, cuáles tiene
     // en su historial de progreso aunque sea de ANTES de que existiera
     // el sistema de "desbloqueadas" — así no se pierden lecturas viejas),
-    // cuántas veces respondió el cuestionario de cada una, y su mejor resultado
+    // y su mejor resultado por lectura (para mostrarlo si ya no tiene oportunidad)
     let idsCompletados = new Set();
     let idsConProgreso = new Set();
-    let intentosCuestionarioPorId = {};
     let mejorResultadoPorId = {};
 
     try {
@@ -53,8 +55,6 @@ async function cargarListaLecturas() {
             if (data.puntosGanados > 0) {
                 idsCompletados.add(data.lecturaId);
             }
-
-            intentosCuestionarioPorId[data.lecturaId] = (intentosCuestionarioPorId[data.lecturaId] || 0) + 1;
 
             const mejorActual = mejorResultadoPorId[data.lecturaId];
             if (!mejorActual || data.estrellas > mejorActual.estrellas) {
@@ -101,24 +101,23 @@ async function cargarListaLecturas() {
         const completada = idsCompletados.has(lectura.id);
         const nivelTexto = NOMBRE_NIVEL[lectura.nivel] || lectura.nivel;
 
-        const intentosLectura = intentosLecturaPorId[lectura.id] || 0;
-        const intentosCuestionario = intentosCuestionarioPorId[lectura.id] || 0;
-        const sinOportunidades = !completada && (
-            intentosCuestionario >= MAX_INTENTOS_CUESTIONARIO ||
-            intentosLectura >= MAX_INTENTOS_LECTURA
-        );
+        const yaIntentada = lecturasIntentadas.includes(lectura.id);
+        const tieneBono = bonoActivo === lectura.id;
+        const bloqueada = !completada && yaIntentada && !tieneBono;
 
         let estado = "Comenzar →";
         if (completada) {
             estado = "✅ Completada";
-        } else if (sinOportunidades) {
+        } else if (bloqueada) {
             const mejor = mejorResultadoPorId[lectura.id];
-            estado = mejor ? `Resultado: ${mejor.estrellas}/${mejor.total} ⭐` : "Sin oportunidades";
+            estado = mejor ? `Resultado: ${mejor.estrellas}/${mejor.total} ⭐` : "Sin oportunidad";
+        } else if (tieneBono) {
+            estado = "🎁 Oportunidad extra →";
         }
 
         return `
             <a href="lectura.html?id=${encodeURIComponent(lectura.id)}"
-               class="tarjetaLectura ${completada ? "tarjetaCompletada" : ""} ${sinOportunidades ? "tarjetaBloqueada" : ""}">
+               class="tarjetaLectura ${completada ? "tarjetaCompletada" : ""} ${bloqueada ? "tarjetaBloqueada" : ""}">
                 <div class="tarjetaInfo">
                     <p class="tarjetaTitulo">${lectura.titulo}</p>
                     <p class="tarjetaNivel">Nivel ${nivelTexto}</p>

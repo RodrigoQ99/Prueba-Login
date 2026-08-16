@@ -4,25 +4,13 @@
 <head>
 
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis premios</title>
+    <link rel="stylesheet" href="estilos.css">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
-    <title>Mis lecturas</title>
-
-    <link rel="stylesheet"
-          href="estilos.css">
-
-    <!-- Firebase (versión compat, para usar sin bundler) -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
-
-    <!-- Lector de códigos QR (para escanear sin salir de la página) -->
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-
-    <!-- Generador de códigos QR (para el panel de administrador) -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
 </head>
 
@@ -31,7 +19,7 @@
 
 
 <!-- ==========================
-     MENÚ SUPERIOR (perfil / progreso / ranking)
+     MENÚ SUPERIOR
 =========================== -->
 <div id="menuUsuario" class="menuUsuario" style="display:none;">
     <button id="btnMenuToggle" class="botonMenuToggle" aria-label="Abrir menú">
@@ -54,12 +42,10 @@
             </div>
         </div>
 
+        <a href="index.html" class="menuLink">📚 Mis lecturas</a>
         <a href="mejora.html" class="menuLink">📈 Mejorar la lectura</a>
-
         <a href="ranking.html" class="menuLink">🏆 Ver ranking</a>
-
         <a href="premios.html" class="menuLink">🎁 Mis premios</a>
-
         <button id="btnQueEsEsto" class="menuLink">💡 ¿Qué es esto?</button>
 
         <button id="btnCerrarSesionMenu" class="menuLinkBoton">Cerrar sesión</button>
@@ -119,35 +105,23 @@
 
 <div id="contenedor" style="display:none;">
 
-    <h1>Mis lecturas</h1>
+    <h1>🎁 Mis premios</h1>
 
     <p style="text-align:center; color:var(--texto-suave); margin-bottom:25px;">
-        Escanea un código QR o elige una lectura de la lista para comenzar.
+        Cada lectura que apruebas te gana un premio. Toca "Canjear" y muéstrale
+        el código al encargado.
     </p>
 
-    <div style="text-align:center; margin-bottom:25px;">
-        <button id="btnEscanearQR" style="max-width:260px; display:inline-block;">
-            Escanear código QR
-        </button>
+    <div id="listaPremios">
+        <p style="text-align:center;">Cargando...</p>
     </div>
-
-    <div id="listaLecturasInicio">
-        <p style="text-align:center;">Cargando lecturas...</p>
-    </div>
-
-    <div id="sugerenciaNuevaLectura" class="cajaSugerencia" style="display:none;"></div>
 
 </div>
 
 
 <script src="firebase-init.js"></script>
 <script src="lecturas.js"></script>
-<script src="mejora-lecturas.js"></script>
-<script src="puntos.js"></script>
-<script src="inicio.js"></script>
-<script src="admin.js"></script>
-<script src="migracion-datos.js"></script>
-<script src="escanear.js"></script>
+<script src="premios.js"></script>
 <script src="auth.js"></script>
 <script src="menu.js"></script>
 

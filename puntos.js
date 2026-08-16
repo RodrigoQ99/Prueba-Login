@@ -12,11 +12,38 @@ const PUNTOS_POR_NIVEL = {
     dificil: 50
 };
 
-const PREMIO_POR_NIVEL = {
-    facil: "Premio simple",
-    intermedio: "Premio de mayor nivel",
-    dificil: "Mejor premio"
+// La descripción de cada premio vive en Firestore (configuracion/premios)
+// y se edita desde el panel de administrador. Estos son solo los valores
+// por defecto mientras se carga o si el admin nunca los ha guardado.
+let PREMIO_POR_NIVEL = {
+    facil: "Tortrix",
+    intermedio: "Burrito simple",
+    dificil: "Menú campero"
 };
+let _promesaPremioPorNivel = null;
+
+function cargarPremioPorNivel(forzarRecarga) {
+
+    if (_promesaPremioPorNivel && !forzarRecarga) {
+        return _promesaPremioPorNivel;
+    }
+
+    _promesaPremioPorNivel = db.collection("configuracion").doc("premios")
+        .get()
+        .then(doc => {
+            if (doc.exists) {
+                PREMIO_POR_NIVEL = doc.data();
+            }
+            return PREMIO_POR_NIVEL;
+        })
+        .catch(error => {
+            console.error("No se pudo cargar los premios:", error);
+            return PREMIO_POR_NIVEL;
+        });
+
+    return _promesaPremioPorNivel;
+
+}
 
 /**
  * Normaliza texto para poder AGRUPAR correctamente aunque la gente
@@ -108,6 +135,56 @@ async function actualizarRankingActual() {
 }
 
 /**
+ * Genera un código de canje de 6 dígitos que todavía no exista en la
+ * colección "premios" (probabilidad de choque casi nula, pero se revisa
+ * de todas formas antes de usarlo).
+ */
+async function generarCodigoUnico() {
+
+    for (let intento = 0; intento < 5; intento++) {
+
+        const candidato = String(Math.floor(100000 + Math.random() * 900000));
+
+        const yaExiste = await db.collection("premios")
+            .where("codigo", "==", candidato)
+            .limit(1)
+            .get();
+
+        if (yaExiste.empty) return candidato;
+
+    }
+
+    // Muy improbable llegar aquí, pero por si acaso: un código igual de
+    // largo basado en la hora exacta, prácticamente imposible de repetir.
+    return String(Date.now()).slice(-6);
+
+}
+
+/**
+ * Crea el premio canjeable (con su código de 6 dígitos) que le
+ * corresponde a esta lectura recién aprobada por primera vez.
+ */
+async function crearPremioCanjeable(user, lecturaId, nivel) {
+
+    await cargarPremioPorNivel();
+
+    const codigo = await generarCodigoUnico();
+
+    await db.collection("premios").add({
+        usuarioId: user.uid,
+        lecturaId: lecturaId,
+        nivel: nivel,
+        descripcionPremio: PREMIO_POR_NIVEL[nivel] || "Premio",
+        codigo: codigo,
+        canjeado: false,
+        canjeadoPor: null,
+        fechaGanado: firebase.firestore.FieldValue.serverTimestamp(),
+        fechaCanjeado: null
+    });
+
+}
+
+/**
  * Guarda el resultado de una lectura completada y suma los puntos
  * correspondientes al usuario actual.
  *
@@ -154,11 +231,14 @@ async function guardarProgreso(lecturaId, nivel, estrellas, totalPreguntas) {
             puntosTotales: firebase.firestore.FieldValue.increment(puntosGanados)
         });
 
-        // 3. Recalcular el ranking personal SIEMPRE (aplica a todos:
+        // 3. Crear su premio canjeable (con código de 6 dígitos) para esta lectura
+        await crearPremioCanjeable(user, lecturaId, nivel);
+
+        // 4. Recalcular el ranking personal SIEMPRE (aplica a todos:
         //    particulares y estudiantes)
         await actualizarRankingPersonal();
 
-        // 4. Recalcular el ranking de colegios solo si es estudiante
+        // 5. Recalcular el ranking de colegios solo si es estudiante
         //    (actualizarRankingActual ya filtra por tipo "estudiante",
         //    pero evitamos la llamada innecesaria si es particular)
         const datosUsuario = (await db.collection("usuarios").doc(user.uid).get()).data();
