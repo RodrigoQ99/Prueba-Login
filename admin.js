@@ -746,6 +746,10 @@ function inicializarAdminIndex() {
             <button id="btnNuevaLectura" style="max-width:280px;">+ Agregar lectura nueva</button>
             <button id="btnEditarPremios" style="max-width:260px; background:white; color:var(--azul); border:2px solid var(--azul);">🏆 Editar premios</button>
             <button id="btnEditarPremiadores" style="max-width:260px; background:white; color:var(--azul); border:2px solid var(--azul);">🎟️ Editar premiadores</button>
+            <a href="premiador.html" target="_blank"
+               style="display:inline-block; width:auto; max-width:260px; padding:15px 25px; margin:0; border-radius:12px; font-weight:600; text-decoration:none; text-align:center; background:white; color:var(--azul); border:2px solid var(--azul);">
+                🔗 Ir a Premiador
+            </a>
             ${(typeof DATOS_ORIGINALES_LECTURAS !== "undefined" && CATALOGO_LECTURAS.length === 0)
                 ? `<button id="btnMigrarDatos" style="max-width:280px; background:#2e9e5b;">🚀 Migrar datos antiguos</button>`
                 : ""}
