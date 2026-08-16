@@ -239,7 +239,7 @@ function calcularPalabrasPorMinuto(textoIngresado) {
 
     const ppm = posicionEncontrada; // ya que el checkpoint siempre es a 1 minuto exacto
 
-    const rango = META_PPM_POR_EDAD[ubicacion.edad] || [0, 0];
+    const rango = metaPpmParaEdad(ubicacion.edad);
     const dentroDeMeta = ppm >= rango[0];
 
     document.getElementById("resultadoPpm").innerHTML = `
@@ -360,7 +360,7 @@ async function calificarMejora() {
     const listaDeEstaEdad = CATALOGO_MEJORA[ubicacion.edad] || [];
     const eraLaUltima = ubicacion.indice === listaDeEstaEdad.length - 1;
 
-    if (eraLaUltima && ubicacion.edad < RANGO_EDADES.max) {
+    if (eraLaUltima && !esGrupoMasDelTope(ubicacion.edad)) {
 
         const nuevaEdad = ubicacion.edad + 1;
 
@@ -373,7 +373,7 @@ async function calificarMejora() {
             <p style="font-size:20px; font-weight:700; margin:12px 0;">
                 🎉 ¡Felicidades! Has pasado al siguiente nivel.
             </p>
-            <p>Lees como alguien de ${nuevaEdad} años.</p>
+            <p>Lees a un nivel de ${etiquetaEdad(nuevaEdad)}.</p>
             <a href="mejora.html" class="menuLink"
                style="display:inline-block; max-width:260px; margin:15px auto 0;">
                 ← Volver a Mejorar la lectura

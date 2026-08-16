@@ -12,7 +12,7 @@
 let CATALOGO_MEJORA = {};
 let _promesaCatalogoMejora = null;
 
-let RANGO_EDADES = { min: 10, max: 15 };
+let RANGO_EDADES = { min: 10, max: 17 };
 let _promesaRangoEdades = null;
 
 /**
@@ -82,27 +82,57 @@ function cargarRangoEdades(forzarRecarga) {
 
 }
 
+// Además de las edades individuales (RANGO_EDADES.min a RANGO_EDADES.max),
+// existe un grupo final para todos los mayores al tope — internamente se
+// guarda como "max + 1" (ej. si el tope es 17, ese grupo se guarda como 18),
+// y se muestra como "Más de 17 años" en vez de "18 años".
+
+function grupoMasDelTope() {
+    return RANGO_EDADES.max + 1;
+}
+
+function esGrupoMasDelTope(edad) {
+    return edad > RANGO_EDADES.max;
+}
+
+function etiquetaEdad(edad) {
+    return esGrupoMasDelTope(edad)
+        ? `+${RANGO_EDADES.max}`
+        : `${edad} años`;
+}
+
 /**
  * Devuelve el arreglo de lecturas para una edad específica.
  * Si la edad está fuera del rango configurado, la ajusta al extremo
- * más cercano.
+ * más cercano (incluyendo el grupo "más de X años").
  */
 function obtenerLecturasPorEdad(edad) {
-    const edadAjustada = Math.min(Math.max(edad, RANGO_EDADES.min), RANGO_EDADES.max);
+    const edadAjustada = Math.min(Math.max(edad, RANGO_EDADES.min), grupoMasDelTope());
     return CATALOGO_MEJORA[edadAjustada] || [];
 }
 
 
 // Meta de palabras por minuto por edad (para mostrar retroalimentación).
 // Las edades que no tengan una meta específica usan la más cercana.
+// "masDelTope" es la meta para el grupo "Más de X años".
 const META_PPM_POR_EDAD = {
     10: [100, 125],
     11: [125, 150],
     12: [140, 170],
     13: [160, 190],
     14: [180, 220],
-    15: [200, 250]
+    15: [200, 250],
+    16: [220, 260],
+    17: [240, 280],
+    masDelTope: [250, 300]
 };
+
+function metaPpmParaEdad(edad) {
+    if (esGrupoMasDelTope(edad)) {
+        return META_PPM_POR_EDAD.masDelTope;
+    }
+    return META_PPM_POR_EDAD[edad] || [0, 0];
+}
 
 
 /**

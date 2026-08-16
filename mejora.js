@@ -38,6 +38,7 @@ async function mostrarModalEdad(esPrimeraVez) {
     for (let edad = RANGO_EDADES.min; edad <= RANGO_EDADES.max; edad++) {
         opciones.push(`<option value="${edad}">${edad} años</option>`);
     }
+    opciones.push(`<option value="${grupoMasDelTope()}">${etiquetaEdad(grupoMasDelTope())}</option>`);
 
     overlay.innerHTML = `
         <div class="modalCaja modalCajaInfo" style="text-align:center;">
@@ -92,7 +93,7 @@ function renderizarListaMejora(edadActual, completadas) {
     const contenedor = document.getElementById("listaMejora");
     const encabezado = document.getElementById("encabezadoEdad");
 
-    encabezado.textContent = `Edad actual: ${edadActual} años`;
+    encabezado.textContent = `Edad actual: ${etiquetaEdad(edadActual)}`;
 
     const listaDeEstaEdad = CATALOGO_MEJORA[edadActual] || [];
 
@@ -101,7 +102,7 @@ function renderizarListaMejora(edadActual, completadas) {
     if (listaDeEstaEdad.length === 0) {
         contenedor.innerHTML = `
             <p style="text-align:center;">
-                Todavía no hay lecturas de práctica para ${edadActual} años.
+                Todavía no hay lecturas de práctica para ${etiquetaEdad(edadActual)}.
                 ¡Vuelve pronto! 🌱
             </p>
         `;

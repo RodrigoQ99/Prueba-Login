@@ -346,6 +346,7 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
     for (let e = RANGO_EDADES.min; e <= RANGO_EDADES.max; e++) {
         opcionesEdad.push(`<option value="${e}">${e} años</option>`);
     }
+    opcionesEdad.push(`<option value="${grupoMasDelTope()}">${etiquetaEdad(grupoMasDelTope())}</option>`);
 
     const overlay = document.createElement("div");
     overlay.className = "modalOverlay";
@@ -701,7 +702,7 @@ function inicializarAdminMejora(edadActual) {
         <hr style="margin:30px 0; border:none; border-top:1px solid var(--borde);">
         <h2 style="text-align:center;">🔧 Panel de administrador</h2>
         <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:15px 0;">
-            <button id="btnNuevaMejora" style="max-width:260px;">+ Agregar lectura (edad ${edadActual})</button>
+            <button id="btnNuevaMejora" style="max-width:260px;">+ Agregar lectura — ${etiquetaEdad(edadActual)}</button>
             <button id="btnEditarRango" style="max-width:260px; background:white; color:var(--azul); border:2px solid var(--azul);">⚙️ Editar rango de edades</button>
         </div>
         <div id="listaAdminMejora"></div>
