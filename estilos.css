@@ -17,17 +17,22 @@
 
     --azul-oscuro:#0765c9;
 
-    --fondo:#f7f1e3;
+    --fondo:#f2f4f7;
 
-    --fondo-lectura:#dfeaf6;
-
-    --texto:#2d2d2d;
+    --texto:#1c1f26;
 
     --texto-suave:#5b6270;
 
     --borde:#e3e6eb;
 
     --sombra:0 4px 16px rgba(20,30,50,0.08);
+
+    /* Solo se usan dentro de las pantallas de lectura (ver body.pantallaLectura) */
+    --fondo-lectura-exterior:#dfeaf6;
+
+    --fondo-lectura-caja:#f7f1e3;
+
+    --texto-lectura:#2d2d2d;
 
 }
 
@@ -36,11 +41,9 @@ body{
 
     background:var(--fondo);
 
-    font-family:'Atkinson Hyperlegible', 'Segoe UI', Arial, Helvetica, sans-serif;
+    font-family:'Segoe UI', Arial, Helvetica, sans-serif;
 
     color:var(--texto);
-
-    line-height:1.6;
 
     -webkit-user-select:none;
 
@@ -49,6 +52,25 @@ body{
     -ms-user-select:none;
 
     user-select:none;
+
+}
+
+
+/* ==========================
+   PANTALLAS DE LECTURA
+   (lectura.html y lectura-mejorar.html tienen <body class="pantallaLectura">)
+   Fuera de estas pantallas, el resto del sitio conserva el formato original.
+========================== */
+
+body.pantallaLectura{
+
+    background:var(--fondo-lectura-exterior);
+
+    font-family:'Atkinson Hyperlegible', 'Segoe UI', Arial, Helvetica, sans-serif;
+
+    color:var(--texto-lectura);
+
+    line-height:1.6;
 
 }
 
@@ -120,7 +142,7 @@ h1{
 
     overscroll-behavior:contain;
 
-    background:var(--fondo-lectura);
+    background:var(--fondo-lectura-caja);
 
     border-radius:14px;
 
@@ -766,7 +788,7 @@ button:active{
     margin:0 0 12px 20px;
     padding:0;
     font-size:14px;
-    line-height:1.7;
+    line-height:1.8;
 }
 
 .modalCajaInfo .modalCerrar{
@@ -802,7 +824,7 @@ button.menuLink{
 .textoLibre{
     height:420px;
     overflow-y:auto;
-    background:var(--fondo-lectura);
+    background:var(--fondo-lectura-caja);
     border-radius:14px;
     padding:30px;
     line-height:1.6;
