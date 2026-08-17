@@ -54,8 +54,13 @@ async function cargarDatosMenu(user) {
         });
 
         await cargarCatalogoLecturas();
+
+        // Solo cuenta lecturas que TODAVÍA existen en el catálogo — si una
+        // se borró (o cambió de ID), su progreso viejo no debe seguir
+        // inflando "completadas" ni "pendientes de X" para siempre.
+        const idsCatalogoActual = new Set(CATALOGO_LECTURAS.map(l => l.id));
         const totalLecturas = CATALOGO_LECTURAS.length;
-        const completadas = idsCompletados.size;
+        const completadas = [...idsCompletados].filter(id => idsCatalogoActual.has(id)).length;
         const pendientes = Math.max(totalLecturas - completadas, 0);
 
         menuCompletadas.textContent = completadas;
