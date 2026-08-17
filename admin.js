@@ -763,6 +763,7 @@ function inicializarAdminIndex() {
             ${(typeof DATOS_ORIGINALES_LECTURAS !== "undefined" && CATALOGO_LECTURAS.length === 0)
                 ? `<button id="btnMigrarDatos" style="max-width:280px; background:#2e9e5b;">🚀 Migrar datos antiguos</button>`
                 : ""}
+            <button id="btnRepararPuntos" style="max-width:280px; background:white; color:var(--azul); border:2px solid var(--azul);">🩹 Reparar puntos de lecturas ya eliminadas</button>
         </div>
         <div id="listaAdminLecturas"></div>
     `;
@@ -784,6 +785,33 @@ function inicializarAdminIndex() {
     if (btnMigrar) {
         btnMigrar.addEventListener("click", () => migrarDatosOriginales());
     }
+
+    document.getElementById("btnRepararPuntos").addEventListener("click", async () => {
+
+        if (!confirm("Esto revisa TODO el historial y le resta a cada usuario los puntos de lecturas que ya no existen en el catálogo. ¿Continuar?")) {
+            return;
+        }
+
+        const btn = document.getElementById("btnRepararPuntos");
+        btn.disabled = true;
+        btn.textContent = "Reparando...";
+
+        try {
+            const resultado = await repararPuntosDeLecturasEliminadas();
+            if (resultado.usuariosAfectados === 0) {
+                alert("No había puntos huérfanos que reparar. El ranking ya estaba al día.");
+            } else {
+                alert(`Listo. Se corrigieron ${resultado.usuariosAfectados} usuario(s), restando ${resultado.puntosRevertidos} puntos en total.`);
+            }
+        } catch (error) {
+            console.error("No se pudo reparar los puntos huérfanos:", error);
+            alert("No se pudo completar la reparación. Revisa la consola para más detalles.");
+        }
+
+        btn.disabled = false;
+        btn.textContent = "🩹 Reparar puntos de lecturas ya eliminadas";
+
+    });
 
     renderizarListaAdminLecturas();
 

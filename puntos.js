@@ -297,6 +297,51 @@ async function guardarProgreso(lecturaId, nivel, estrellas, totalPreguntas) {
 }
 
 /**
+ * Dado un grupo de documentos de "progreso" (ya obtenidos de Firestore),
+ * les resta a cada usuario los puntos que esos documentos representan,
+ * borra los documentos, y recalcula ambos rankings. Es el mecanismo
+ * compartido por revertirPuntosDeLectura() y repararPuntosDeLecturasEliminadas().
+ */
+async function _revertirPuntosYBorrarProgreso(docs) {
+
+    if (docs.length === 0) return { usuariosAfectados: 0, puntosRevertidos: 0 };
+
+    // Sumar cuántos puntos hay que restarle a cada usuario afectado
+    const puntosARestarPorUsuario = {};
+    docs.forEach(doc => {
+        const data = doc.data();
+        if (data.puntosGanados > 0) {
+            puntosARestarPorUsuario[data.usuarioId] =
+                (puntosARestarPorUsuario[data.usuarioId] || 0) + data.puntosGanados;
+        }
+    });
+
+    for (const usuarioId of Object.keys(puntosARestarPorUsuario)) {
+        await db.collection("usuarios").doc(usuarioId).update({
+            puntosTotales: firebase.firestore.FieldValue.increment(-puntosARestarPorUsuario[usuarioId])
+        });
+    }
+
+    // Borrar los documentos de progreso (en lotes de 450, por debajo del
+    // límite de 500 operaciones por batch de Firestore).
+    for (let i = 0; i < docs.length; i += 450) {
+        const lote = db.batch();
+        docs.slice(i, i + 450).forEach(doc => lote.delete(doc.ref));
+        await lote.commit();
+    }
+
+    // Recalcular ambos rankings para que el cambio se refleje de inmediato
+    await actualizarRankingPersonal();
+    await actualizarRankingActual();
+
+    return {
+        usuariosAfectados: Object.keys(puntosARestarPorUsuario).length,
+        puntosRevertidos: Object.values(puntosARestarPorUsuario).reduce((a, b) => a + b, 0)
+    };
+
+}
+
+/**
  * Se llama al eliminar una lectura del catálogo (ver admin.js). Le resta
  * a cada usuario los puntos que había ganado con esa lectura, borra sus
  * entradas de "progreso" (ya no tiene sentido conservarlas, la lectura
@@ -312,35 +357,27 @@ async function revertirPuntosDeLectura(lecturaId) {
         .where("lecturaId", "==", lecturaId)
         .get();
 
-    if (progresoDeEstaLectura.empty) return;
+    await _revertirPuntosYBorrarProgreso(progresoDeEstaLectura.docs);
 
-    // Sumar cuántos puntos hay que restarle a cada usuario afectado
-    const puntosARestarPorUsuario = {};
-    progresoDeEstaLectura.forEach(doc => {
-        const data = doc.data();
-        if (data.puntosGanados > 0) {
-            puntosARestarPorUsuario[data.usuarioId] =
-                (puntosARestarPorUsuario[data.usuarioId] || 0) + data.puntosGanados;
-        }
-    });
+}
 
-    for (const usuarioId of Object.keys(puntosARestarPorUsuario)) {
-        await db.collection("usuarios").doc(usuarioId).update({
-            puntosTotales: firebase.firestore.FieldValue.increment(-puntosARestarPorUsuario[usuarioId])
-        });
-    }
+/**
+ * Reparación manual, pensada para correrse UNA VEZ desde el panel de
+ * administrador: revisa todo el historial de "progreso" y revierte los
+ * puntos de cualquier lectura que ya no exista en el catálogo. Cubre
+ * lecturas que se hayan borrado ANTES de que existiera la corrección
+ * automática de revertirPuntosDeLectura() de arriba.
+ */
+async function repararPuntosDeLecturasEliminadas() {
 
-    // Borrar las entradas de progreso de esta lectura (en lotes de 450,
-    // por debajo del límite de 500 operaciones por batch de Firestore).
-    const docs = progresoDeEstaLectura.docs;
-    for (let i = 0; i < docs.length; i += 450) {
-        const lote = db.batch();
-        docs.slice(i, i + 450).forEach(doc => lote.delete(doc.ref));
-        await lote.commit();
-    }
+    const [catalogoSnap, progresoSnap] = await Promise.all([
+        db.collection("lecturas").get(),
+        db.collection("progreso").where("puntosGanados", ">", 0).get()
+    ]);
 
-    // Recalcular ambos rankings para que el cambio se refleje de inmediato
-    await actualizarRankingPersonal();
-    await actualizarRankingActual();
+    const idsVigentes = new Set(catalogoSnap.docs.map(doc => doc.id));
+    const docsHuerfanos = progresoSnap.docs.filter(doc => !idsVigentes.has(doc.data().lecturaId));
+
+    return _revertirPuntosYBorrarProgreso(docsHuerfanos);
 
 }
