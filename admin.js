@@ -180,12 +180,16 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
             <form id="formLecturaAdmin">
 
                 <label>ID de la lectura</label>
-                <input type="text" id="campoId" required
-                       value="${esNueva ? "" : lecturaExistente.id}" ${esNueva ? "" : "readonly"}
-                       style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+                <input type="text" id="campoId" required autocomplete="off"
+                       value="${esNueva ? "" : lecturaExistente.id}"
+                       style="width:100%; padding:10px; margin:6px 0 4px; border-radius:8px; border:1px solid var(--borde);">
+                ${esNueva ? "" : `
+                <p style="font-size:12px; color:var(--texto-suave); margin:0 0 15px;">
+                    Si lo cambias, los códigos QR ya impresos con el ID anterior dejarán de funcionar.
+                </p>`}
 
                 <label>Título</label>
-                <input type="text" id="campoTitulo" required
+                <input type="text" id="campoTitulo" required autocomplete="off"
                        value="${esNueva ? "" : (lecturaExistente.titulo || "").replace(/"/g, "&quot;")}"
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
@@ -252,18 +256,21 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
         e.preventDefault();
 
         const id = overlay.querySelector("#campoId").value.trim();
+        const idOriginal = esNueva ? null : lecturaExistente.id;
+        const idCambio = !esNueva && id !== idOriginal;
 
-        // El formato solo se exige para lecturas NUEVAS. Las que ya existen
-        // conservan el ID con el que salieron los códigos QR impresos,
-        // aunque tengan espacios u otros caracteres de antes de este panel.
-        if (esNueva) {
+        // El formato solo se exige si el ID es nuevo o si lo acaban de
+        // cambiar. Si una lectura existente conserva su ID de siempre, no
+        // se revalida (puede tener espacios u otros caracteres de antes
+        // de que existiera este panel).
+        if (esNueva || idCambio) {
 
             if (!/^[a-z0-9-]+$/i.test(id)) {
                 alert("El ID solo puede tener letras, números y guiones, sin espacios ni tildes.");
                 return;
             }
 
-            if (CATALOGO_LECTURAS.some(l => l.id === id)) {
+            if (CATALOGO_LECTURAS.some(l => l.id === id && l.id !== idOriginal)) {
                 alert("Ya existe una lectura con ese ID. Elige otro.");
                 return;
             }
@@ -301,6 +308,14 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
 
         try {
             await db.collection("lecturas").doc(id).set(datos);
+
+            // Firestore no permite renombrar un ID: si cambió, el documento
+            // nuevo ya se guardó arriba, así que ahora hay que borrar el
+            // anterior para no dejarlo duplicado.
+            if (idCambio) {
+                await db.collection("lecturas").doc(idOriginal).delete();
+            }
+
             await cargarCatalogoLecturas(true);
             overlay.remove();
             if (alGuardar) alGuardar();
@@ -356,12 +371,16 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
             <form id="formMejoraAdmin">
 
                 <label>ID de la lectura</label>
-                <input type="text" id="campoId" required
-                       value="${esNueva ? "" : lecturaExistente.id}" ${esNueva ? "" : "readonly"}
-                       style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+                <input type="text" id="campoId" required autocomplete="off"
+                       value="${esNueva ? "" : lecturaExistente.id}"
+                       style="width:100%; padding:10px; margin:6px 0 4px; border-radius:8px; border:1px solid var(--borde);">
+                ${esNueva ? "" : `
+                <p style="font-size:12px; color:var(--texto-suave); margin:0 0 15px;">
+                    Si lo cambias, los códigos QR ya impresos con el ID anterior dejarán de funcionar.
+                </p>`}
 
                 <label>Título</label>
-                <input type="text" id="campoTitulo" required
+                <input type="text" id="campoTitulo" required autocomplete="off"
                        value="${esNueva ? "" : (lecturaExistente.titulo || "").replace(/"/g, "&quot;")}"
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
@@ -419,16 +438,19 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
         const edad = Number(overlay.querySelector("#campoEdad").value);
         const listaDeEsaEdad = CATALOGO_MEJORA[edad] || [];
 
-        // El formato solo se exige para lecturas NUEVAS (ver misma nota
-        // en abrirFormularioLectura).
-        if (esNueva) {
+        const idOriginal = esNueva ? null : lecturaExistente.id;
+        const idCambio = !esNueva && id !== idOriginal;
+
+        // El formato solo se exige si el ID es nuevo o si lo acaban de
+        // cambiar (ver misma nota en abrirFormularioLectura).
+        if (esNueva || idCambio) {
 
             if (!/^[a-z0-9-]+$/i.test(id)) {
                 alert("El ID solo puede tener letras, números y guiones, sin espacios ni tildes.");
                 return;
             }
 
-            if (listaDeEsaEdad.some(l => l.id === id)) {
+            if (listaDeEsaEdad.some(l => l.id === id && l.id !== idOriginal)) {
                 alert("Ya existe una lectura con ese ID. Elige otro.");
                 return;
             }
@@ -464,6 +486,14 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
 
         try {
             await db.collection("mejoraLecturas").doc(id).set(datos);
+
+            // Firestore no permite renombrar un ID: si cambió, el documento
+            // nuevo ya se guardó arriba, así que ahora hay que borrar el
+            // anterior para no dejarlo duplicado.
+            if (idCambio) {
+                await db.collection("mejoraLecturas").doc(idOriginal).delete();
+            }
+
             await cargarCatalogoMejora(true);
             overlay.remove();
             if (alGuardar) alGuardar();
