@@ -295,3 +295,52 @@ async function guardarProgreso(lecturaId, nivel, estrellas, totalPreguntas) {
         premio: PREMIO_POR_NIVEL[nivel]
     };
 }
+
+/**
+ * Se llama al eliminar una lectura del catálogo (ver admin.js). Le resta
+ * a cada usuario los puntos que había ganado con esa lectura, borra sus
+ * entradas de "progreso" (ya no tiene sentido conservarlas, la lectura
+ * dejó de existir) y recalcula ambos rankings, para que el conteo no
+ * quede desfasado ni genere confusión sobre por qué alguien tiene más
+ * puntos de los que sus lecturas actuales explican.
+ *
+ * @param {string} lecturaId - id de la lectura que se acaba de borrar
+ */
+async function revertirPuntosDeLectura(lecturaId) {
+
+    const progresoDeEstaLectura = await db.collection("progreso")
+        .where("lecturaId", "==", lecturaId)
+        .get();
+
+    if (progresoDeEstaLectura.empty) return;
+
+    // Sumar cuántos puntos hay que restarle a cada usuario afectado
+    const puntosARestarPorUsuario = {};
+    progresoDeEstaLectura.forEach(doc => {
+        const data = doc.data();
+        if (data.puntosGanados > 0) {
+            puntosARestarPorUsuario[data.usuarioId] =
+                (puntosARestarPorUsuario[data.usuarioId] || 0) + data.puntosGanados;
+        }
+    });
+
+    for (const usuarioId of Object.keys(puntosARestarPorUsuario)) {
+        await db.collection("usuarios").doc(usuarioId).update({
+            puntosTotales: firebase.firestore.FieldValue.increment(-puntosARestarPorUsuario[usuarioId])
+        });
+    }
+
+    // Borrar las entradas de progreso de esta lectura (en lotes de 450,
+    // por debajo del límite de 500 operaciones por batch de Firestore).
+    const docs = progresoDeEstaLectura.docs;
+    for (let i = 0; i < docs.length; i += 450) {
+        const lote = db.batch();
+        docs.slice(i, i + 450).forEach(doc => lote.delete(doc.ref));
+        await lote.commit();
+    }
+
+    // Recalcular ambos rankings para que el cambio se refleje de inmediato
+    await actualizarRankingPersonal();
+    await actualizarRankingActual();
+
+}

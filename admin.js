@@ -324,6 +324,13 @@ async function eliminarLectura(id, alEliminar) {
 
     try {
         await db.collection("lecturas").doc(id).delete();
+
+        // Los puntos que esta lectura ya le había dado a la gente no deben
+        // seguir contando en el ranking, para que no queden puntos "fantasma".
+        if (typeof revertirPuntosDeLectura === "function") {
+            await revertirPuntosDeLectura(id);
+        }
+
         await cargarCatalogoLecturas(true);
         if (alEliminar) alEliminar();
     } catch (error) {

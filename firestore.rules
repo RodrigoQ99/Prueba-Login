@@ -31,20 +31,30 @@ service cloud.firestore {
 
     // Cada usuario solo puede crear/editar SU PROPIO documento.
     // Cualquiera que esté logueado puede leer (para poder calcular el ranking).
+    // El administrador también puede actualizar el campo "puntosTotales"
+    // de CUALQUIER usuario (y solo ese campo) — se usa al eliminar una
+    // lectura del catálogo, para restarle a cada quien los puntos que
+    // había ganado con ella y que el ranking quede correcto.
     match /usuarios/{usuarioId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == usuarioId;
-      allow update: if request.auth != null && request.auth.uid == usuarioId;
+      allow update: if request.auth != null && (
+                      request.auth.uid == usuarioId ||
+                      (esAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["puntosTotales"]))
+                    );
       allow delete: if false;
     }
 
     // Cualquier usuario logueado puede registrar SU propio progreso.
-    // Nadie puede editar o borrar progreso ya guardado (evita hacer trampa).
+    // Nadie puede editar progreso ya guardado (evita hacer trampa), pero
+    // el administrador sí puede BORRAR entradas de progreso cuando la
+    // lectura a la que pertenecen se elimina del catálogo.
     match /progreso/{progresoId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null
                     && request.resource.data.usuarioId == request.auth.uid;
-      allow update, delete: if false;
+      allow update: if false;
+      allow delete: if esAdmin();
     }
 
     // El ranking actual (colegios) lo puede leer cualquiera logueado,
