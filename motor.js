@@ -440,6 +440,10 @@ function mostrarElementosLectura(){
 
 function arrancarLecturaCronometrada(){
 
+    // Por si se llega aquí directo (admin, o bono ya aceptado) sin pasar
+    // antes por mostrarPantallaInicio/ocultarElementosLectura.
+    mostrarElementosLectura();
+
     TIEMPO_LECTURA = lecturaActual.tiempoLectura;
     TIEMPO_CUESTIONARIO = lecturaActual.tiempoCuestionario || 30;
 
@@ -685,7 +689,7 @@ async function calificar(){
     });
 
     document.getElementById("resultado").innerHTML =
-        `Resultado: ${estrellas}/${totalPreguntas} ⭐`;
+        generarHTMLEstrellas(estrellas, totalPreguntas);
 
     // Guardar el progreso, sumar puntos y generar el código de premio en Firestore
     const resultadoGuardado = await guardarProgreso(
@@ -715,7 +719,7 @@ async function calificar(){
     }else{
 
         document.getElementById("mensajeFinal").innerHTML =
-            `Esa era tu única oportunidad para esta lectura. Tu resultado: ${estrellas}/${totalPreguntas} ⭐`;
+            "Esa era tu única oportunidad para esta lectura.";
 
     }
 

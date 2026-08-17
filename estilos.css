@@ -426,6 +426,11 @@ button:active{
     flex:1;
 }
 
+.gradoRanking{
+    font-size:13px;
+    color:var(--texto-suave);
+}
+
 .puntosRanking{
     font-weight:bold;
     color:#0a84ff;
@@ -767,10 +772,32 @@ button:active{
 ========================== */
 
 .modalCajaInfo{
+    position:relative;
     max-width:420px;
     text-align:left;
     max-height:80vh;
     overflow-y:auto;
+}
+
+.botonEngranaje{
+    position:absolute;
+    top:14px;
+    right:14px;
+    display:block;
+    width:auto;
+    margin:0;
+    padding:6px;
+    background:none;
+    border:none;
+    font-size:20px;
+    line-height:1;
+    color:var(--texto-suave);
+    cursor:pointer;
+}
+
+.botonEngranaje:hover{
+    opacity:1;
+    color:var(--azul);
 }
 
 .modalCajaInfo h2{
@@ -862,6 +889,41 @@ button.menuLink{
 .tarjetaBloqueada{
     opacity:0.55;
     cursor:not-allowed;
+}
+
+
+/* ==========================
+   ESTRELLAS DE RESULTADO
+========================== */
+
+.estrellasResultado{
+    display:inline-flex;
+    gap:2px;
+    margin-top:4px;
+}
+
+.estrellaContenedor{
+    position:relative;
+    display:inline-block;
+    font-size:22px;
+    line-height:1;
+}
+
+.estrellaFondo{
+    color:#d9dde3;
+}
+
+.estrellaLlena{
+    position:absolute;
+    top:0;
+    left:0;
+    overflow:hidden;
+    white-space:nowrap;
+    color:#f5a623;
+}
+
+.tarjetaEstado .estrellaContenedor{
+    font-size:14px;
 }
 
 

@@ -46,6 +46,46 @@ function cargarPremioPorNivel(forzarRecarga) {
 }
 
 /**
+ * Convierte un resultado (ej. 6 de 7 correctas) a una calificación
+ * SIEMPRE sobre 3 estrellas, en pasos de media estrella, redondeando
+ * hacia ABAJO — así una lectura con banco de más de 3 preguntas nunca
+ * muestra las 3 estrellas llenas si no respondió TODO bien (ej. 6/7
+ * correctas queda en 2.5 estrellas, no en 3).
+ */
+function calcularEstrellasSobre3(estrellas, totalPreguntas) {
+    if (!totalPreguntas) return 0;
+    const proporcion = (estrellas / totalPreguntas) * 3;
+    return Math.floor(proporcion * 2) / 2;
+}
+
+/**
+ * Genera el HTML de 3 estrellas (silueta vacía + relleno según el
+ * resultado, con soporte de medias estrellas) para mostrar en vez de
+ * texto tipo "Resultado: 2/3".
+ */
+function generarHTMLEstrellas(estrellas, totalPreguntas) {
+
+    const llenas = calcularEstrellasSobre3(estrellas, totalPreguntas);
+
+    let html = '<span class="estrellasResultado">';
+
+    for (let i = 0; i < 3; i++) {
+        const relleno = Math.max(0, Math.min(1, llenas - i)) * 100;
+        html += `
+            <span class="estrellaContenedor">
+                <span class="estrellaFondo">★</span>
+                <span class="estrellaLlena" style="width:${relleno}%">★</span>
+            </span>
+        `;
+    }
+
+    html += '</span>';
+
+    return html;
+
+}
+
+/**
  * Normaliza texto para poder AGRUPAR correctamente aunque la gente
  * escriba con mayúsculas distintas o espacios de más
  * (ej. "unis", "Unis ", "UNIS " cuentan como el mismo grupo).
@@ -78,9 +118,10 @@ async function actualizarRankingPersonal() {
 
     snapshot.forEach(doc => {
         const data = doc.data();
+        const nombreAMostrar = (data.mostrarAlias && data.alias) ? data.alias : (data.nombre || "Anónimo");
         lista.push({
             uid: doc.id,
-            nombre: data.nombre || "Anónimo",
+            nombre: nombreAMostrar,
             tipo: data.tipo || "particular",
             puntos: data.puntosTotales || 0
         });

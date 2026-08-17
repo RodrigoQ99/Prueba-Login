@@ -105,12 +105,15 @@ async function cargarListaLecturas() {
         const tieneBono = bonoActivo === lectura.id;
         const bloqueada = !completada && yaIntentada && !tieneBono;
 
+        const mejor = mejorResultadoPorId[lectura.id];
+
         let estado = "Comenzar →";
         if (completada) {
-            estado = "✅ Completada";
+            estado = `Completada${mejor ? `<br>${generarHTMLEstrellas(mejor.estrellas, mejor.total)}` : ""}`;
         } else if (bloqueada) {
-            const mejor = mejorResultadoPorId[lectura.id];
-            estado = mejor ? `Resultado: ${mejor.estrellas}/${mejor.total} ⭐` : "Sin oportunidad";
+            estado = mejor
+                ? `Sin aprobar<br>${generarHTMLEstrellas(mejor.estrellas, mejor.total)}`
+                : "Sin oportunidad";
         } else if (tieneBono) {
             estado = "🎁 Oportunidad extra →";
         }
@@ -137,11 +140,21 @@ async function cargarListaLecturas() {
         lectura => idsCompletados.has(lectura.id)
     );
 
+    // La sugerencia de "lectura sorpresa" es para cuando ya tiene VARIAS
+    // lecturas desbloqueadas (por ejemplo, volvió a escanear una que ya
+    // había hecho) — no debe aparecer justo al terminar su primera y
+    // única lectura.
+    const tieneVariasDesbloqueadas = lecturasDesbloqueadas.length > 1;
+
     const pendientesPorDescubrir = CATALOGO_LECTURAS.filter(
         lectura => !desbloqueadasCompletas.includes(lectura.id)
     );
 
-    if (todasCompletas && pendientesPorDescubrir.length > 0) {
+    if (!tieneVariasDesbloqueadas) {
+
+        cajaSugerencia.style.display = "none";
+
+    } else if (todasCompletas && pendientesPorDescubrir.length > 0) {
 
         const sugerida = pendientesPorDescubrir[
             Math.floor(Math.random() * pendientesPorDescubrir.length)

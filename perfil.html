@@ -5,7 +5,7 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mis premios</title>
+    <title>Editar perfil</title>
     <link rel="stylesheet" href="estilos.css">
 
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
@@ -106,15 +106,43 @@
 
 <div id="contenedor" style="display:none;">
 
-    <h1>🎁 Mis premios</h1>
+    <h1>✏️ Editar perfil</h1>
 
     <p style="text-align:center; color:var(--texto-suave); margin-bottom:25px;">
-        Cada lectura que apruebas te gana un premio. Toca "Canjear" y muéstrale
-        el código al encargado.
+        Así te vamos a mostrar en el ranking.
     </p>
 
-    <div id="listaPremios">
-        <p style="text-align:center;">Cargando...</p>
+    <div class="cajaCheckpoint" style="max-width:460px; margin:0 auto;">
+
+        <label style="display:block; font-weight:600; margin-bottom:6px;">Nombre</label>
+        <input type="text" id="campoNombrePerfil" placeholder="Tu nombre">
+
+        <label style="display:block; font-weight:600; margin:15px 0 6px;">Alias (opcional)</label>
+        <input type="text" id="campoAliasPerfil" placeholder="Ej. Lector99">
+        <small style="display:block; color:#888; margin:-8px 0 10px;">
+            Nadie más puede tener exactamente el mismo alias que tú.
+        </small>
+
+        <p id="errorPerfil" class="errorTexto" style="display:none;"></p>
+
+        <p style="font-weight:600; margin:20px 0 10px;">¿Qué quieres que aparezca en el ranking?</p>
+
+        <label class="opcionTipo">
+            <input type="radio" name="mostrarComo" value="nombre" checked>
+            Mi nombre
+        </label>
+        <br>
+        <label class="opcionTipo">
+            <input type="radio" name="mostrarComo" value="alias">
+            Mi alias
+        </label>
+
+        <button id="btnGuardarPerfil" style="margin-top:20px; width:100%;">
+            Guardar cambios
+        </button>
+
+        <p id="mensajePerfil" style="text-align:center; margin-top:12px; font-weight:600;"></p>
+
     </div>
 
 </div>
@@ -123,7 +151,7 @@
 <script src="firebase-init.js"></script>
 <script src="lecturas.js"></script>
 <script src="puntos.js"></script>
-<script src="premios.js"></script>
+<script src="perfil.js"></script>
 <script src="auth.js"></script>
 <script src="menu.js"></script>
 

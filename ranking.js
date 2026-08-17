@@ -66,13 +66,12 @@ function mostrarRankingPersonal(lista, uidActual) {
     let html = top10.map((item, i) => {
 
         const esYo = item.uid === uidActual;
-        const etiquetaTipo = item.tipo === "estudiante" ? "Estudiante" : "Particular";
 
         return `
             <div class="filaRanking ${esYo ? "filaRankingPropia" : ""}">
                 <span class="lugarRanking">${medallas[i] || (i + 1) + "."}</span>
                 <span class="infoRanking">
-                    <strong>${item.nombre}${esYo ? " (tú)" : ""}</strong> — ${etiquetaTipo}
+                    <strong>${item.nombre}${esYo ? " (tú)" : ""}</strong>
                 </span>
                 <span class="puntosRanking">${item.puntos} pts</span>
             </div>
@@ -145,7 +144,8 @@ function mostrarRankingColegios(lista, colegioActual, gradoActual) {
         <div class="filaRanking">
             <span class="lugarRanking">${medallas[i] || (i + 1) + "."}</span>
             <span class="infoRanking">
-                <strong>${item.colegio}</strong> — ${item.grado}
+                <strong>${item.colegio}</strong><br>
+                <span class="gradoRanking">${item.grado}</span>
             </span>
             <span class="puntosRanking">${item.puntos} pts</span>
         </div>
