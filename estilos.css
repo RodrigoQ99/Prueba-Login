@@ -941,18 +941,11 @@ button.menuLink{
 }
 
 .palabraMejora{
-    border-radius:4px;
-    transition:background-color 0.2s, color 0.2s;
+    transition:background-color 0.15s ease;
 }
 
 .palabraMejora.palabraResaltada{
-    background:rgba(26, 95, 180, 0.15);
-}
-
-.palabraMejora.palabraActual{
-    background:var(--azul);
-    color:white;
-    padding:0 2px;
+    background:#ffe066;
 }
 
 .cajaCheckpoint{

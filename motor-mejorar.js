@@ -34,13 +34,28 @@ let cronometroInterval = null;
 let yaAvanzoAlCuestionario = false;
 let listaPalabrasTexto = [];
 
-// Lectura asistida: resalta el texto conforme avanza el minuto, para que
-// se pueda leer al ritmo en que se va marcando. Se puede prender/apagar
-// en cualquier momento con el interruptor; el botón de reinicio (solo
-// habilitado mientras está prendida) vuelve el cronómetro y el
-// resaltado a cero sin perder la lectura en curso.
+// Lectura asistida: va "subrayando" el texto (como un resaltador) al
+// ritmo del minuto, respetando pausas más largas después de comas,
+// puntos, etc. Se puede prender/apagar en cualquier momento con el
+// interruptor, sin que la página se mueva sola — el usuario sigue
+// haciendo scroll libremente. El botón de reinicio (solo habilitado
+// mientras está prendida) vuelve el cronómetro y el resaltado a cero
+// sin perder la lectura en curso.
 let lecturaAsistidaActiva = false;
 let spansPalabrasMejora = [];
+let tiemposInicioAsistidos = [];
+
+// Pausa extra (en segundos) que se le agrega al avance del resaltado
+// después de una palabra que termina en cada uno de estos signos.
+const PAUSA_POR_SIGNO_ASISTIDA = {
+    ",": 0.25,
+    ";": 0.50,
+    ":": 0.50,
+    ".": 0.80,
+    "…": 1.00,
+    "?": 0.80,
+    "!": 0.80
+};
 
 // Preguntas elegidas al azar del banco de esta lectura para ESTA sesión.
 let preguntasSeleccionadasMejora = [];
@@ -123,20 +138,14 @@ async function iniciarLectura() {
         mostrarBotonEditarMejora(lectura);
     }
 
-    // Cada palabra queda envuelta en su propio <span> para poder
-    // resaltarla progresivamente cuando la lectura asistida está activa.
-    textoLecturaMejora.innerHTML = lectura.texto
-        .map(parrafo => {
-            const palabrasHtml = parrafo
-                .split(/\s+/)
-                .filter(p => p.length > 0)
-                .map(palabra => `<span class="palabraMejora">${palabra}</span>`)
-                .join(" ");
-            return `<p>${palabrasHtml}</p>`;
-        })
-        .join("");
+    // Cada palabra (con su espacio pegado, para que el resaltado no deje
+    // huecos entre palabras) queda envuelta en su propio <span>, para
+    // poder ir "subrayándolas" progresivamente con la lectura asistida.
+    const textoAsistido = prepararTextoAsistido(lectura.texto);
+    textoLecturaMejora.innerHTML = textoAsistido.html;
 
     spansPalabrasMejora = Array.from(textoLecturaMejora.querySelectorAll(".palabraMejora"));
+    tiemposInicioAsistidos = calcularIniciosAsistidos(textoAsistido.palabras);
 
     // Armar la lista de palabras del texto completo (para poder
     // calcular después las palabras por minuto)
@@ -162,13 +171,15 @@ async function iniciarLectura() {
 
     });
 
-    // Arrancar el cronómetro
+    // Arrancar el cronómetro (cada 100ms, para que el resaltado pueda
+    // respetar pausas cortas como 0.25s o 0.50s en vez de solo enteros)
     cronometroInterval = setInterval(() => {
 
-        segundosTranscurridos++;
+        segundosTranscurridos = Math.round((segundosTranscurridos + 0.1) * 10) / 10;
 
-        const minutos = String(Math.floor(segundosTranscurridos / 60)).padStart(2, "0");
-        const segundos = String(segundosTranscurridos % 60).padStart(2, "0");
+        const segundosEnteros = Math.floor(segundosTranscurridos);
+        const minutos = String(Math.floor(segundosEnteros / 60)).padStart(2, "0");
+        const segundos = String(segundosEnteros % 60).padStart(2, "0");
         cronometro.textContent = `${minutos}:${segundos}`;
 
         if (lecturaAsistidaActiva) actualizarResaltadoAsistido();
@@ -177,7 +188,7 @@ async function iniciarLectura() {
             mostrarCheckpoint();
         }
 
-    }, 1000);
+    }, 100);
 
 }
 
@@ -186,31 +197,95 @@ async function iniciarLectura() {
 // LECTURA ASISTIDA (resaltado + reinicio)
 // ==========================
 
-// Resalta el texto hasta el punto que le corresponde según qué
-// proporción del minuto ya transcurrió (sin importar cuán largo sea
-// el texto, siempre termina de resaltarse justo al llegar al minuto).
+// Envuelve cada palabra del texto en su propio <span>, incluyendo el
+// espacio que la sigue (para que el resaltado se vea como una sola
+// franja continua, sin huecos entre palabras). Devuelve también la
+// lista plana de palabras (con su puntuación pegada) en el mismo
+// orden, para calcular después los tiempos de cada una.
+function prepararTextoAsistido(parrafos) {
+
+    const tokensPorParrafo = parrafos.map(parrafo =>
+        parrafo.split(/\s+/).filter(p => p.length > 0)
+    );
+
+    const html = tokensPorParrafo.map(tokens => {
+        const palabrasHtml = tokens
+            .map((palabra, i) => `<span class="palabraMejora">${palabra}${i < tokens.length - 1 ? " " : ""}</span>`)
+            .join("");
+        return `<p>${palabrasHtml}</p>`;
+    }).join("");
+
+    const palabras = tokensPorParrafo.reduce((todas, tokens) => todas.concat(tokens), []);
+
+    return { html, palabras };
+
+}
+
+// Cuánta pausa extra le corresponde a una palabra según el signo de
+// puntuación con el que termina (0 si no termina en ninguno de ellos).
+function pausaTrasPalabraAsistida(palabra) {
+    if (palabra.endsWith("...")) return PAUSA_POR_SIGNO_ASISTIDA["…"];
+    return PAUSA_POR_SIGNO_ASISTIDA[palabra.slice(-1)] || 0;
+}
+
+// Calcula, para cada palabra, el segundo (desde que arranca la lectura)
+// en el que le toca empezar a verse resaltada. La suma de la lectura
+// "base" de todas las palabras más sus pausas de puntuación siempre da
+// exactamente TIEMPO_CHECKPOINT, así el resaltado arranca con el
+// cronómetro y termina justo al cumplirse el minuto, sin importar cuán
+// largo sea el texto ni cuánta puntuación tenga.
+function calcularIniciosAsistidos(palabras) {
+
+    if (palabras.length === 0) return [];
+
+    const pausas = palabras.map(pausaTrasPalabraAsistida);
+    const pausaTotal = pausas.reduce((suma, p) => suma + p, 0);
+
+    // Si un texto muy corto tuviera tanta puntuación que las pausas por
+    // sí solas casi llenarían el minuto, se recortan proporcionalmente
+    // para dejarle tiempo de sobra a la lectura de las palabras.
+    const presupuestoPausas = Math.min(pausaTotal, TIEMPO_CHECKPOINT * 0.6);
+    const factorPausa = pausaTotal > 0 ? presupuestoPausas / pausaTotal : 0;
+
+    const duracionBase = (TIEMPO_CHECKPOINT - presupuestoPausas) / palabras.length;
+
+    const inicios = [];
+    let acumulado = 0;
+
+    palabras.forEach((palabra, i) => {
+        inicios.push(acumulado);
+        acumulado += duracionBase + pausas[i] * factorPausa;
+    });
+
+    return inicios;
+
+}
+
+// Resalta (como un marcador amarillo continuo) todas las palabras cuyo
+// turno ya llegó según el cronómetro. No mueve el scroll: la
+// navegación en "Mejorar la lectura" es libre, el resaltado solo
+// acompaña visualmente.
 function actualizarResaltadoAsistido() {
 
     if (spansPalabrasMejora.length === 0) return;
 
-    const fraccion = Math.min(segundosTranscurridos / TIEMPO_CHECKPOINT, 1);
-    const indiceActual = Math.min(
-        Math.floor(fraccion * spansPalabrasMejora.length),
-        spansPalabrasMejora.length - 1
-    );
+    let indiceActual = 0;
+    while (
+        indiceActual < tiemposInicioAsistidos.length &&
+        tiemposInicioAsistidos[indiceActual] <= segundosTranscurridos
+    ) {
+        indiceActual++;
+    }
 
     spansPalabrasMejora.forEach((span, i) => {
         span.classList.toggle("palabraResaltada", i < indiceActual);
-        span.classList.toggle("palabraActual", i === indiceActual);
     });
-
-    spansPalabrasMejora[indiceActual].scrollIntoView({ block: "center", behavior: "smooth" });
 
 }
 
 function quitarResaltadoAsistido() {
     spansPalabrasMejora.forEach(span => {
-        span.classList.remove("palabraResaltada", "palabraActual");
+        span.classList.remove("palabraResaltada");
     });
 }
 
