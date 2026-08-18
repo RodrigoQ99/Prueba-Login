@@ -862,7 +862,7 @@ function renderizarListaAdminLecturas() {
         if (lecturasDelNivel.length === 0) return "";
 
         return `
-            <details class="grupoNivelAdmin" open>
+            <details class="grupoNivelAdmin">
                 <summary>${NOMBRE_NIVEL[nivel] || nivel} (${lecturasDelNivel.length})</summary>
                 <div class="listaAdminLecturasNivel">
                     ${lecturasDelNivel.map(tarjetaLectura).join("")}
