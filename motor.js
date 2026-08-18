@@ -184,19 +184,31 @@ async function iniciarLectura(){
         console.error("No se pudo revisar tu progreso:", error);
     }
 
-    // Si ya la había aprobado antes, siempre es repaso bloqueado (puede
-    // releer, pero no responder el cuestionario de nuevo) — sin importar
-    // cómo haya quedado registrado el intento, así una cuenta con
-    // progreso de antes de este sistema no se queda viendo la
-    // advertencia de "1 oportunidad" en una lectura que ya ganó.
+    const lecturasIntentadas = datosUsuario.lecturasIntentadas || [];
+    const bonoActivo = datosUsuario.bonoActivo || null;
+
+    // Si ya la había aprobado antes, es repaso bloqueado (puede releer,
+    // pero no responder el cuestionario de nuevo) — sin importar cómo
+    // haya quedado registrado el intento, así una cuenta con progreso de
+    // antes de este sistema no se queda viendo la advertencia de "1
+    // oportunidad" en una lectura que ya ganó. Pero antes de resignarse
+    // a eso, si ya descubrió TODO el catálogo se le da la oportunidad de
+    // un bono de completista en alguna lectura que le haya quedado
+    // pendiente — si no, reescanear una lectura ya aprobada nunca
+    // llevaría a ningún lado nuevo.
     if(yaAprobada){
-        mostrarRepasoBloqueado(null);
+
+        if(!bonoActivo){
+            const otorgado = await revisarBonoDeCompletista(user, datosUsuario, lecturasIntentadas);
+            if(otorgado) return;
+        }
+
+        mostrarRepasoBloqueado(bonoActivo);
         return;
+
     }
 
-    const lecturasIntentadas = datosUsuario.lecturasIntentadas || [];
     const yaIntentada = lecturasIntentadas.includes(lecturaActual.id);
-    const bonoActivo = datosUsuario.bonoActivo || null;
 
     // Primera vez que abre esta lectura: su única oportunidad normal.
     if(!yaIntentada){
