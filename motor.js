@@ -125,14 +125,35 @@ async function iniciarLectura(){
 
     const user = auth.currentUser;
 
-    // Marcar esta lectura como "desbloqueada" (escaneada), para que
-    // aparezca en "Mis lecturas". No importa si ya estaba desbloqueada:
-    // arrayUnion no la duplica.
+    let datosUsuario = {};
+
     if(user){
 
+        try{
+            const usuarioDoc = await db.collection("usuarios").doc(user.uid).get();
+            datosUsuario = usuarioDoc.exists ? usuarioDoc.data() : {};
+        }catch(error){
+            console.error("No se pudo revisar tus lecturas desbloqueadas:", error);
+        }
+
+        // Marcar esta lectura como "desbloqueada" (escaneada), para que
+        // aparezca en "Mis lecturas". No importa si ya estaba desbloqueada:
+        // arrayUnion no la duplica.
         db.collection("usuarios").doc(user.uid).update({
             lecturasDesbloqueadas: firebase.firestore.FieldValue.arrayUnion(lecturaActual.id)
         }).catch(error => console.error("No se pudo desbloquear la lectura:", error));
+
+        // Si esta cuenta ya había escaneado esta misma lectura antes (en
+        // cualquier visita anterior, la haya aprobado o no), repetirla no
+        // tiene sentido: se manda a una lectura al azar entre las que
+        // todavía no se han descubierto. Aplica también a la cuenta admin,
+        // que es con la que se prueba este flujo.
+        const yaDesbloqueadaAntes = (datosUsuario.lecturasDesbloqueadas || [])
+            .includes(lecturaActual.id);
+
+        if(yaDesbloqueadaAntes && redirigirALecturaAlAzarSiHayPendientes(datosUsuario)){
+            return;
+        }
 
     }
 
@@ -148,20 +169,15 @@ async function iniciarLectura(){
 
     if(!user) return;
 
-    let datosUsuario = {};
     let yaAprobada = false;
 
     try{
 
-        const [usuarioDoc, intentosPrevios] = await Promise.all([
-            db.collection("usuarios").doc(user.uid).get(),
-            db.collection("progreso")
-                .where("usuarioId", "==", user.uid)
-                .where("lecturaId", "==", lecturaActual.id)
-                .get()
-        ]);
+        const intentosPrevios = await db.collection("progreso")
+            .where("usuarioId", "==", user.uid)
+            .where("lecturaId", "==", lecturaActual.id)
+            .get();
 
-        datosUsuario = usuarioDoc.exists ? usuarioDoc.data() : {};
         yaAprobada = intentosPrevios.docs.some(doc => doc.data().puntosGanados > 0);
 
     }catch(error){
@@ -201,6 +217,30 @@ async function iniciarLectura(){
     }
 
     mostrarRepasoBloqueado(bonoActivo);
+
+}
+
+
+// ==========================
+// REDIRIGIR A UNA LECTURA NUEVA AL AZAR
+// ==========================
+// Se usa cuando esta cuenta vuelve a escanear un QR de una lectura que ya
+// había desbloqueado antes. En vez de mostrarla de nuevo, la manda a una
+// lectura al azar de las que todavía no ha descubierto. Devuelve true si
+// encontró una pendiente y ya disparó la redirección (el llamador debe
+// cortar la ejecución); false si ya descubrió todo el catálogo, para que
+// el llamador siga con el flujo normal (repaso bloqueado / bono de
+// completista).
+function redirigirALecturaAlAzarSiHayPendientes(datosUsuario){
+
+    const yaDesbloqueadas = new Set(datosUsuario.lecturasDesbloqueadas || []);
+    const pendientes = CATALOGO_LECTURAS.filter(l => !yaDesbloqueadas.has(l.id));
+
+    if(pendientes.length === 0) return false;
+
+    const sugerida = pendientes[Math.floor(Math.random() * pendientes.length)];
+    window.location.replace(`lectura.html?id=${encodeURIComponent(sugerida.id)}`);
+    return true;
 
 }
 
