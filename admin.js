@@ -751,21 +751,31 @@ function inicializarAdminIndex() {
     panel.style.marginTop = "35px";
     panel.innerHTML = `
         <hr style="margin:30px 0; border:none; border-top:1px solid var(--borde);">
-        <h2 style="text-align:center;">🔧 Panel de administrador</h2>
-        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:15px 0;">
-            <button id="btnNuevaLectura" style="max-width:280px;">+ Agregar lectura nueva</button>
-            <button id="btnEditarPremios" style="max-width:260px; background:white; color:var(--azul); border:2px solid var(--azul);">🏆 Editar premios</button>
-            <button id="btnEditarPremiadores" style="max-width:260px; background:white; color:var(--azul); border:2px solid var(--azul);">🎟️ Editar premiadores</button>
-            <a href="premiador.html" target="_blank"
-               style="display:inline-block; width:auto; max-width:260px; padding:15px 25px; margin:0; border-radius:12px; font-weight:600; text-decoration:none; text-align:center; background:white; color:var(--azul); border:2px solid var(--azul);">
-                🔗 Ir a Premiador
-            </a>
-            ${(typeof DATOS_ORIGINALES_LECTURAS !== "undefined" && CATALOGO_LECTURAS.length === 0)
-                ? `<button id="btnMigrarDatos" style="max-width:280px; background:#2e9e5b;">🚀 Migrar datos antiguos</button>`
-                : ""}
-            <button id="btnRepararPuntos" style="max-width:280px; background:white; color:var(--azul); border:2px solid var(--azul);">🩹 Reparar puntos de lecturas ya eliminadas</button>
+        <h2 style="text-align:center;">Panel de administrador</h2>
+
+        <div class="seccionAdmin">
+            <h3 class="seccionAdminTitulo">Lecturas</h3>
+            <div class="seccionAdminBotones">
+                <button id="btnNuevaLectura">+ Agregar lectura nueva</button>
+                ${(typeof DATOS_ORIGINALES_LECTURAS !== "undefined" && CATALOGO_LECTURAS.length === 0)
+                    ? `<button id="btnMigrarDatos" style="background:#2e9e5b;">Migrar datos antiguos</button>`
+                    : ""}
+                <button id="btnRepararPuntos" class="botonAdminContorno">Borrar puntos de lecturas eliminadas</button>
+            </div>
+            <div id="listaAdminLecturas"></div>
         </div>
-        <div id="listaAdminLecturas"></div>
+
+        <div class="seccionAdmin">
+            <h3 class="seccionAdminTitulo">Premios</h3>
+            <div class="seccionAdminBotones">
+                <button id="btnEditarPremios" class="botonAdminContorno">Editar premios</button>
+                <button id="btnEditarPremiadores" class="botonAdminContorno">Editar premiadores</button>
+                <a href="premiador.html" target="_blank" class="botonAdminContorno"
+                   style="display:inline-block; padding:15px 25px; border-radius:12px; font-weight:600; text-decoration:none; text-align:center;">
+                    Ir a Premiador
+                </a>
+            </div>
+        </div>
     `;
     contenedor.appendChild(panel);
 
@@ -809,7 +819,7 @@ function inicializarAdminIndex() {
         }
 
         btn.disabled = false;
-        btn.textContent = "🩹 Reparar puntos de lecturas ya eliminadas";
+        btn.textContent = "Borrar puntos de lecturas eliminadas";
 
     });
 
@@ -817,16 +827,25 @@ function inicializarAdminIndex() {
 
 }
 
+// Orden fijo en el que se muestran los desplegables de nivel, sin
+// importar el orden en que las lecturas vengan del catálogo.
+const ORDEN_NIVELES_ADMIN = ["facil", "intermedio", "dificil"];
+
 function renderizarListaAdminLecturas() {
 
     const cont = document.getElementById("listaAdminLecturas");
     if (!cont) return;
 
-    cont.innerHTML = CATALOGO_LECTURAS.map(lectura => `
+    if (CATALOGO_LECTURAS.length === 0) {
+        cont.innerHTML = "<p style='text-align:center;'>Todavía no hay lecturas en el catálogo.</p>";
+        return;
+    }
+
+    const tarjetaLectura = lectura => `
         <div class="tarjetaLectura" style="cursor:default;">
             <div class="tarjetaInfo">
                 <p class="tarjetaTitulo">${lectura.titulo}</p>
-                <p class="tarjetaNivel">Nivel ${lectura.nivel} · ${(lectura.bancoPreguntas || []).length} preguntas en el banco (muestra ${lectura.preguntasAMostrar})</p>
+                <p class="tarjetaNivel">${(lectura.bancoPreguntas || []).length} preguntas en el banco (muestra ${lectura.preguntasAMostrar})</p>
             </div>
             <div style="display:flex; gap:8px;">
                 <a href="lectura.html?id=${encodeURIComponent(lectura.id)}" target="_blank" class="botonAdminChico" title="Abrir">🔗</a>
@@ -835,7 +854,23 @@ function renderizarListaAdminLecturas() {
                 <button type="button" class="botonAdminChico botonPeligro" data-eliminar="${lectura.id}">🗑️</button>
             </div>
         </div>
-    `).join("") || "<p style='text-align:center;'>Todavía no hay lecturas en el catálogo.</p>";
+    `;
+
+    cont.innerHTML = ORDEN_NIVELES_ADMIN.map(nivel => {
+
+        const lecturasDelNivel = CATALOGO_LECTURAS.filter(l => l.nivel === nivel);
+        if (lecturasDelNivel.length === 0) return "";
+
+        return `
+            <details class="grupoNivelAdmin" open>
+                <summary>${NOMBRE_NIVEL[nivel] || nivel} (${lecturasDelNivel.length})</summary>
+                <div class="listaAdminLecturasNivel">
+                    ${lecturasDelNivel.map(tarjetaLectura).join("")}
+                </div>
+            </details>
+        `;
+
+    }).join("");
 
     cont.querySelectorAll("[data-editar]").forEach(btn => {
         btn.addEventListener("click", () => {

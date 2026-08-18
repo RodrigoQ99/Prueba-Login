@@ -18,6 +18,9 @@ const cajaResultadoPpm = document.getElementById("cajaResultadoPpm");
 const cuestionarioMejora = document.getElementById("cuestionarioMejora");
 const listaPreguntasMejora = document.getElementById("listaPreguntasMejora");
 const mensajeFinalMejora = document.getElementById("mensajeFinalMejora");
+const controlAsistida = document.getElementById("controlAsistida");
+const switchLecturaAsistida = document.getElementById("switchLecturaAsistida");
+const btnReiniciarAsistida = document.getElementById("btnReiniciarAsistida");
 
 const parametrosMejora = new URLSearchParams(window.location.search);
 const idLecturaMejora = parametrosMejora.get("id");
@@ -30,6 +33,14 @@ let segundosTranscurridos = 0;
 let cronometroInterval = null;
 let yaAvanzoAlCuestionario = false;
 let listaPalabrasTexto = [];
+
+// Lectura asistida: resalta el texto conforme avanza el minuto, para que
+// se pueda leer al ritmo en que se va marcando. Se puede prender/apagar
+// en cualquier momento con el interruptor; el botón de reinicio (solo
+// habilitado mientras está prendida) vuelve el cronómetro y el
+// resaltado a cero sin perder la lectura en curso.
+let lecturaAsistidaActiva = false;
+let spansPalabrasMejora = [];
 
 // Preguntas elegidas al azar del banco de esta lectura para ESTA sesión.
 let preguntasSeleccionadasMejora = [];
@@ -112,9 +123,20 @@ async function iniciarLectura() {
         mostrarBotonEditarMejora(lectura);
     }
 
+    // Cada palabra queda envuelta en su propio <span> para poder
+    // resaltarla progresivamente cuando la lectura asistida está activa.
     textoLecturaMejora.innerHTML = lectura.texto
-        .map(parrafo => `<p>${parrafo}</p>`)
+        .map(parrafo => {
+            const palabrasHtml = parrafo
+                .split(/\s+/)
+                .filter(p => p.length > 0)
+                .map(palabra => `<span class="palabraMejora">${palabra}</span>`)
+                .join(" ");
+            return `<p>${palabrasHtml}</p>`;
+        })
         .join("");
+
+    spansPalabrasMejora = Array.from(textoLecturaMejora.querySelectorAll(".palabraMejora"));
 
     // Armar la lista de palabras del texto completo (para poder
     // calcular después las palabras por minuto)
@@ -149,6 +171,8 @@ async function iniciarLectura() {
         const segundos = String(segundosTranscurridos % 60).padStart(2, "0");
         cronometro.textContent = `${minutos}:${segundos}`;
 
+        if (lecturaAsistidaActiva) actualizarResaltadoAsistido();
+
         if (segundosTranscurridos >= TIEMPO_CHECKPOINT && !yaAvanzoAlCuestionario) {
             mostrarCheckpoint();
         }
@@ -156,6 +180,62 @@ async function iniciarLectura() {
     }, 1000);
 
 }
+
+
+// ==========================
+// LECTURA ASISTIDA (resaltado + reinicio)
+// ==========================
+
+// Resalta el texto hasta el punto que le corresponde según qué
+// proporción del minuto ya transcurrió (sin importar cuán largo sea
+// el texto, siempre termina de resaltarse justo al llegar al minuto).
+function actualizarResaltadoAsistido() {
+
+    if (spansPalabrasMejora.length === 0) return;
+
+    const fraccion = Math.min(segundosTranscurridos / TIEMPO_CHECKPOINT, 1);
+    const indiceActual = Math.min(
+        Math.floor(fraccion * spansPalabrasMejora.length),
+        spansPalabrasMejora.length - 1
+    );
+
+    spansPalabrasMejora.forEach((span, i) => {
+        span.classList.toggle("palabraResaltada", i < indiceActual);
+        span.classList.toggle("palabraActual", i === indiceActual);
+    });
+
+    spansPalabrasMejora[indiceActual].scrollIntoView({ block: "center", behavior: "smooth" });
+
+}
+
+function quitarResaltadoAsistido() {
+    spansPalabrasMejora.forEach(span => {
+        span.classList.remove("palabraResaltada", "palabraActual");
+    });
+}
+
+switchLecturaAsistida.addEventListener("change", () => {
+
+    lecturaAsistidaActiva = switchLecturaAsistida.checked;
+    btnReiniciarAsistida.disabled = !lecturaAsistidaActiva || yaAvanzoAlCuestionario;
+
+    if (lecturaAsistidaActiva) {
+        actualizarResaltadoAsistido();
+    } else {
+        quitarResaltadoAsistido();
+    }
+
+});
+
+btnReiniciarAsistida.addEventListener("click", () => {
+
+    if (btnReiniciarAsistida.disabled) return;
+
+    segundosTranscurridos = 0;
+    cronometro.textContent = "00:00";
+    actualizarResaltadoAsistido();
+
+});
 
 
 // ==========================
@@ -176,6 +256,7 @@ function mostrarCheckpoint() {
     clearInterval(cronometroInterval);
     btnContinuarCuestionario.style.display = "none";
     cajaCheckpoint.style.display = "block";
+    btnReiniciarAsistida.disabled = true;
 
 }
 
@@ -274,11 +355,13 @@ function avanzarAlCuestionario() {
 
     yaAvanzoAlCuestionario = true;
     clearInterval(cronometroInterval);
+    btnReiniciarAsistida.disabled = true;
 
     textoLecturaMejora.style.display = "none";
     btnContinuarCuestionario.style.display = "none";
     cajaCheckpoint.style.display = "none";
     cronometro.style.display = "none";
+    controlAsistida.style.display = "none";
 
     cuestionarioMejora.style.display = "block";
 
