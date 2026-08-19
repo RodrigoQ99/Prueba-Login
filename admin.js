@@ -7,18 +7,14 @@
 // mejora.html y lectura-mejorar.html.
 //
 // CÓMO SE IDENTIFICA AL ADMINISTRADOR:
-// Por su correo de Google. Nadie más ve estos controles, y las reglas
-// de Firestore (firestore.rules) también exigen este mismo correo para
-// poder escribir en las colecciones de lecturas — así que aunque
-// alguien manipulara el código desde el navegador, Firestore rechazaría
-// el cambio si no inició sesión con este correo exacto.
+// esAdmin() (ver admin-comun.js) revisa si el correo de Google del
+// usuario actual está en la colección "administradores" de Firestore.
+// Nadie más ve estos controles, y las reglas de Firestore
+// (firestore.rules) también exigen esa misma membresía para poder
+// escribir en las colecciones de lecturas — así que aunque alguien
+// manipulara el código desde el navegador, Firestore rechazaría el
+// cambio si su correo no está en esa colección.
 // ==========================================================
-
-const EMAIL_ADMIN = "joserodrigo.jrqd@gmail.com";
-
-function esAdmin() {
-    return !!(auth.currentUser && auth.currentUser.email === EMAIL_ADMIN);
-}
 
 
 // ==========================================================
@@ -735,6 +731,110 @@ async function abrirFormularioPremiadores(alGuardar) {
 
 
 // ==========================================================
+// FORMULARIO: ADMINISTRADORES
+// ==========================================================
+// Correos de Google autorizados para entrar a este panel (ver
+// admin-comun.js). El administrador PRINCIPAL (esPrincipal: true) no
+// tiene botón de eliminar aquí — y aunque alguien intentara borrarlo
+// manipulando el código, firestore.rules lo rechaza igual.
+
+async function abrirFormularioAdministradores(alGuardar) {
+
+    await cargarAdministradores();
+
+    const overlay = document.createElement("div");
+    overlay.className = "modalOverlay";
+    overlay.innerHTML = `
+        <div class="modalCaja modalCajaInfo" style="text-align:center;">
+            <h2>🛡️ Administradores</h2>
+            <p>Correos de Google autorizados para entrar a este panel.</p>
+            <div id="listaAdministradores" style="text-align:left; margin:15px 0;"></div>
+            <div style="display:flex; gap:8px;">
+                <input type="email" id="campoNuevoAdmin" placeholder="correo@gmail.com"
+                       style="flex:1; padding:10px; border-radius:8px; border:1px solid var(--borde);">
+                <button id="btnAgregarAdmin" style="width:auto; margin:0; padding:10px 16px;">+ Agregar</button>
+            </div>
+            <button class="modalCerrar" style="background:white; border:1px solid var(--borde); color:var(--texto-suave); margin-top:15px;">Cerrar</button>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    overlay.querySelector(".modalCerrar").addEventListener("click", () => {
+        overlay.remove();
+        if (alGuardar) alGuardar();
+    });
+
+    function render() {
+
+        const lista = overlay.querySelector("#listaAdministradores");
+
+        lista.innerHTML = ADMINISTRADORES.map(admin => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--borde);">
+                <span style="font-size:14px;">
+                    ${admin.email}
+                    ${admin.esPrincipal ? `<strong style="color:var(--azul); font-size:12px;"> (principal)</strong>` : ""}
+                </span>
+                ${admin.esPrincipal
+                    ? ""
+                    : `<button type="button" class="botonAdminChico botonPeligro" data-quitar="${admin.email}">🗑️</button>`}
+            </div>
+        `).join("") || "<p style='color:var(--texto-suave); font-size:14px;'>Todavía no hay administradores.</p>";
+
+        lista.querySelectorAll("[data-quitar]").forEach(btn => {
+            btn.addEventListener("click", async () => {
+
+                if (!confirm(`¿Quitarle acceso de administrador a ${btn.dataset.quitar}?`)) return;
+
+                try {
+                    await db.collection("administradores").doc(btn.dataset.quitar).delete();
+                    await cargarAdministradores(true);
+                    render();
+                } catch (error) {
+                    console.error("No se pudo quitar el administrador:", error);
+                    alert("No se pudo quitar el administrador.");
+                }
+
+            });
+        });
+
+    }
+
+    render();
+
+    overlay.querySelector("#btnAgregarAdmin").addEventListener("click", async () => {
+
+        const campo = overlay.querySelector("#campoNuevoAdmin");
+        const email = campo.value.trim().toLowerCase();
+
+        if (!email || !email.includes("@")) {
+            alert("Escribe un correo válido.");
+            return;
+        }
+
+        if (ADMINISTRADORES.some(admin => admin.email === email)) {
+            alert("Ese correo ya es administrador.");
+            return;
+        }
+
+        try {
+            await db.collection("administradores").doc(email).set({
+                esPrincipal: false,
+                agregadoEn: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            await cargarAdministradores(true);
+            campo.value = "";
+            render();
+        } catch (error) {
+            console.error("No se pudo agregar el administrador:", error);
+            alert("No se pudo agregar el administrador.");
+        }
+
+    });
+
+}
+
+
+// ==========================================================
 // PANEL EN "MIS LECTURAS" (index.html)
 // ==========================================================
 
@@ -776,6 +876,13 @@ function inicializarAdminIndex() {
                 </a>
             </div>
         </div>
+
+        <div class="seccionAdmin">
+            <h3 class="seccionAdminTitulo">Administradores</h3>
+            <div class="seccionAdminBotones">
+                <button id="btnEditarAdministradores" class="botonAdminContorno">Editar administradores</button>
+            </div>
+        </div>
     `;
     contenedor.appendChild(panel);
 
@@ -789,6 +896,10 @@ function inicializarAdminIndex() {
 
     document.getElementById("btnEditarPremiadores").addEventListener("click", () => {
         abrirFormularioPremiadores(() => inicializarAdminIndex());
+    });
+
+    document.getElementById("btnEditarAdministradores").addEventListener("click", () => {
+        abrirFormularioAdministradores(() => inicializarAdminIndex());
     });
 
     const btnMigrar = document.getElementById("btnMigrarDatos");

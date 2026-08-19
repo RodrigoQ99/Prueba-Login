@@ -7,8 +7,10 @@ async function cargarPantallaMejora() {
     const user = auth.currentUser;
     if (!user) return;
 
-    // Trae el catálogo y el rango de edades desde Firestore (cacheados)
-    await Promise.all([cargarCatalogoMejora(), cargarRangoEdades()]);
+    // Trae el catálogo, el rango de edades y la lista de administradores
+    // desde Firestore (todos cacheados) — la última la necesita
+    // inicializarAdminMejora() más abajo (dentro de renderizarListaMejora).
+    await Promise.all([cargarCatalogoMejora(), cargarRangoEdades(), cargarAdministradores()]);
 
     const usuarioDoc = await db.collection("usuarios").doc(user.uid).get();
     const datos = usuarioDoc.exists ? usuarioDoc.data() : {};

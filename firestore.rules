@@ -12,11 +12,14 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Correo de la cuenta administradora (panel de admin, catálogo,
-    // configuración). Solo esta cuenta puede escribir esas colecciones.
+    // Administradores (panel de admin, catálogo, configuración). Ya no es
+    // un solo correo hardcodeado: se revisa membresía en la colección
+    // "administradores" (un documento por correo, con el correo mismo
+    // como ID — ver más abajo). Cualquier correo con documento ahí puede
+    // escribir esas colecciones.
     function esAdmin() {
       return request.auth != null
-             && request.auth.token.email == "joserodrigo.jrqd@gmail.com";
+             && exists(/databases/$(database)/documents/administradores/$(request.auth.token.email));
     }
 
     // Los "premiadores" son las cuentas autorizadas para canjear premios
@@ -131,6 +134,22 @@ service cloud.firestore {
                     && request.resource.data.lecturaId == resource.data.lecturaId
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["usado", "usadoPor", "usadoEn"]);
       allow delete: if esAdmin();
+    }
+
+    // Administradores del panel — un documento por correo, usando el
+    // correo mismo como ID (ver esAdmin() arriba). Solo un admin puede
+    // ver la lista o agregar uno nuevo, y siempre con esPrincipal: false
+    // (nadie puede auto-otorgarse ni otorgarle a otro el estatus de
+    // principal desde la app). Nadie puede EDITAR un documento ya creado
+    // (así nadie puede degradar al principal cambiándole ese campo), y
+    // nadie puede ELIMINAR uno cuyo esPrincipal sea true — ni el dueño de
+    // esa cuenta ni ningún otro administrador, pase lo que pase en la
+    // interfaz.
+    match /administradores/{correoAdmin} {
+      allow read: if esAdmin();
+      allow create: if esAdmin() && request.resource.data.esPrincipal == false;
+      allow update: if false;
+      allow delete: if esAdmin() && resource.data.esPrincipal == false;
     }
   }
 }

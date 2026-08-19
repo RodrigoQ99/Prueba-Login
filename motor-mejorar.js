@@ -81,8 +81,10 @@ function normalizarPalabra(palabra) {
 
 async function iniciarLectura() {
 
-    // Trae el catálogo y el rango de edades desde Firestore (cacheados)
-    await Promise.all([cargarCatalogoMejora(), cargarRangoEdades()]);
+    // Trae el catálogo, el rango de edades y la lista de administradores
+    // desde Firestore (todos cacheados) — la última la necesita
+    // mostrarBotonEditarMejora() más abajo.
+    await Promise.all([cargarCatalogoMejora(), cargarRangoEdades(), cargarAdministradores()]);
     ubicacion = ubicarLecturaMejora(idLecturaMejora);
 
     if (!ubicacion) {

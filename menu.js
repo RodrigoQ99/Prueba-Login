@@ -93,15 +93,6 @@ if (btnQueEsEsto) {
     });
 }
 
-// Correo que puede editar el contenido de este modal. Duplicado aquí
-// (en vez de reusar esAdmin() de admin.js) porque menu.js se carga en
-// páginas como premios.html y ranking.html que no incluyen admin.js.
-const EMAIL_ADMIN_INFO = "joserodrigo.jrqd@gmail.com";
-
-function puedeEditarInfo() {
-    return !!(auth.currentUser && auth.currentUser.email === EMAIL_ADMIN_INFO);
-}
-
 const DEFAULT_INFO_HTML = `
     <p style="font-weight:600; margin-bottom:6px;">Lectura QR</p>
     <p>
@@ -140,6 +131,12 @@ const DEFAULT_INFO_HTML = `
 
 async function mostrarModalInfo() {
 
+    // Espera a que la lista de administradores esté lista (ver
+    // admin-comun.js) antes de decidir si mostrar el botón de editar —
+    // esta página puede no incluir admin.js, así que esAdmin() de aquí
+    // es la única fuente de verdad.
+    await cargarAdministradores();
+
     let htmlActual = DEFAULT_INFO_HTML;
 
     try {
@@ -155,7 +152,7 @@ async function mostrarModalInfo() {
     overlay.className = "modalOverlay";
     overlay.innerHTML = `
         <div class="modalCaja modalCajaInfo">
-            ${puedeEditarInfo() ? `<button type="button" class="botonEngranaje" title="Editar este contenido">⚙️</button>` : ""}
+            ${esAdmin() ? `<button type="button" class="botonEngranaje" title="Editar este contenido">⚙️</button>` : ""}
             <h2>¿Qué es esto?</h2>
             <div id="contenidoModalInfo">${htmlActual}</div>
             <button class="modalCerrar">Entendido</button>
@@ -178,7 +175,7 @@ async function mostrarModalInfo() {
 }
 
 // ==========================================================
-// EDICIÓN DEL CONTENIDO DE "¿QUÉ ES ESTO?" (solo EMAIL_ADMIN_INFO)
+// EDICIÓN DEL CONTENIDO DE "¿QUÉ ES ESTO?" (solo administradores)
 // ==========================================================
 
 function activarEdicionInfo(overlay, htmlActual) {

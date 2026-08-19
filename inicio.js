@@ -16,8 +16,11 @@ async function cargarListaLecturas() {
 
     if (!user) return;
 
-    // Trae el catálogo desde Firestore (solo hace la consulta la primera vez)
-    await cargarCatalogoLecturas();
+    // Trae el catálogo y la lista de administradores desde Firestore
+    // (ambos cacheados, solo hacen la consulta la primera vez) — la
+    // segunda es la que necesita inicializarAdminIndex() más abajo
+    // para decidir si mostrar el panel de administrador.
+    await Promise.all([cargarCatalogoLecturas(), cargarAdministradores()]);
 
     // Averiguar qué lecturas ha DESBLOQUEADO (escaneado) este usuario,
     // cuáles ya intentó (su única oportunidad, usada o no) y si tiene
