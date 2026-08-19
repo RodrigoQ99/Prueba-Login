@@ -100,17 +100,40 @@ service cloud.firestore {
     // Premios canjeables: uno por cada lectura aprobada por primera vez,
     // con su código de 6 dígitos. Cualquiera logueado puede leer (mismo
     // criterio que "progreso") — se necesita para que, al generar un
-    // código nuevo, se pueda revisar que no esté repetido, y para que
-    // el Premiador pueda buscar cualquier código. Solo un premiador
-    // puede marcar uno como canjeado, y solo una vez (de false a true).
+    // código nuevo, se pueda revisar que no esté repetido, para que el
+    // Premiador pueda buscar cualquier código, y para poder sumar el
+    // conteo global de donaciones (ver premios.js) sobre TODOS los
+    // usuarios, no solo el propio.
+    //
+    // Canjear y donar son dos caminos EXCLUYENTES para un mismo premio,
+    // y cada uno solo se puede activar una vez (de false a true):
+    // - Un premiador puede marcarlo canjeado, pero no si ya fue donado.
+    // - El dueño del premio puede marcarlo donado (él mismo, nadie más),
+    //   pero no si ya fue canjeado.
+    // Ninguno de los dos puede tocar más campos que los estrictamente
+    // necesarios para su propia acción. Los premios creados ANTES de que
+    // existiera "donado" no tienen ese campo — se usa resource.data.get()
+    // con un valor por defecto (en vez de resource.data.donado directo)
+    // para que leerlo en esos documentos viejos no truene la regla.
     match /premios/{premioId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null
                     && request.resource.data.usuarioId == request.auth.uid
-                    && request.resource.data.canjeado == false;
-      allow update: if esPremiador()
-                    && resource.data.canjeado == false
-                    && request.resource.data.canjeado == true;
+                    && request.resource.data.canjeado == false
+                    && request.resource.data.donado == false;
+      allow update: if
+                    (esPremiador()
+                      && resource.data.canjeado == false
+                      && resource.data.get('donado', false) == false
+                      && request.resource.data.canjeado == true
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["canjeado", "canjeadoPor", "fechaCanjeado"]))
+                    ||
+                    (request.auth != null
+                      && request.auth.uid == resource.data.usuarioId
+                      && resource.data.canjeado == false
+                      && resource.data.get('donado', false) == false
+                      && request.resource.data.donado == true
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["donado", "fechaDonado"]));
       allow delete: if false;
     }
 

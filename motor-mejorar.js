@@ -533,7 +533,7 @@ function calcularPalabrasPorMinuto(textoIngresado) {
 
     document.getElementById("resultadoPpm").innerHTML = `
         <p style="font-size:32px; font-weight:800; color:var(--azul); margin-bottom:6px;">
-            ~${ppm} palabras por minuto
+            ${ppm} palabras por minuto
         </p>
         <p style="color:var(--texto-suave); margin-bottom:14px;">
             Meta para tu edad: ${rango[0]}-${rango[1]} ppm

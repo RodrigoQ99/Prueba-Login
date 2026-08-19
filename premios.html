@@ -32,6 +32,11 @@
             <p class="menuTitulo">Mi progreso</p>
 
             <div class="menuStat">
+                <span>Racha</span>
+                <strong id="menuRacha">🔥 0</strong>
+            </div>
+
+            <div class="menuStat">
                 <span>Lecturas completadas</span>
                 <strong id="menuCompletadas">0</strong>
             </div>
@@ -53,6 +58,14 @@
 
     </div>
 </div>
+
+
+<!-- ==========================
+     VER DONACIONES (conteo global)
+=========================== -->
+<button id="btnVerDonaciones" class="botonVerDonaciones" title="Ver donaciones" style="display:none;">
+    ✚
+</button>
 
 
 <!-- ==========================
@@ -110,7 +123,7 @@
 
     <p style="text-align:center; color:var(--texto-suave); margin-bottom:25px;">
         Cada lectura que apruebas te gana un premio. Toca "Canjear" y muéstrale
-        el código al encargado.
+        el código al encargado, o "Donar" si prefieres regalarlo.
     </p>
 
     <div id="listaPremios">

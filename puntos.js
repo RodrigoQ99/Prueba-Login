@@ -220,7 +220,9 @@ async function crearPremioCanjeable(user, lecturaId, nivel) {
         canjeado: false,
         canjeadoPor: null,
         fechaGanado: firebase.firestore.FieldValue.serverTimestamp(),
-        fechaCanjeado: null
+        fechaCanjeado: null,
+        donado: false,
+        fechaDonado: null
     });
 
 }

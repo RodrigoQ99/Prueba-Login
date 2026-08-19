@@ -480,6 +480,35 @@ button:active{
     background:#fafbfc;
 }
 
+/* Botón "Ver donaciones" (premios.html) — misma esquina que el menú
+   superior, pero corrido a la izquierda para no encimarse con él. */
+.botonVerDonaciones{
+    position:fixed;
+    top:18px;
+    right:78px;
+    z-index:1000;
+    width:44px;
+    height:44px;
+    margin:0;
+    padding:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:white;
+    color:#2e9e5b;
+    border:1px solid var(--borde);
+    border-radius:50%;
+    font-size:20px;
+    font-weight:700;
+    cursor:pointer;
+    box-shadow:var(--sombra);
+}
+
+.botonVerDonaciones:hover{
+    opacity:1;
+    background:#fafbfc;
+}
+
 .menuNombreBoton{
     max-width:120px;
     overflow:hidden;
@@ -1055,10 +1084,21 @@ button.menuLink{
     border-radius:12px;
 }
 
+.botonAdminChico:disabled{
+    opacity:0.5;
+    cursor:not-allowed;
+}
+
 .botonPeligro{
     background:#fdf1f0;
     color:#c0392b;
     border:1px solid #f0d6d3;
+}
+
+.botonExito{
+    background:#eafaf0;
+    color:#2e9e5b;
+    border:1px solid #bfe8cf;
 }
 
 .seccionAdmin{

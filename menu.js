@@ -9,6 +9,7 @@ const menuUsuario = document.getElementById("menuUsuario");
 const btnMenuToggle = document.getElementById("btnMenuToggle");
 const panelMenu = document.getElementById("panelMenu");
 const menuNombre = document.getElementById("menuNombre");
+const menuRacha = document.getElementById("menuRacha");
 const menuCompletadas = document.getElementById("menuCompletadas");
 const menuPendientes = document.getElementById("menuPendientes");
 const btnCerrarSesionMenu = document.getElementById("btnCerrarSesionMenu");
@@ -37,12 +38,18 @@ async function cargarDatosMenu(user) {
     menuUsuario.style.display = "block";
 
     try {
-        // Trae todos los intentos del usuario y cuenta, en el navegador,
-        // cuántas lecturas DISTINTAS completó con éxito (evita necesitar
-        // un índice compuesto adicional en Firestore).
-        const snapshot = await db.collection("progreso")
-            .where("usuarioId", "==", user.uid)
-            .get();
+
+        // Trae todos los intentos del usuario (para "completadas"/"pendientes")
+        // y su propio documento (para la racha 🔥) al mismo tiempo.
+        const [snapshot, usuarioDoc] = await Promise.all([
+            db.collection("progreso").where("usuarioId", "==", user.uid).get(),
+            db.collection("usuarios").doc(user.uid).get()
+        ]);
+
+        if (menuRacha) {
+            const datosUsuario = usuarioDoc.exists ? usuarioDoc.data() : {};
+            menuRacha.textContent = `🔥 ${datosUsuario.rachaActual || 0}`;
+        }
 
         const idsCompletados = new Set();
 
