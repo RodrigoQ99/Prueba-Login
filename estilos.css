@@ -480,12 +480,12 @@ button:active{
     background:#fafbfc;
 }
 
-/* Botón "Ver donaciones" (premios.html) — misma esquina que el menú
-   superior, pero corrido a la izquierda para no encimarse con él. */
+/* Botón "Ver donaciones" (premios.html) — esquina superior IZQUIERDA,
+   del lado opuesto al menú (☰), que está a la derecha. */
 .botonVerDonaciones{
     position:fixed;
     top:18px;
-    right:78px;
+    left:18px;
     z-index:1000;
     width:44px;
     height:44px;

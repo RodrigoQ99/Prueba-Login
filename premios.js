@@ -144,7 +144,7 @@ async function cargarMisPremios() {
 // ==========================================================
 // VER DONACIONES (conteo global, todos los usuarios)
 // ==========================================================
-// Se abre desde el botón ✚ en la esquina superior derecha. Muestra
+// Se abre desde el botón ✚ en la esquina superior izquierda. Muestra
 // cuántos premios se han donado en total y, desglosado, cuántos de
 // cada tipo (según como esté registrado "descripcionPremio" en cada
 // premio donado — si el admin edita los premios después, eso no cambia
