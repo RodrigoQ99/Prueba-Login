@@ -227,8 +227,6 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
                 </p>
                 <div id="editorPreguntas"></div>
 
-                ${esNueva ? "" : `<div id="seccionCodigosLectura" style="margin-top:20px;"></div>`}
-
                 <div style="display:flex; gap:10px; margin-top:20px;">
                     <button type="submit" style="flex:1;">${esNueva ? "Crear lectura" : "Guardar cambios"}</button>
                     <button type="button" class="modalCerrar" style="flex:1; background:white; border:1px solid var(--borde); color:var(--texto-suave);">Cancelar</button>
@@ -243,10 +241,6 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
     overlay.querySelector("#campoNivel").value = esNueva ? "facil" : (lecturaExistente.nivel || "facil");
 
     construirEditorPreguntas(overlay.querySelector("#editorPreguntas"), preguntas);
-
-    if (!esNueva) {
-        construirSeccionCodigosLectura(overlay.querySelector("#seccionCodigosLectura"), lecturaExistente.id);
-    }
 
     overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
     overlay.addEventListener("click", (e) => {
@@ -855,6 +849,7 @@ function renderizarListaAdminLecturas() {
             </div>
             <div style="display:flex; gap:8px;">
                 <a href="lectura.html?id=${encodeURIComponent(lectura.id)}" target="_blank" class="botonAdminChico" title="Abrir">🔗</a>
+                <button type="button" class="botonAdminChico" data-codigos="${lectura.id}" title="Generar código">🔑</button>
                 <button type="button" class="botonAdminChico" data-editar="${lectura.id}">✏️</button>
                 <button type="button" class="botonAdminChico botonPeligro" data-eliminar="${lectura.id}">🗑️</button>
             </div>
@@ -890,6 +885,13 @@ function renderizarListaAdminLecturas() {
         });
     });
 
+    cont.querySelectorAll("[data-codigos]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const lectura = CATALOGO_LECTURAS.find(l => l.id === btn.dataset.codigos);
+            abrirModalCodigosLectura(lectura);
+        });
+    });
+
 }
 
 
@@ -898,9 +900,9 @@ function renderizarListaAdminLecturas() {
 // ==========================================================
 // Cada código de 8 caracteres alfanuméricos desbloquea el acceso a la
 // lectura UNA sola vez en total (colección "codigosLectura", ver
-// firestore.rules). Esta sección vive dentro del editor de una lectura
-// existente (ver abrirFormularioLectura) y permite generar tantos
-// códigos como golosinas se necesiten, mostrando el estado de cada uno.
+// firestore.rules). Se abre desde el botón 🔑 de la lista de lecturas
+// (junto a abrir/editar/borrar) y permite generar tantos códigos como
+// golosinas se necesiten, mostrando el estado de cada uno.
 
 const CARACTERES_CODIGO_LECTURA = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
@@ -943,22 +945,34 @@ async function generarCodigoLecturaNuevo(lecturaId) {
 }
 
 /**
- * Arma, dentro de "contenedor", el botón "🔑 Generar código" y la lista
- * de todos los códigos ya generados para "lecturaId" (con su estado y
- * quién lo usó, si aplica).
+ * Modal con el botón "🔑 Generar código" y la lista de todos los códigos
+ * ya generados para esta lectura (con su estado, quién lo usó si aplica,
+ * y un botón para copiar cada código al portapapeles).
  */
-function construirSeccionCodigosLectura(contenedor, lecturaId) {
+function abrirModalCodigosLectura(lectura) {
 
-    contenedor.innerHTML = `
-        <h3 style="margin-top:10px;">Códigos de canje</h3>
-        <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
-            Cada código de 8 caracteres desbloquea esta lectura una sola vez. Genera uno por cada golosina.
-        </p>
-        <button type="button" id="btnGenerarCodigoLectura">🔑 Generar código</button>
-        <div id="listaCodigosLectura" style="text-align:left; margin-top:10px;"></div>
+    const overlay = document.createElement("div");
+    overlay.className = "modalOverlay";
+    overlay.innerHTML = `
+        <div class="modalCaja modalCajaInfo" style="text-align:center;">
+            <h2>🔑 Códigos de canje</h2>
+            <p style="font-weight:600; margin-bottom:5px;">${lectura.titulo}</p>
+            <p style="font-size:13px; color:var(--texto-suave); margin-bottom:15px;">
+                Cada código de 8 caracteres desbloquea esta lectura una sola vez. Genera uno por cada golosina.
+            </p>
+            <button type="button" id="btnGenerarCodigoLectura">🔑 Generar código</button>
+            <div id="listaCodigosLectura" style="text-align:left; margin-top:15px;"></div>
+            <button class="modalCerrar" style="background:white; border:1px solid var(--borde); color:var(--texto-suave); margin-top:15px;">Cerrar</button>
+        </div>
     `;
 
-    const listaEl = contenedor.querySelector("#listaCodigosLectura");
+    document.body.appendChild(overlay);
+    overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+
+    const listaEl = overlay.querySelector("#listaCodigosLectura");
 
     async function render() {
 
@@ -967,7 +981,7 @@ function construirSeccionCodigosLectura(contenedor, lecturaId) {
         let codigos = [];
         try {
             const snapshot = await db.collection("codigosLectura")
-                .where("lecturaId", "==", lecturaId)
+                .where("lecturaId", "==", lectura.id)
                 .get();
             codigos = snapshot.docs.map(doc => ({ codigo: doc.id, ...doc.data() }));
         } catch (error) {
@@ -1000,8 +1014,12 @@ function construirSeccionCodigosLectura(contenedor, lecturaId) {
 
         listaEl.innerHTML = codigos.map(c => `
             <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--borde); gap:10px;">
-                <span style="font-family:monospace; font-weight:700; letter-spacing:1px;">${c.codigo}</span>
-                <span style="font-size:13px; text-align:right; color:var(--texto-suave);">
+                <span style="display:flex; align-items:center; gap:6px; font-family:monospace; font-weight:700; letter-spacing:1px;">
+                    ${c.codigo}
+                    <button type="button" class="botonAdminChico" data-copiar="${c.codigo}"
+                            title="Copiar código" style="padding:4px 8px; font-size:13px;">📋</button>
+                </span>
+                <span style="font-size:13px; text-align:right; color:var(--texto-suave); white-space:nowrap;">
                     ${c.usado
                         ? `✅ Usado por ${nombresPorUid[c.usadoPor] || "alguien"}`
                         : `🟢 Disponible`}
@@ -1009,16 +1027,20 @@ function construirSeccionCodigosLectura(contenedor, lecturaId) {
             </div>
         `).join("");
 
+        listaEl.querySelectorAll("[data-copiar]").forEach(btnCopiar => {
+            btnCopiar.addEventListener("click", () => copiarCodigoAlPortapapeles(btnCopiar));
+        });
+
     }
 
-    contenedor.querySelector("#btnGenerarCodigoLectura").addEventListener("click", async () => {
+    overlay.querySelector("#btnGenerarCodigoLectura").addEventListener("click", async () => {
 
-        const btn = contenedor.querySelector("#btnGenerarCodigoLectura");
+        const btn = overlay.querySelector("#btnGenerarCodigoLectura");
         btn.disabled = true;
         btn.textContent = "Generando...";
 
         try {
-            await generarCodigoLecturaNuevo(lecturaId);
+            await generarCodigoLecturaNuevo(lectura.id);
             await render();
         } catch (error) {
             console.error("No se pudo generar el código:", error);
@@ -1031,6 +1053,24 @@ function construirSeccionCodigosLectura(contenedor, lecturaId) {
     });
 
     render();
+
+}
+
+/**
+ * Copia el código de canje (data-copiar del botón) al portapapeles y le
+ * da un momento de confirmación visual (✅) antes de volver al ícono.
+ */
+function copiarCodigoAlPortapapeles(btnCopiar) {
+
+    const codigo = btnCopiar.dataset.copiar;
+
+    navigator.clipboard.writeText(codigo).then(() => {
+        btnCopiar.textContent = "✅";
+        setTimeout(() => { btnCopiar.textContent = "📋"; }, 1200);
+    }).catch(error => {
+        console.error("No se pudo copiar el código:", error);
+        alert(`No se pudo copiar automáticamente. Aquí está el código: ${codigo}`);
+    });
 
 }
 
