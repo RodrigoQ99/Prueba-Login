@@ -66,6 +66,11 @@ let tiempoRestanteCuestionario = 0;
 let relojCuestionario;
 let reloj;
 
+// true entre el clic en "Comenzar" y que se califica el cuestionario.
+// Mientras esté en true, cambiar de pestaña/ventana pierde la oportunidad
+// de inmediato (ver abandonarPorCambioDeVisibilidad más abajo).
+let intentoEnProgreso = false;
+
 
 // ==========================
 // TEMPORIZADOR LECTURA
@@ -373,8 +378,40 @@ async function registrarIntentoYComenzar(esBono){
 
     }
 
+    intentoEnProgreso = true;
+
     mostrarElementosLectura();
     arrancarLecturaCronometrada();
+
+}
+
+
+// ==========================
+// PERDER LA OPORTUNIDAD AL CAMBIAR DE PESTAÑA/VENTANA
+// ==========================
+// Si el usuario ya empezó a leer (o ya está en el cuestionario) y cambia
+// de pestaña o minimiza la ventana, se trata igual que si hubiera salido
+// de la página: pierde la oportunidad en ese mismo instante, sin esperar
+// a que regrese. La oportunidad ya había quedado marcada como usada en
+// Firestore desde que hizo clic en "Comenzar" (ver registrarIntentoYComenzar);
+// esto solo se encarga de que la pantalla lo refleje de inmediato.
+
+document.addEventListener("visibilitychange", () => {
+    if(document.hidden && intentoEnProgreso){
+        abandonarPorCambioDeVisibilidad();
+    }
+});
+
+function abandonarPorCambioDeVisibilidad(){
+
+    intentoEnProgreso = false;
+
+    clearInterval(reloj);
+    clearInterval(relojCuestionario);
+
+    cuestionario.style.display = "none";
+
+    mostrarRepasoBloqueado(null);
 
 }
 
@@ -421,7 +458,7 @@ function mostrarRepasoBloqueado(bonoPendiente){
     pantalla.innerHTML = `
         <div style="text-align:center; padding-bottom:10px;">
             <p style="color:var(--texto-suave);">
-                Ya usaste tu oportunidad para el cuestionario de esta lectura.
+                Para volver a intentar esta lectura ingresa otro código
             </p>
             ${notaBono}
             <a href="index.html" class="menuLink"
@@ -700,6 +737,7 @@ function iniciarTemporizadorCuestionario(){
 async function calificar(){
 
     clearInterval(relojCuestionario);
+    intentoEnProgreso = false;
 
     let estrellas = 0;
     const totalPreguntas = preguntasSeleccionadas.length;
@@ -714,9 +752,6 @@ async function calificar(){
 
     });
 
-    document.getElementById("resultado").innerHTML =
-        generarHTMLEstrellas(estrellas, totalPreguntas);
-
     // Guardar el progreso, sumar puntos y generar el código de premio en Firestore
     const resultadoGuardado = await guardarProgreso(
         lecturaActual.id,
@@ -724,6 +759,13 @@ async function calificar(){
         estrellas,
         totalPreguntas
     );
+
+    // Las estrellas y el mensaje final se pintan juntos, en la misma
+    // actualización de la pantalla, en vez de que las estrellas aparezcan
+    // primero y el mensaje después (guardarProgreso ya terminó para
+    // este punto, así que ambos quedan listos al mismo tiempo).
+    document.getElementById("resultado").innerHTML =
+        generarHTMLEstrellas(estrellas, totalPreguntas);
 
     // Bloquear respuestas después de calificar
     document.querySelectorAll("input[type='radio']").forEach(opcion => {
@@ -745,7 +787,7 @@ async function calificar(){
     }else{
 
         document.getElementById("mensajeFinal").innerHTML =
-            "Esa era tu única oportunidad para esta lectura.";
+            "Para volver a intentar esta lectura ingresa otro código";
 
     }
 
