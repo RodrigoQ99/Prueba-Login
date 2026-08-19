@@ -106,8 +106,9 @@ const DEFAULT_INFO_HTML = `
     <p style="font-weight:600; margin-bottom:6px;">Lectura QR</p>
     <p>
         <strong>Lectura QR</strong> es una iniciativa para fomentar la lectura en Guatemala.
-        Cada golosina participante trae un código QR escondido que te lleva a una lectura
-        corta, con preguntas al final para comprobar que la leíste.
+        Cada golosina participante trae un código escondido de 8 caracteres: ingrésalo en
+        "Mis lecturas" para desbloquear una lectura corta, con preguntas al final para
+        comprobar que la leíste.
     </p>
     <p style="font-weight:600; margin-bottom:6px;">Niveles y premios:</p>
     <ul>

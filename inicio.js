@@ -85,8 +85,8 @@ async function cargarListaLecturas() {
 
     if (desbloqueadasCompletas.length === 0) {
         contenedorLista.innerHTML =
-            "<p style='text-align:center;'>Todavía no has escaneado ningún código QR. " +
-            "¡Busca uno en tu golosina y comienza tu primera lectura! 🍬</p>";
+            "<p style='text-align:center;'>Todavía no has desbloqueado ninguna lectura. " +
+            "¡Busca el código de tu golosina e ingrésalo para comenzar tu primera lectura! 🍬</p>";
         if (cajaSugerencia) cajaSugerencia.style.display = "none";
         return;
     }

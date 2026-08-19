@@ -227,6 +227,8 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
                 </p>
                 <div id="editorPreguntas"></div>
 
+                ${esNueva ? "" : `<div id="seccionCodigosLectura" style="margin-top:20px;"></div>`}
+
                 <div style="display:flex; gap:10px; margin-top:20px;">
                     <button type="submit" style="flex:1;">${esNueva ? "Crear lectura" : "Guardar cambios"}</button>
                     <button type="button" class="modalCerrar" style="flex:1; background:white; border:1px solid var(--borde); color:var(--texto-suave);">Cancelar</button>
@@ -241,6 +243,10 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
     overlay.querySelector("#campoNivel").value = esNueva ? "facil" : (lecturaExistente.nivel || "facil");
 
     construirEditorPreguntas(overlay.querySelector("#editorPreguntas"), preguntas);
+
+    if (!esNueva) {
+        construirSeccionCodigosLectura(overlay.querySelector("#seccionCodigosLectura"), lecturaExistente.id);
+    }
 
     overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
     overlay.addEventListener("click", (e) => {
@@ -849,7 +855,6 @@ function renderizarListaAdminLecturas() {
             </div>
             <div style="display:flex; gap:8px;">
                 <a href="lectura.html?id=${encodeURIComponent(lectura.id)}" target="_blank" class="botonAdminChico" title="Abrir">🔗</a>
-                <button type="button" class="botonAdminChico" data-qr="${lectura.id}" title="Generar QR">▦</button>
                 <button type="button" class="botonAdminChico" data-editar="${lectura.id}">✏️</button>
                 <button type="button" class="botonAdminChico botonPeligro" data-eliminar="${lectura.id}">🗑️</button>
             </div>
@@ -885,60 +890,147 @@ function renderizarListaAdminLecturas() {
         });
     });
 
-    cont.querySelectorAll("[data-qr]").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const lectura = CATALOGO_LECTURAS.find(l => l.id === btn.dataset.qr);
-            mostrarModalQR(lectura, "lectura.html");
-        });
-    });
-
 }
 
 
 // ==========================================================
-// GENERAR CÓDIGO QR DE UNA LECTURA
+// CÓDIGOS DE CANJE DE UNA LECTURA (uno por golosina)
 // ==========================================================
-// Arma la URL completa de esta lectura (usando el mismo dominio donde
-// está publicado el sitio, sea cual sea) y la convierte en un código QR
-// listo para descargar e imprimir.
+// Cada código de 8 caracteres alfanuméricos desbloquea el acceso a la
+// lectura UNA sola vez en total (colección "codigosLectura", ver
+// firestore.rules). Esta sección vive dentro del editor de una lectura
+// existente (ver abrirFormularioLectura) y permite generar tantos
+// códigos como golosinas se necesiten, mostrando el estado de cada uno.
 
-function mostrarModalQR(lectura, pagina) {
+const CARACTERES_CODIGO_LECTURA = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
-    const base = window.location.href.replace(/[^/]*$/, "");
-    const url = `${base}${pagina}?id=${encodeURIComponent(lectura.id)}`;
+function generarCodigoLecturaAlAzar() {
+    let codigo = "";
+    for (let i = 0; i < 8; i++) {
+        codigo += CARACTERES_CODIGO_LECTURA[Math.floor(Math.random() * CARACTERES_CODIGO_LECTURA.length)];
+    }
+    return codigo;
+}
 
-    const overlay = document.createElement("div");
-    overlay.className = "modalOverlay";
-    overlay.innerHTML = `
-        <div class="modalCaja modalCajaInfo" style="text-align:center;">
-            <h2>Código QR</h2>
-            <p style="font-weight:600; margin-bottom:15px;">${lectura.titulo}</p>
-            <div id="contenedorQR" style="display:flex; justify-content:center;"></div>
-            <p style="font-size:12px; word-break:break-all; color:var(--texto-suave); margin:15px 0;">${url}</p>
-            <button id="btnDescargarQR">Descargar QR</button>
-            <button class="modalCerrar" style="background:white; border:1px solid var(--borde); color:var(--texto-suave); margin-top:10px;">Cerrar</button>
-        </div>
+/**
+ * Genera un código nuevo para una lectura, garantizando que no choque
+ * con ninguno ya existente (reintenta unas pocas veces por si acaso).
+ */
+async function generarCodigoLecturaNuevo(lecturaId) {
+
+    for (let intento = 0; intento < 5; intento++) {
+
+        const codigo = generarCodigoLecturaAlAzar();
+        const ref = db.collection("codigosLectura").doc(codigo);
+
+        const yaExiste = (await ref.get()).exists;
+        if (yaExiste) continue;
+
+        await ref.set({
+            lecturaId: lecturaId,
+            usado: false,
+            usadoPor: null,
+            usadoEn: null,
+            creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        return codigo;
+
+    }
+
+    throw new Error("No se pudo generar un código único. Intenta de nuevo.");
+
+}
+
+/**
+ * Arma, dentro de "contenedor", el botón "🔑 Generar código" y la lista
+ * de todos los códigos ya generados para "lecturaId" (con su estado y
+ * quién lo usó, si aplica).
+ */
+function construirSeccionCodigosLectura(contenedor, lecturaId) {
+
+    contenedor.innerHTML = `
+        <h3 style="margin-top:10px;">Códigos de canje</h3>
+        <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
+            Cada código de 8 caracteres desbloquea esta lectura una sola vez. Genera uno por cada golosina.
+        </p>
+        <button type="button" id="btnGenerarCodigoLectura">🔑 Generar código</button>
+        <div id="listaCodigosLectura" style="text-align:left; margin-top:10px;"></div>
     `;
 
-    document.body.appendChild(overlay);
-    overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
+    const listaEl = contenedor.querySelector("#listaCodigosLectura");
 
-    const contenedorQR = overlay.querySelector("#contenedorQR");
+    async function render() {
 
-    new QRCode(contenedorQR, {
-        text: url,
-        width: 260,
-        height: 260,
-        correctLevel: QRCode.CorrectLevel.M
+        listaEl.innerHTML = "<p style='text-align:center;'>Cargando códigos...</p>";
+
+        let codigos = [];
+        try {
+            const snapshot = await db.collection("codigosLectura")
+                .where("lecturaId", "==", lecturaId)
+                .get();
+            codigos = snapshot.docs.map(doc => ({ codigo: doc.id, ...doc.data() }));
+        } catch (error) {
+            console.error("No se pudieron cargar los códigos:", error);
+            listaEl.innerHTML = "<p style='text-align:center;'>No se pudieron cargar los códigos.</p>";
+            return;
+        }
+
+        if (codigos.length === 0) {
+            listaEl.innerHTML = "<p style='text-align:center;'>Todavía no hay códigos generados para esta lectura.</p>";
+            return;
+        }
+
+        // Los disponibles primero, los usados al final
+        codigos.sort((a, b) => (a.usado === b.usado) ? 0 : (a.usado ? 1 : -1));
+
+        // Trae el nombre de quien usó cada código, sin repetir consultas
+        const uidsAConsultar = [...new Set(
+            codigos.filter(c => c.usado && c.usadoPor).map(c => c.usadoPor)
+        )];
+        const nombresPorUid = {};
+        await Promise.all(uidsAConsultar.map(async uid => {
+            try {
+                const doc = await db.collection("usuarios").doc(uid).get();
+                nombresPorUid[uid] = doc.exists ? (doc.data().nombre || uid) : uid;
+            } catch (error) {
+                nombresPorUid[uid] = uid;
+            }
+        }));
+
+        listaEl.innerHTML = codigos.map(c => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--borde); gap:10px;">
+                <span style="font-family:monospace; font-weight:700; letter-spacing:1px;">${c.codigo}</span>
+                <span style="font-size:13px; text-align:right; color:var(--texto-suave);">
+                    ${c.usado
+                        ? `✅ Usado por ${nombresPorUid[c.usadoPor] || "alguien"}`
+                        : `🟢 Disponible`}
+                </span>
+            </div>
+        `).join("");
+
+    }
+
+    contenedor.querySelector("#btnGenerarCodigoLectura").addEventListener("click", async () => {
+
+        const btn = contenedor.querySelector("#btnGenerarCodigoLectura");
+        btn.disabled = true;
+        btn.textContent = "Generando...";
+
+        try {
+            await generarCodigoLecturaNuevo(lecturaId);
+            await render();
+        } catch (error) {
+            console.error("No se pudo generar el código:", error);
+            alert("No se pudo generar el código. Intenta de nuevo.");
+        }
+
+        btn.disabled = false;
+        btn.textContent = "🔑 Generar código";
+
     });
 
-    overlay.querySelector("#btnDescargarQR").addEventListener("click", () => {
-        const canvas = contenedorQR.querySelector("canvas");
-        const enlace = document.createElement("a");
-        enlace.download = `qr-${lectura.id}.png`;
-        enlace.href = canvas.toDataURL("image/png");
-        enlace.click();
-    });
+    render();
 
 }
 

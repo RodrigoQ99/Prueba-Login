@@ -110,5 +110,27 @@ service cloud.firestore {
                     && request.resource.data.canjeado == true;
       allow delete: if false;
     }
+
+    // Códigos de 8 caracteres (uno por golosina) que desbloquean el
+    // ACCESO a una lectura de premio — el documento se identifica por el
+    // código mismo, así que su sola existencia como ID ya garantiza que
+    // no se repita. Cualquiera logueado puede leerlos (para poder
+    // revisarlos, aunque la app normalmente los busca por ID exacto).
+    // Solo el admin puede crearlos o borrarlos desde el panel. Cualquier
+    // usuario logueado puede "canjear" uno (marcarlo usado), pero SOLO
+    // cambiando su propio código de disponible (false) a usado (true),
+    // dejando el resto de los campos intactos — nunca al revés, y nunca
+    // el código de otra persona.
+    match /codigosLectura/{codigo} {
+      allow read: if request.auth != null;
+      allow create: if esAdmin();
+      allow update: if request.auth != null
+                    && resource.data.usado == false
+                    && request.resource.data.usado == true
+                    && request.resource.data.usadoPor == request.auth.uid
+                    && request.resource.data.lecturaId == resource.data.lecturaId
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["usado", "usadoPor", "usadoEn"]);
+      allow delete: if esAdmin();
+    }
   }
 }

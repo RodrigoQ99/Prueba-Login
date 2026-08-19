@@ -11,8 +11,8 @@
 // volver a LEER el texto las veces que quiera, pero el cuestionario
 // queda bloqueado (ver mostrarRepasoBloqueado).
 //
-// Excepción — bono de completista: si el usuario ya desbloqueó
-// (escaneó) TODAS las lecturas del catálogo y vuelve a abrir una que
+// Excepción — bono de completista: si el usuario ya desbloqueó (con
+// código) TODAS las lecturas del catálogo y vuelve a abrir una que
 // ya usó, se le regala una oportunidad extra en una lectura al azar de
 // las que había fallado (ver revisarBonoDeCompletista). Cada lectura
 // solo puede recibir ese bono una vez.
@@ -41,7 +41,7 @@ const temporizadorCuestionario = document.getElementById("temporizadorCuestionar
 
 
 // ==========================
-// CARGAR LA LECTURA SEGÚN EL QR (?id=...)
+// CARGAR LA LECTURA SEGÚN LA URL (?id=...)
 // ==========================
 
 const parametros = new URLSearchParams(window.location.search);
@@ -107,13 +107,13 @@ async function iniciarLectura(){
     await cargarCatalogoLecturas();
     lecturaActual = obtenerLecturaPorId(idLecturaActual);
 
-    // Si el QR apunta a un ID que no existe en el catálogo
+    // Si el enlace apunta a un ID que no existe en el catálogo
     if(!lecturaActual){
 
         document.body.innerHTML =
             "<div style='text-align:center; margin-top:80px; font-family:sans-serif;'>" +
             "<h1>Lectura no encontrada</h1>" +
-            "<p>El código QR que escaneaste no corresponde a ninguna lectura disponible.</p>" +
+            "<p>El enlace que abriste no corresponde a ninguna lectura disponible.</p>" +
             "<a href='index.html'>Volver al inicio</a>" +
             "</div>";
 
@@ -125,42 +125,40 @@ async function iniciarLectura(){
 
     const user = auth.currentUser;
 
+    // El administrador puede entrar a cualquier lectura (incluso las que
+    // no ha desbloqueado) las veces que quiera, sin gastar su propia
+    // oportunidad — para poder revisar y probar el contenido libremente.
+    const accesoAdmin = typeof esAdmin === "function" && esAdmin();
+
     let datosUsuario = {};
 
     if(user){
-
         try{
             const usuarioDoc = await db.collection("usuarios").doc(user.uid).get();
             datosUsuario = usuarioDoc.exists ? usuarioDoc.data() : {};
         }catch(error){
             console.error("No se pudo revisar tus lecturas desbloqueadas:", error);
         }
-
-        // Marcar esta lectura como "desbloqueada" (escaneada), para que
-        // aparezca en "Mis lecturas". No importa si ya estaba desbloqueada:
-        // arrayUnion no la duplica.
-        db.collection("usuarios").doc(user.uid).update({
-            lecturasDesbloqueadas: firebase.firestore.FieldValue.arrayUnion(lecturaActual.id)
-        }).catch(error => console.error("No se pudo desbloquear la lectura:", error));
-
-        // Si esta cuenta ya había escaneado esta misma lectura antes (en
-        // cualquier visita anterior, la haya aprobado o no), repetirla no
-        // tiene sentido: se manda a una lectura al azar entre las que
-        // todavía no se han descubierto. Aplica también a la cuenta admin,
-        // que es con la que se prueba este flujo.
-        const yaDesbloqueadaAntes = (datosUsuario.lecturasDesbloqueadas || [])
-            .includes(lecturaActual.id);
-
-        if(yaDesbloqueadaAntes && redirigirALecturaAlAzarSiHayPendientes(datosUsuario)){
-            return;
-        }
-
     }
 
-    // El administrador puede entrar a cualquier lectura (incluso las que
-    // no ha escaneado) las veces que quiera, sin gastar su propia
-    // oportunidad — para poder revisar y probar el contenido libremente.
-    const accesoAdmin = typeof esAdmin === "function" && esAdmin();
+    // El acceso a una lectura ahora depende de haberla desbloqueado antes
+    // canjeando su código de 8 caracteres desde "Mis lecturas" (ver
+    // desbloqueo.js). Ya no basta con abrir el enlace directamente.
+    const desbloqueada = accesoAdmin ||
+        (datosUsuario.lecturasDesbloqueadas || []).includes(lecturaActual.id);
+
+    if(!desbloqueada){
+
+        document.body.innerHTML =
+            "<div style='text-align:center; margin-top:80px; font-family:sans-serif;'>" +
+            "<h1>Lectura bloqueada</h1>" +
+            "<p>Todavía no has desbloqueado esta lectura. Ve a \"Mis lecturas\" e ingresa el código de 8 caracteres de tu golosina.</p>" +
+            "<a href='index.html'>Volver al inicio</a>" +
+            "</div>";
+
+        return;
+
+    }
 
     if(accesoAdmin){
         arrancarLecturaCronometrada();
@@ -229,30 +227,6 @@ async function iniciarLectura(){
     }
 
     mostrarRepasoBloqueado(bonoActivo);
-
-}
-
-
-// ==========================
-// REDIRIGIR A UNA LECTURA NUEVA AL AZAR
-// ==========================
-// Se usa cuando esta cuenta vuelve a escanear un QR de una lectura que ya
-// había desbloqueado antes. En vez de mostrarla de nuevo, la manda a una
-// lectura al azar de las que todavía no ha descubierto. Devuelve true si
-// encontró una pendiente y ya disparó la redirección (el llamador debe
-// cortar la ejecución); false si ya descubrió todo el catálogo, para que
-// el llamador siga con el flujo normal (repaso bloqueado / bono de
-// completista).
-function redirigirALecturaAlAzarSiHayPendientes(datosUsuario){
-
-    const yaDesbloqueadas = new Set(datosUsuario.lecturasDesbloqueadas || []);
-    const pendientes = CATALOGO_LECTURAS.filter(l => !yaDesbloqueadas.has(l.id));
-
-    if(pendientes.length === 0) return false;
-
-    const sugerida = pendientes[Math.floor(Math.random() * pendientes.length)];
-    window.location.replace(`lectura.html?id=${encodeURIComponent(sugerida.id)}`);
-    return true;
 
 }
 
