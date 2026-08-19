@@ -135,18 +135,17 @@ async function cargarListaLecturas() {
     }).join("");
 
 
-    // Si ya completó TODAS las que tiene desbloqueadas, sugerirle una
-    // lectura nueva al azar (de las que todavía no ha escaneado)
+    // Si ya completó TODAS las que tiene desbloqueadas, felicitarla —
+    // pero SIN ofrecerle un atajo a una lectura nueva: la única forma de
+    // desbloquear lecturas es ingresando un código (ver desbloqueo.js).
     if (!cajaSugerencia) return;
 
     const todasCompletas = lecturasDesbloqueadas.every(
         lectura => idsCompletados.has(lectura.id)
     );
 
-    // La sugerencia de "lectura sorpresa" es para cuando ya tiene VARIAS
-    // lecturas desbloqueadas (por ejemplo, volvió a escanear una que ya
-    // había hecho) — no debe aparecer justo al terminar su primera y
-    // única lectura.
+    // El mensaje es para cuando ya tiene VARIAS lecturas desbloqueadas —
+    // no debe aparecer justo al terminar su primera y única lectura.
     const tieneVariasDesbloqueadas = lecturasDesbloqueadas.length > 1;
 
     const pendientesPorDescubrir = CATALOGO_LECTURAS.filter(
@@ -159,17 +158,10 @@ async function cargarListaLecturas() {
 
     } else if (todasCompletas && pendientesPorDescubrir.length > 0) {
 
-        const sugerida = pendientesPorDescubrir[
-            Math.floor(Math.random() * pendientesPorDescubrir.length)
-        ];
-
         cajaSugerencia.style.display = "block";
         cajaSugerencia.innerHTML = `
-            <p>🎉 ¡Completaste todas tus lecturas con la puntuación máxima!</p>
-            <a href="lectura.html?id=${encodeURIComponent(sugerida.id)}" class="menuLink"
-               style="display:inline-block; max-width:300px; margin:12px auto 0;">
-                Descubrir una nueva lectura sorpresa →
-            </a>
+            <p>🎉 ¡Completaste todas tus lecturas con la puntuación máxima!
+            Busca más códigos en tus golosinas para descubrir lecturas nuevas.</p>
         `;
 
     } else if (todasCompletas) {
