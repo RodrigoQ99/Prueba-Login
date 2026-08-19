@@ -132,9 +132,12 @@ async function iniciarLectura(){
 
     const user = auth.currentUser;
 
-    // El administrador puede entrar a cualquier lectura (incluso las que
-    // no ha desbloqueado) las veces que quiera, sin gastar su propia
-    // oportunidad — para poder revisar y probar el contenido libremente.
+    // El administrador puede entrar a cualquier lectura sin necesitar un
+    // código (incluso las que no ha desbloqueado), para poder revisar el
+    // contenido libremente. Pero a partir de ahí queda sujeto a las
+    // MISMAS reglas que cualquier usuario (1 sola oportunidad, repaso
+    // bloqueado, bono de completista, etc.) — así la cuenta admin
+    // experimenta la app igual que todos los demás, errores incluidos.
     const accesoAdmin = typeof esAdmin === "function" && esAdmin();
 
     let datosUsuario = {};
@@ -165,11 +168,6 @@ async function iniciarLectura(){
 
         return;
 
-    }
-
-    if(accesoAdmin){
-        arrancarLecturaCronometrada();
-        return;
     }
 
     if(!user) return;
