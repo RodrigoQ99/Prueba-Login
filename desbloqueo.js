@@ -9,6 +9,14 @@
 // mismo como ID del documento, y solo se puede usar UNA vez en total
 // (no por usuario, sino globalmente): en cuanto alguien lo canjea queda
 // inutilizado para siempre (ver firestore.rules).
+//
+// Si el código canjeado resulta ser de una lectura que el usuario YA
+// TIENE APROBADA, y todavía le queda catálogo por descubrir, no lo
+// manda ahí (sería un callejón sin salida: "repaso bloqueado" sin nada
+// nuevo que hacer) — en vez de eso lo lleva a una lectura al azar de
+// las que no ha desbloqueado, para que ningún código se sienta
+// "desperdiciado" en contenido repetido mientras haya algo nuevo por
+// leer (ver elegirDestinoTrasCanjear).
 // ==========================================================
 
 const btnIngresarCodigo = document.getElementById("btnIngresarCodigo");
@@ -73,7 +81,8 @@ function abrirModalCodigo() {
         try {
 
             const lecturaId = await canjearCodigoLectura(codigo);
-            window.location.href = `lectura.html?id=${encodeURIComponent(lecturaId)}`;
+            const destino = await elegirDestinoTrasCanjear(lecturaId);
+            window.location.href = `lectura.html?id=${encodeURIComponent(destino)}`;
 
         } catch (error) {
 
@@ -133,5 +142,68 @@ async function canjearCodigoLectura(codigo) {
     });
 
     return lecturaId;
+
+}
+
+/**
+ * Si "lecturaId" (lo que acaba de desbloquear el código) ya está
+ * APROBADA por este usuario, y todavía hay lecturas del catálogo sin
+ * descubrir, elige una de esas al azar, la desbloquea de una vez (sin
+ * gastar otro código) y la devuelve como destino en su lugar. Si no
+ * aplica ninguna de las dos condiciones, devuelve la misma lecturaId
+ * sin tocar nada más.
+ */
+async function elegirDestinoTrasCanjear(lecturaId) {
+
+    const user = auth.currentUser;
+    if (!user) return lecturaId;
+
+    let yaAprobada = false;
+
+    try {
+
+        const intentosPrevios = await db.collection("progreso")
+            .where("usuarioId", "==", user.uid)
+            .where("lecturaId", "==", lecturaId)
+            .get();
+
+        yaAprobada = intentosPrevios.docs.some(doc => doc.data().puntosGanados > 0);
+
+    } catch (error) {
+        console.error("No se pudo revisar si esa lectura ya estaba aprobada:", error);
+        return lecturaId;
+    }
+
+    if (!yaAprobada) return lecturaId;
+
+    await cargarCatalogoLecturas();
+
+    let desbloqueadas = [];
+
+    try {
+        const usuarioDoc = await db.collection("usuarios").doc(user.uid).get();
+        desbloqueadas = (usuarioDoc.exists && usuarioDoc.data().lecturasDesbloqueadas) || [];
+    } catch (error) {
+        console.error("No se pudo revisar tus lecturas desbloqueadas:", error);
+        return lecturaId;
+    }
+
+    const pendientes = CATALOGO_LECTURAS.filter(l => !desbloqueadas.includes(l.id));
+    if (pendientes.length === 0) return lecturaId;
+
+    const sugerida = pendientes[Math.floor(Math.random() * pendientes.length)];
+
+    try {
+        await db.collection("usuarios").doc(user.uid).update({
+            lecturasDesbloqueadas: firebase.firestore.FieldValue.arrayUnion(sugerida.id)
+        });
+    } catch (error) {
+        console.error("No se pudo desbloquear la lectura nueva:", error);
+        return lecturaId;
+    }
+
+    alert("Esa lectura ya la tenías aprobada. Como todavía hay lecturas nuevas por descubrir, te llevamos a una de ellas.");
+
+    return sugerida.id;
 
 }

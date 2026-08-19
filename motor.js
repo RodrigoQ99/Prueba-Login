@@ -206,7 +206,7 @@ async function iniciarLectura(){
             if(otorgado) return;
         }
 
-        mostrarRepasoBloqueado(bonoActivo);
+        mostrarRepasoBloqueado(bonoActivo, true);
         return;
 
     }
@@ -231,7 +231,7 @@ async function iniciarLectura(){
         if(otorgado) return;
     }
 
-    mostrarRepasoBloqueado(bonoActivo);
+    mostrarRepasoBloqueado(bonoActivo, false);
 
 }
 
@@ -411,7 +411,7 @@ function abandonarPorCambioDeVisibilidad(){
 
     cuestionario.style.display = "none";
 
-    mostrarRepasoBloqueado(null);
+    mostrarRepasoBloqueado(null, false);
 
 }
 
@@ -420,8 +420,11 @@ function abandonarPorCambioDeVisibilidad(){
 // REPASO BLOQUEADO (ya se usó la oportunidad de esta lectura)
 // ==========================
 // Puede releer el texto libremente, pero no hay camino al cuestionario.
+// El mensaje cambia según si la razón es que ya la aprobó (no tiene
+// sentido hablar de "reintentar") o si la falló/abandonó (ahí sí puede
+// tocarle otra oportunidad en el futuro, vía código o bono de completista).
 
-function mostrarRepasoBloqueado(bonoPendiente){
+function mostrarRepasoBloqueado(bonoPendiente, aprobada){
 
     temporizador.style.display = "none";
 
@@ -458,7 +461,9 @@ function mostrarRepasoBloqueado(bonoPendiente){
     pantalla.innerHTML = `
         <div style="text-align:center; padding-bottom:10px;">
             <p style="color:var(--texto-suave);">
-                Para volver a intentar esta lectura ingresa otro código
+                ${aprobada
+                    ? "🎉 ¡Ya completaste esta lectura! Te invitamos a seguir participando."
+                    : "Para volver a intentar esta lectura ingresa otro código"}
             </p>
             ${notaBono}
             <a href="index.html" class="menuLink"
