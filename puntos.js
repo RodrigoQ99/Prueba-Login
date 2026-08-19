@@ -266,6 +266,13 @@ async function guardarProgreso(lecturaId, nivel, estrellas, totalPreguntas) {
         fecha: firebase.firestore.FieldValue.serverTimestamp()
     });
 
+    // Cuenta como actividad del día para la racha 🔥, se haya aprobado o
+    // no — esta es la única oportunidad de esta lectura, así que
+    // calificarla ya cuenta como "completarla" hoy (ver racha.js).
+    if (typeof registrarActividadRacha === "function") {
+        await registrarActividadRacha();
+    }
+
     // 2. Sumar los puntos al total del usuario, si ganó puntos NUEVOS
     if (puntosGanados > 0) {
         await db.collection("usuarios").doc(user.uid).update({

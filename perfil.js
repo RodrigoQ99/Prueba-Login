@@ -20,6 +20,8 @@ async function cargarPerfil() {
         console.error("No se pudo cargar tu perfil:", error);
     }
 
+    document.getElementById("cajaRacha").textContent = `🔥 ${datos.rachaActual || 0}`;
+
     document.getElementById("campoNombrePerfil").value = datos.nombre || user.displayName || "";
     document.getElementById("campoAliasPerfil").value = datos.alias || "";
 

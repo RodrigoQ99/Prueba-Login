@@ -516,6 +516,13 @@ async function calificarMejora() {
         mejoraCompletadas: firebase.firestore.FieldValue.arrayUnion(ubicacion.lectura.id)
     });
 
+    // Cuenta como actividad del día para la racha 🔥 — aquí "completada"
+    // ya significa aprobada (hay intentos ilimitados, así que reprobar
+    // no cuenta como completar la lectura; ver racha.js).
+    if (typeof registrarActividadRacha === "function") {
+        await registrarActividadRacha();
+    }
+
     // ¿Era la última lectura de su edad? Si es así, sube de edad
     const listaDeEstaEdad = CATALOGO_MEJORA[ubicacion.edad] || [];
     const eraLaUltima = ubicacion.indice === listaDeEstaEdad.length - 1;
