@@ -948,6 +948,17 @@ button.menuLink{
     background:#ffe066;
 }
 
+/* Checkpoint del minuto: mientras está activo, las palabras se pueden
+   seleccionar o mantener presionadas para marcar dónde se quedó
+   (ver motor-mejorar.js). */
+.marcandoCheckpoint .palabraMejora{
+    cursor:pointer;
+}
+
+.palabraMejora.palabraPresionada{
+    background:#cdeccd;
+}
+
 .cajaCheckpoint{
     background:white;
     border-radius:14px;

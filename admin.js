@@ -512,7 +512,7 @@ async function abrirFormularioRangoEdades(alGuardar) {
     overlay.className = "modalOverlay";
     overlay.innerHTML = `
         <div class="modalCaja modalCajaInfo" style="text-align:center;">
-            <h2>⚙️ Rango de edades</h2>
+            <h2>⚙️ Configuración de Mejorar la lectura</h2>
             <p>Define entre qué edades pueden elegir los usuarios en "Mejorar la lectura".</p>
 
             <label style="display:block; text-align:left; margin-top:10px;">Edad mínima</label>
@@ -522,6 +522,15 @@ async function abrirFormularioRangoEdades(alGuardar) {
             <label style="display:block; text-align:left;">Edad máxima</label>
             <input type="number" id="campoEdadMax" min="5" max="18" value="${RANGO_EDADES.max}"
                    style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+            <label style="display:block; text-align:left;">Segundos para marcar una palabra manteniéndola presionada</label>
+            <input type="number" id="campoSegundosPresionar" min="1" max="10" step="0.5"
+                   value="${RANGO_EDADES.segundosPresionar ?? 2}"
+                   style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+            <p style="font-size:13px; color:var(--texto-suave); margin:-8px 0 15px; text-align:left;">
+                En el checkpoint del minuto, cuánto tiempo hay que mantener presionada
+                (clic o dedo) la última palabra leída para marcarla como el punto donde se quedó.
+            </p>
 
             <button id="btnGuardarRango">Guardar</button>
             <button class="modalCerrar" style="background:white; border:1px solid var(--borde); color:var(--texto-suave); margin-top:10px;">Cancelar</button>
@@ -536,20 +545,26 @@ async function abrirFormularioRangoEdades(alGuardar) {
 
         const min = Number(overlay.querySelector("#campoEdadMin").value);
         const max = Number(overlay.querySelector("#campoEdadMax").value);
+        const segundosPresionar = Number(overlay.querySelector("#campoSegundosPresionar").value);
 
         if (!min || !max || min > max) {
             alert("Revisa los valores: la edad mínima debe ser menor o igual a la máxima.");
             return;
         }
 
+        if (!segundosPresionar || segundosPresionar <= 0) {
+            alert("Los segundos para marcar una palabra deben ser un número mayor a 0.");
+            return;
+        }
+
         try {
-            await db.collection("configuracion").doc("rangoEdades").set({ min, max });
+            await db.collection("configuracion").doc("rangoEdades").set({ min, max, segundosPresionar });
             await cargarRangoEdades(true);
             overlay.remove();
             if (alGuardar) alGuardar();
         } catch (error) {
-            console.error("No se pudo guardar el rango de edades:", error);
-            alert("No se pudo guardar el rango de edades.");
+            console.error("No se pudo guardar la configuración:", error);
+            alert("No se pudo guardar la configuración.");
         }
 
     });
@@ -1206,7 +1221,7 @@ function inicializarAdminMejora(edadActual) {
         <h2 style="text-align:center;">🔧 Panel de administrador</h2>
         <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:15px 0;">
             <button id="btnNuevaMejora" style="max-width:260px;">+ Agregar lectura — ${etiquetaEdad(edadActual)}</button>
-            <button id="btnEditarRango" style="max-width:260px; background:white; color:var(--azul); border:2px solid var(--azul);">⚙️ Editar rango de edades</button>
+            <button id="btnEditarRango" style="max-width:260px; background:white; color:var(--azul); border:2px solid var(--azul);">⚙️ Configuración</button>
         </div>
         <div id="listaAdminMejora"></div>
     `;

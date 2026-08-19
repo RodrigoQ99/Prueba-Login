@@ -6,13 +6,16 @@
 // panel de administrador en mejora.html.
 //
 // El rango de edades disponible (antes fijo en 10-15) también es
-// editable ahora, y vive en Firestore en configuracion/rangoEdades.
+// editable ahora, y vive en Firestore en configuracion/rangoEdades —
+// junto con "segundosPresionar" (cuántos segundos hay que mantener
+// presionada una palabra del checkpoint para marcarla como donde se
+// quedó leyendo; ver motor-mejorar.js).
 // ==========================================================
 
 let CATALOGO_MEJORA = {};
 let _promesaCatalogoMejora = null;
 
-let RANGO_EDADES = { min: 10, max: 17 };
+let RANGO_EDADES = { min: 10, max: 17, segundosPresionar: 2 };
 let _promesaRangoEdades = null;
 
 /**
@@ -70,6 +73,12 @@ function cargarRangoEdades(forzarRecarga) {
         .then(doc => {
             if (doc.exists) {
                 RANGO_EDADES = doc.data();
+                // Por si el documento se guardó antes de que existiera este
+                // campo: sin esto, un doc viejo dejaría segundosPresionar
+                // en undefined en vez del valor por defecto.
+                if (typeof RANGO_EDADES.segundosPresionar !== "number") {
+                    RANGO_EDADES.segundosPresionar = 2;
+                }
             }
             return RANGO_EDADES;
         })

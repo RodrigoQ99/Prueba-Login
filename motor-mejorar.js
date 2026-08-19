@@ -335,11 +335,16 @@ function mostrarCheckpoint() {
     cajaCheckpoint.style.display = "block";
     btnReiniciarAsistida.disabled = true;
 
+    // Habilita el cursor de "clickeable" sobre las palabras mientras el
+    // checkpoint está activo (ver métodos 1 y 2 más abajo).
+    textoLecturaMejora.classList.add("marcandoCheckpoint");
+
 }
 
 // Botón "Logré leer todo" dentro del checkpoint
 document.getElementById("btnLogreLeerTodo").addEventListener("click", () => {
     cajaCheckpoint.style.display = "none";
+    textoLecturaMejora.classList.remove("marcandoCheckpoint");
     avanzarAlCuestionario();
 });
 
@@ -352,6 +357,130 @@ document.getElementById("formUltimasPalabras").addEventListener("submit", (e) =>
     if (!valor) return;
 
     calcularPalabrasPorMinuto(valor);
+
+});
+
+
+// ==========================
+// MARCAR LA POSICIÓN DIRECTAMENTE SOBRE EL TEXTO
+// ==========================
+// Dos formas más de indicar dónde se quedó, además de escribir las
+// últimas 3 palabras arriba: seleccionando texto directamente sobre la
+// lectura (método 1), o manteniendo presionada la última palabra leída
+// (método 2). Las tres conviven — el usuario usa la que prefiera — y
+// las dos de aquí abajo arman un fragmento de texto equivalente a lo
+// que se escribiría a mano, y se lo pasan a la MISMA
+// calcularPalabrasPorMinuto() de siempre: solo cambia cómo se obtiene
+// ese fragmento, no cómo se calculan las palabras por minuto.
+
+function checkpointEstaActivo() {
+    return cajaCheckpoint.style.display === "block";
+}
+
+// Arma un fragmento de hasta 3 palabras que termina en "span" (esa
+// palabra más hasta 2 anteriores) — el mismo tipo de fragmento que el
+// usuario escribiría a mano en "últimas palabras que leíste".
+function obtenerFragmentoDesdeSpan(span) {
+
+    const indice = spansPalabrasMejora.indexOf(span);
+    if (indice === -1) return "";
+
+    const desde = Math.max(0, indice - 2);
+
+    return spansPalabrasMejora
+        .slice(desde, indice + 1)
+        .map(s => s.textContent)
+        .join(" ");
+
+}
+
+// --- Método 1: seleccionar/marcar texto directamente sobre la lectura ---
+
+function manejarSeleccionEnTexto() {
+
+    if (!checkpointEstaActivo()) return;
+
+    const seleccion = window.getSelection();
+    if (!seleccion || seleccion.isCollapsed) return;
+
+    // Ignora selecciones que empiecen fuera del texto de la lectura
+    // (por ejemplo, si el usuario selecciona el mensaje de error).
+    const ancla = seleccion.anchorNode;
+    if (!ancla || !textoLecturaMejora.contains(ancla)) return;
+
+    const texto = seleccion.toString().trim();
+    seleccion.removeAllRanges();
+
+    if (texto) calcularPalabrasPorMinuto(texto);
+
+}
+
+textoLecturaMejora.addEventListener("mouseup", manejarSeleccionEnTexto);
+textoLecturaMejora.addEventListener("touchend", manejarSeleccionEnTexto);
+
+// --- Método 2: mantener presionada (clic o dedo) la última palabra leída ---
+
+let temporizadorPresionarPalabra = null;
+let coordenadasInicioPresionar = null;
+
+function cancelarPresionarPalabra() {
+
+    if (temporizadorPresionarPalabra) {
+        clearTimeout(temporizadorPresionarPalabra);
+        temporizadorPresionarPalabra = null;
+    }
+
+    coordenadasInicioPresionar = null;
+    spansPalabrasMejora.forEach(span => span.classList.remove("palabraPresionada"));
+
+}
+
+textoLecturaMejora.addEventListener("pointerdown", (e) => {
+
+    if (!checkpointEstaActivo()) return;
+
+    const span = e.target.closest(".palabraMejora");
+    if (!span) return;
+
+    cancelarPresionarPalabra();
+    coordenadasInicioPresionar = { x: e.clientX, y: e.clientY };
+    span.classList.add("palabraPresionada");
+
+    // Configurable desde el panel de administrador (⚙️ Configuración,
+    // dentro de "Mejorar la lectura"); 2 segundos si nunca se ha
+    // configurado (ver mejora-lecturas.js).
+    const segundosEspera = RANGO_EDADES.segundosPresionar || 2;
+
+    temporizadorPresionarPalabra = setTimeout(() => {
+
+        temporizadorPresionarPalabra = null;
+        span.classList.remove("palabraPresionada");
+
+        if (!checkpointEstaActivo()) return;
+
+        const fragmento = obtenerFragmentoDesdeSpan(span);
+        if (fragmento) calcularPalabrasPorMinuto(fragmento);
+
+    }, segundosEspera * 1000);
+
+});
+
+// Soltar antes de tiempo, o mover el dedo/cursor lo suficiente como
+// para que ya no sea "mantener presionado" (por ejemplo, un scroll),
+// cancela sin marcar nada.
+textoLecturaMejora.addEventListener("pointerup", cancelarPresionarPalabra);
+textoLecturaMejora.addEventListener("pointercancel", cancelarPresionarPalabra);
+
+textoLecturaMejora.addEventListener("pointermove", (e) => {
+
+    if (!coordenadasInicioPresionar) return;
+
+    const distancia = Math.hypot(
+        e.clientX - coordenadasInicioPresionar.x,
+        e.clientY - coordenadasInicioPresionar.y
+    );
+
+    if (distancia > 10) cancelarPresionarPalabra();
 
 });
 
@@ -387,13 +516,15 @@ function calcularPalabrasPorMinuto(textoIngresado) {
     const cajaError = document.getElementById("errorUltimasPalabras");
 
     if (posicionEncontrada === -1) {
-        cajaError.textContent = "No encontramos esas palabras en el texto. Revisa la ortografía e intenta de nuevo.";
+        cajaError.textContent = "No pudimos ubicar esas palabras en el texto. Revisa e intenta de nuevo.";
         cajaError.style.display = "block";
         return;
     }
 
     cajaError.style.display = "none";
     cajaCheckpoint.style.display = "none";
+    textoLecturaMejora.classList.remove("marcandoCheckpoint");
+    cancelarPresionarPalabra();
 
     const ppm = posicionEncontrada; // ya que el checkpoint siempre es a 1 minuto exacto
 
