@@ -906,6 +906,368 @@ async function abrirFormularioMetaPremioGordo(alGuardar) {
 
 
 // ==========================================================
+// FORMULARIO: EL HILO DEL DÍA
+// ==========================================================
+// Cada día tiene un texto corto dividido en 5 fragmentos, guardados
+// SIEMPRE en el orden correcto (el juego los desordena al mostrarlos —
+// ver hilo-del-dia.js). El editor de párrafos es el mismo patrón que
+// construirEditorPreguntas: un arreglo mutado en sitio con botón
+// "+ Agregar".
+
+function construirEditorFragmentosHilo(contenedor, fragmentos) {
+
+    function render() {
+
+        contenedor.innerHTML = fragmentos.map((frag, i) => `
+            <div style="border:1px solid var(--borde); border-radius:10px; padding:12px; margin-bottom:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <strong>Fragmento ${i + 1}</strong>
+                    <button type="button" class="botonAdminChico botonPeligro" data-accion="quitar-fragmento" data-i="${i}">🗑️ Quitar</button>
+                </div>
+                <textarea data-accion="texto-fragmento" data-i="${i}" rows="3"
+                          placeholder="Escribe este párrafo, en el orden correcto de la historia"
+                          style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--borde); font-family:inherit;"
+                >${frag || ""}</textarea>
+            </div>
+        `).join("") + `<button type="button" data-accion="agregar-fragmento" style="width:100%;">+ Agregar párrafo</button>`;
+
+    }
+
+    contenedor.addEventListener("input", (e) => {
+        if (e.target.dataset.accion === "texto-fragmento") {
+            fragmentos[Number(e.target.dataset.i)] = e.target.value;
+        }
+    });
+
+    contenedor.addEventListener("click", (e) => {
+
+        const accion = e.target.dataset.accion;
+        if (!accion) return;
+
+        if (accion === "agregar-fragmento") {
+            fragmentos.push("");
+        } else if (accion === "quitar-fragmento") {
+            fragmentos.splice(Number(e.target.dataset.i), 1);
+        } else {
+            return;
+        }
+
+        render();
+
+    });
+
+    render();
+
+}
+
+async function abrirFormularioHiloDia(hiloExistente, alGuardar) {
+
+    const esNuevo = !hiloExistente;
+    const fragmentos = esNuevo ? [] : [...(hiloExistente.fragmentos || [])];
+
+    const overlay = document.createElement("div");
+    overlay.className = "modalOverlay";
+    overlay.innerHTML = `
+        <div class="modalCaja modalCajaInfo modalCajaAdmin">
+            <h2>${esNuevo ? "➕ Nuevo Hilo" : "✏️ Editar Hilo"}</h2>
+            <form id="formHiloDia">
+
+                <label>Fecha (día en que aparece)</label>
+                <input type="date" id="campoFechaHilo" required
+                       value="${esNuevo ? "" : hiloExistente.id}" ${esNuevo ? "" : "readonly"}
+                       style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+                <label>Título</label>
+                <input type="text" id="campoTituloHilo" required autocomplete="off"
+                       value="${esNuevo ? "" : (hiloExistente.titulo || "").replace(/"/g, "&quot;")}"
+                       style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+                <h3 style="margin-top:10px;">Párrafos (en el orden correcto)</h3>
+                <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
+                    Deben ser exactamente 5. El juego se los muestra desordenados a los jugadores.
+                </p>
+                <div id="editorFragmentosHilo"></div>
+
+                <div style="display:flex; gap:10px; margin-top:20px;">
+                    <button type="submit" style="flex:1;">${esNuevo ? "Crear Hilo" : "Guardar cambios"}</button>
+                    <button type="button" class="modalCerrar" style="flex:1; background:white; border:1px solid var(--borde); color:var(--texto-suave);">Cancelar</button>
+                </div>
+
+            </form>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    construirEditorFragmentosHilo(overlay.querySelector("#editorFragmentosHilo"), fragmentos);
+
+    overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+
+    overlay.querySelector("#formHiloDia").addEventListener("submit", async (e) => {
+
+        e.preventDefault();
+
+        const fecha = overlay.querySelector("#campoFechaHilo").value;
+
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+            alert("Escribe una fecha válida.");
+            return;
+        }
+
+        const fragmentosLimpios = fragmentos.map(f => f.trim()).filter(f => f.length > 0);
+
+        if (fragmentosLimpios.length !== 5) {
+            alert("El Hilo necesita exactamente 5 fragmentos, ni más ni menos.");
+            return;
+        }
+
+        if (esNuevo) {
+            try {
+                const existente = await db.collection("elHiloDelDia").doc(fecha).get();
+                if (existente.exists) {
+                    alert("Ya existe un Hilo para esa fecha. Edítalo en vez de crear uno nuevo.");
+                    return;
+                }
+            } catch (error) {
+                console.error("No se pudo revisar si ya existía un Hilo para esa fecha:", error);
+            }
+        }
+
+        const datos = {
+            titulo: overlay.querySelector("#campoTituloHilo").value.trim(),
+            fragmentos: fragmentosLimpios,
+            creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        try {
+            await db.collection("elHiloDelDia").doc(fecha).set(datos);
+            overlay.remove();
+            if (alGuardar) alGuardar();
+        } catch (error) {
+            console.error("No se pudo guardar el Hilo:", error);
+            alert("No se pudo guardar el Hilo.");
+        }
+
+    });
+
+}
+
+async function eliminarHiloDia(fecha, alEliminar) {
+
+    if (!confirm(`¿Seguro que quieres eliminar el Hilo del ${fecha}? Esta acción no se puede deshacer.`)) {
+        return;
+    }
+
+    try {
+        await db.collection("elHiloDelDia").doc(fecha).delete();
+        if (alEliminar) alEliminar();
+    } catch (error) {
+        console.error("No se pudo eliminar el Hilo:", error);
+        alert("No se pudo eliminar el Hilo.");
+    }
+
+}
+
+async function renderizarListaAdminHilos(contenedor) {
+
+    contenedor.innerHTML = "<p style='text-align:center;'>Cargando...</p>";
+
+    let hilos = [];
+
+    try {
+        const snapshot = await db.collection("elHiloDelDia")
+            .orderBy(firebase.firestore.FieldPath.documentId(), "desc")
+            .get();
+        hilos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("No se pudieron cargar los Hilos:", error);
+        contenedor.innerHTML = "<p style='text-align:center;'>No se pudieron cargar los Hilos.</p>";
+        return;
+    }
+
+    if (hilos.length === 0) {
+        contenedor.innerHTML = "<p style='text-align:center;'>Todavía no hay ningún Hilo publicado.</p>";
+        return;
+    }
+
+    contenedor.innerHTML = hilos.map(hilo => `
+        <div class="tarjetaLectura" style="cursor:default;">
+            <div class="tarjetaInfo">
+                <p class="tarjetaTitulo">${hilo.id} — ${hilo.titulo}</p>
+                <p class="tarjetaNivel">${(hilo.fragmentos || []).length} fragmentos</p>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="botonAdminChico" data-editar-hilo="${hilo.id}">✏️</button>
+                <button type="button" class="botonAdminChico botonPeligro" data-eliminar-hilo="${hilo.id}">🗑️</button>
+            </div>
+        </div>
+    `).join("");
+
+    contenedor.querySelectorAll("[data-editar-hilo]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const hilo = hilos.find(h => h.id === btn.dataset.editarHilo);
+            abrirFormularioHiloDia(hilo, () => renderizarListaAdminHilos(contenedor));
+        });
+    });
+
+    contenedor.querySelectorAll("[data-eliminar-hilo]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            eliminarHiloDia(btn.dataset.eliminarHilo, () => renderizarListaAdminHilos(contenedor));
+        });
+    });
+
+}
+
+
+// ==========================================================
+// FORMULARIO: BANCO DE PALABRAS (Ahorcado)
+// ==========================================================
+// Cada palabra vive en su propio documento, usando la palabra misma
+// (normalizada en minúsculas) como ID — así no se pueden duplicar por
+// accidente. "pista" es opcional.
+
+async function abrirFormularioPalabra(palabraExistente, alGuardar) {
+
+    const esNueva = !palabraExistente;
+
+    const overlay = document.createElement("div");
+    overlay.className = "modalOverlay";
+    overlay.innerHTML = `
+        <div class="modalCaja modalCajaInfo" style="text-align:center;">
+            <h2>${esNueva ? "➕ Nueva palabra" : "✏️ Editar palabra"}</h2>
+
+            <label style="display:block; text-align:left; margin-top:10px;">Palabra</label>
+            <input type="text" id="campoPalabra" required autocomplete="off"
+                   value="${esNueva ? "" : (palabraExistente.palabra || "").replace(/"/g, "&quot;")}"
+                   style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+            <label style="display:block; text-align:left;">Pista / significado (opcional)</label>
+            <input type="text" id="campoPista" autocomplete="off"
+                   value="${esNueva ? "" : (palabraExistente.pista || "").replace(/"/g, "&quot;")}"
+                   style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+            <button id="btnGuardarPalabra">${esNueva ? "Agregar" : "Guardar cambios"}</button>
+            <button class="modalCerrar" style="background:white; border:1px solid var(--borde); color:var(--texto-suave); margin-top:10px;">Cancelar</button>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
+
+    overlay.querySelector("#btnGuardarPalabra").addEventListener("click", async () => {
+
+        const palabra = overlay.querySelector("#campoPalabra").value.trim();
+        const pista = overlay.querySelector("#campoPista").value.trim();
+
+        if (!palabra) {
+            alert("Escribe una palabra.");
+            return;
+        }
+
+        const id = palabra.toLowerCase();
+
+        try {
+
+            if (esNueva) {
+                const existente = await db.collection("bancoPalabras").doc(id).get();
+                if (existente.exists) {
+                    alert("Esa palabra ya existe en el banco.");
+                    return;
+                }
+            } else if (id !== palabraExistente.id) {
+                // Cambió el texto de la palabra: como el ID depende de la
+                // palabra normalizada, se borra el documento viejo para no
+                // dejar un duplicado suelto con el texto anterior.
+                await db.collection("bancoPalabras").doc(palabraExistente.id).delete();
+            }
+
+            await db.collection("bancoPalabras").doc(id).set({
+                palabra: palabra,
+                pista: pista || null
+            });
+
+            overlay.remove();
+            if (alGuardar) alGuardar();
+
+        } catch (error) {
+            console.error("No se pudo guardar la palabra:", error);
+            alert("No se pudo guardar la palabra.");
+        }
+
+    });
+
+}
+
+async function eliminarPalabra(id, alEliminar) {
+
+    if (!confirm(`¿Seguro que quieres eliminar "${id}" del banco de palabras?`)) {
+        return;
+    }
+
+    try {
+        await db.collection("bancoPalabras").doc(id).delete();
+        if (alEliminar) alEliminar();
+    } catch (error) {
+        console.error("No se pudo eliminar la palabra:", error);
+        alert("No se pudo eliminar la palabra.");
+    }
+
+}
+
+async function renderizarListaAdminPalabras(contenedor) {
+
+    contenedor.innerHTML = "<p style='text-align:center;'>Cargando...</p>";
+
+    let palabras = [];
+
+    try {
+        const snapshot = await db.collection("bancoPalabras").orderBy("palabra").get();
+        palabras = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("No se pudo cargar el banco de palabras:", error);
+        contenedor.innerHTML = "<p style='text-align:center;'>No se pudo cargar el banco de palabras.</p>";
+        return;
+    }
+
+    if (palabras.length === 0) {
+        contenedor.innerHTML = "<p style='text-align:center;'>Todavía no hay palabras en el banco.</p>";
+        return;
+    }
+
+    contenedor.innerHTML = palabras.map(p => `
+        <div class="tarjetaLectura" style="cursor:default;">
+            <div class="tarjetaInfo">
+                <p class="tarjetaTitulo">${p.palabra}</p>
+                <p class="tarjetaNivel">${p.pista || "Sin pista"}</p>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="botonAdminChico" data-editar-palabra="${p.id}">✏️</button>
+                <button type="button" class="botonAdminChico botonPeligro" data-eliminar-palabra="${p.id}">🗑️</button>
+            </div>
+        </div>
+    `).join("");
+
+    contenedor.querySelectorAll("[data-editar-palabra]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const palabra = palabras.find(p => p.id === btn.dataset.editarPalabra);
+            abrirFormularioPalabra(palabra, () => renderizarListaAdminPalabras(contenedor));
+        });
+    });
+
+    contenedor.querySelectorAll("[data-eliminar-palabra]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            eliminarPalabra(btn.dataset.eliminarPalabra, () => renderizarListaAdminPalabras(contenedor));
+        });
+    });
+
+}
+
+
+// ==========================================================
 // PANEL EN "MIS LECTURAS" (index.html)
 // ==========================================================
 
@@ -961,6 +1323,22 @@ function inicializarAdminIndex() {
                 <button id="btnEditarMetaPremioGordo" class="botonAdminContorno">Editar meta del premio gordo</button>
             </div>
         </div>
+
+        <div class="seccionAdmin">
+            <h3 class="seccionAdminTitulo">🧵 El Hilo del día</h3>
+            <div class="seccionAdminBotones">
+                <button id="btnNuevoHiloDia">+ Agregar Hilo</button>
+            </div>
+            <div id="listaAdminHilos"></div>
+        </div>
+
+        <div class="seccionAdmin">
+            <h3 class="seccionAdminTitulo">🔤 Ahorcado — banco de palabras</h3>
+            <div class="seccionAdminBotones">
+                <button id="btnNuevaPalabra">+ Agregar palabra</button>
+            </div>
+            <div id="listaAdminPalabras"></div>
+        </div>
     `;
     contenedor.appendChild(panel);
 
@@ -982,6 +1360,18 @@ function inicializarAdminIndex() {
 
     document.getElementById("btnEditarMetaPremioGordo").addEventListener("click", () => {
         abrirFormularioMetaPremioGordo(() => inicializarAdminIndex());
+    });
+
+    const listaHilos = document.getElementById("listaAdminHilos");
+    renderizarListaAdminHilos(listaHilos);
+    document.getElementById("btnNuevoHiloDia").addEventListener("click", () => {
+        abrirFormularioHiloDia(null, () => renderizarListaAdminHilos(listaHilos));
+    });
+
+    const listaPalabras = document.getElementById("listaAdminPalabras");
+    renderizarListaAdminPalabras(listaPalabras);
+    document.getElementById("btnNuevaPalabra").addEventListener("click", () => {
+        abrirFormularioPalabra(null, () => renderizarListaAdminPalabras(listaPalabras));
     });
 
     const btnMigrar = document.getElementById("btnMigrarDatos");

@@ -579,6 +579,32 @@ button:active{
     background:#e9ecf1;
 }
 
+/* Submenú "🎮 Juegos" (El Hilo del día, Ahorcado) — mismo patrón
+   <details>/<summary> que ya usa el panel de admin para agrupar por nivel. */
+.menuJuegos{
+    margin-top:10px;
+}
+
+.menuJuegos > summary{
+    display:block;
+    text-align:center;
+    background:var(--fondo);
+    color:var(--texto);
+    padding:12px;
+    border-radius:10px;
+    font-weight:600;
+    font-size:14px;
+    cursor:pointer;
+}
+
+.menuJuegos > summary:hover{
+    background:#e9ecf1;
+}
+
+.menuJuegos .menuLink{
+    font-size:13px;
+}
+
 .menuLinkBoton{
     display:block;
     width:100%;
@@ -1093,6 +1119,29 @@ button.menuLink{
     background:#fdf1f0;
     color:#c0392b;
     border:1px solid #f0d6d3;
+}
+
+/* "El Hilo del día": fragmento tocable (en el "pool") y la casilla de
+   destino donde queda colocado (ver hilo-del-dia.js). */
+.fragmentoHilo{
+    padding:12px 14px;
+    border-radius:10px;
+    border:1px solid var(--borde);
+    background:white;
+    cursor:pointer;
+    transition:background-color 0.15s ease;
+}
+
+.fragmentoHilo:hover{
+    background:var(--fondo);
+}
+
+.casillaOrdenHilo{
+    padding:12px 14px;
+    border-radius:10px;
+    border:2px dashed var(--borde);
+    cursor:pointer;
+    min-height:20px;
 }
 
 .botonExito{

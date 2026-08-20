@@ -99,8 +99,41 @@ service cloud.firestore {
     }
 
     // Configuración general (rango de edades, descripción de premios,
-    // lista de premiadores). Mismo criterio.
+    // lista de premiadores, meta de El premio gordo). Mismo criterio.
     match /configuracion/{configId} {
+      allow read: if request.auth != null;
+      allow write: if esAdmin();
+    }
+
+    // "El Hilo del día": el contenido de cada día (5 fragmentos en su
+    // orden correcto) lo administra solo el admin, igual que /lecturas.
+    match /elHiloDelDia/{fecha} {
+      allow read: if request.auth != null;
+      allow write: if esAdmin();
+    }
+
+    // El intento del día de cada usuario (ver hilo-del-dia.js) — mismo
+    // nivel de confianza que /progreso: cada quien lee y escribe SOLO
+    // su propio documento (el ID ya lo compone el cliente como
+    // "{uid}_{fecha}", pero además se exige que el campo "uid" adentro
+    // coincida, por si acaso). "resource == null" cubre el caso de
+    // revisar si el documento de hoy existe TODAVÍA (antes de jugar la
+    // primera vez) — sin eso, leer algo que no existe truena la regla
+    // en vez de simplemente devolver "no existe".
+    match /intentosHiloDia/{id} {
+      allow read: if request.auth != null
+                  && (resource == null || request.auth.uid == resource.data.uid);
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+      allow update: if request.auth != null
+                    && request.auth.uid == resource.data.uid
+                    && request.auth.uid == request.resource.data.uid;
+      allow delete: if false;
+    }
+
+    // Banco de palabras de Ahorcado. Mismo criterio que /lecturas: lo
+    // administra solo el admin, cualquier logueado puede leerlo para
+    // poder jugar.
+    match /bancoPalabras/{palabraId} {
       allow read: if request.auth != null;
       allow write: if esAdmin();
     }

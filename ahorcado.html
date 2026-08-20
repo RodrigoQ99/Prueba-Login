@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ranking de Colegios</title>
+    <title>Ahorcado</title>
     <link rel="stylesheet" href="estilos.css">
 </head>
 
@@ -40,23 +40,16 @@
         </div>
 
         <a href="index.html" class="menuLink">📚 Mis lecturas</a>
-
         <a href="mejora.html" class="menuLink">📈 Mejorar la lectura</a>
-
         <a href="ranking.html" class="menuLink">🏆 Ver ranking</a>
-
         <a href="premio-gordo.html" class="menuLink">💎 El premio gordo</a>
-
         <details class="menuJuegos">
             <summary>🎮 Juegos</summary>
             <a href="hilo-del-dia.html" class="menuLink">🧵 El Hilo del día</a>
             <a href="ahorcado.html" class="menuLink">🔤 Ahorcado</a>
         </details>
-
         <a href="premios.html" class="menuLink">🎁 Mis premios</a>
-
         <a href="perfil.html" class="menuLink">✏️ Editar perfil</a>
-
         <button id="btnQueEsEsto" class="menuLink">💡 ¿Qué es esto?</button>
 
         <button id="btnCerrarSesionMenu" class="menuLinkBoton">Cerrar sesión</button>
@@ -65,53 +58,17 @@
 </div>
 
 
-<div id="contenedorRanking">
+<div id="contenedorAhorcado" style="max-width:600px; margin:40px auto; padding:0 20px;">
 
-    <h1>Ranking</h1>
+    <h1 style="text-align:center;">🔤 Ahorcado</h1>
 
-    <!-- ==========================
-         RANKING PERSONAL (todos: particulares y estudiantes)
-    =========================== -->
-    <section id="seccionRankingPersonal">
+    <p style="text-align:center; color:#555; margin-bottom:20px;">
+        Adivina la palabra letra por letra antes de que se acaben tus intentos.
+    </p>
 
-        <h2>Ranking personal</h2>
-
-        <p style="text-align:center; color:#555; margin-bottom:20px;">
-            Se actualiza al instante cada vez que alguien completa una lectura.
-        </p>
-
-        <div id="listaRankingPersonal">
-            <p style="text-align:center;">Cargando ranking...</p>
-        </div>
-
-    </section>
-
-
-    <!-- ==========================
-         RANKING DE COLEGIOS (solo visible para estudiantes)
-    =========================== -->
-    <section id="seccionRankingColegios" style="display:none; margin-top:40px;">
-
-        <h2>🏆 Ranking de colegios</h2>
-
-        <p style="text-align:center; color:#555; margin-bottom:20px;">
-            Comparación de tu colegio y grado contra los demás.
-        </p>
-
-        <div id="listaRanking">
-            <p style="text-align:center;">Cargando ranking...</p>
-        </div>
-
-    </section>
-
-
-    <!-- Mensaje para usuarios particulares, en vez del ranking de colegios -->
-    <section id="seccionSoloEstudiantes" style="display:none; margin-top:40px; text-align:center;">
-        <p style="color:var(--texto-suave);">
-            🏫 El ranking por colegio es exclusivo para usuarios registrados como estudiantes.
-        </p>
-    </section>
-
+    <div id="juegoAhorcado">
+        <p style="text-align:center;">Cargando...</p>
+    </div>
 
     <div style="text-align:center; margin-top:25px;">
         <a href="index.html">← Volver a mis lecturas</a>
@@ -124,8 +81,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script src="firebase-init.js"></script>
 <script src="admin-comun.js"></script>
-<script src="lecturas.js"></script>
-<script src="ranking.js"></script>
+<script src="ahorcado.js"></script>
 <script src="menu.js"></script>
 
 </body>
