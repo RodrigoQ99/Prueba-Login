@@ -850,6 +850,62 @@ async function abrirFormularioAdministradores(alGuardar) {
 
 
 // ==========================================================
+// FORMULARIO: META DE "EL PREMIO GORDO"
+// ==========================================================
+// Cuántas lecturas difíciles seguidas (sin fallar ninguna) hacen falta
+// para clasificar (ver premio-gordo-comun.js). Solo el administrador
+// puede cambiarla — ningún usuario regular tiene acceso a este botón,
+// porque vive dentro del panel de administrador (esAdmin() ya lo protege).
+
+async function abrirFormularioMetaPremioGordo(alGuardar) {
+
+    await cargarMetaPremioGordo();
+
+    const overlay = document.createElement("div");
+    overlay.className = "modalOverlay";
+    overlay.innerHTML = `
+        <div class="modalCaja modalCajaInfo" style="text-align:center;">
+            <h2>🏆 Meta de El premio gordo</h2>
+            <p>Cuántas lecturas difíciles seguidas (sin fallar ninguna) hacen falta para clasificar.</p>
+
+            <label style="display:block; text-align:left; margin-top:10px;">Meta</label>
+            <input type="number" id="campoMetaPremioGordo" min="1" step="1" value="${META_PREMIO_GORDO}"
+                   style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+            <button id="btnGuardarMetaPremioGordo">Guardar</button>
+            <button class="modalCerrar" style="background:white; border:1px solid var(--borde); color:var(--texto-suave); margin-top:10px;">Cancelar</button>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
+
+    overlay.querySelector("#btnGuardarMetaPremioGordo").addEventListener("click", async () => {
+
+        const meta = Number(overlay.querySelector("#campoMetaPremioGordo").value);
+
+        if (!meta || meta < 1) {
+            alert("La meta debe ser un número mayor a 0.");
+            return;
+        }
+
+        try {
+            await db.collection("configuracion").doc("premioGordo").set({ meta });
+            await cargarMetaPremioGordo(true);
+            overlay.remove();
+            if (alGuardar) alGuardar();
+        } catch (error) {
+            console.error("No se pudo guardar la meta de El premio gordo:", error);
+            alert("No se pudo guardar la meta.");
+        }
+
+    });
+
+}
+
+
+// ==========================================================
 // PANEL EN "MIS LECTURAS" (index.html)
 // ==========================================================
 
@@ -898,6 +954,13 @@ function inicializarAdminIndex() {
                 <button id="btnEditarAdministradores" class="botonAdminContorno">Editar administradores</button>
             </div>
         </div>
+
+        <div class="seccionAdmin">
+            <h3 class="seccionAdminTitulo">El premio gordo</h3>
+            <div class="seccionAdminBotones">
+                <button id="btnEditarMetaPremioGordo" class="botonAdminContorno">Editar meta del premio gordo</button>
+            </div>
+        </div>
     `;
     contenedor.appendChild(panel);
 
@@ -915,6 +978,10 @@ function inicializarAdminIndex() {
 
     document.getElementById("btnEditarAdministradores").addEventListener("click", () => {
         abrirFormularioAdministradores(() => inicializarAdminIndex());
+    });
+
+    document.getElementById("btnEditarMetaPremioGordo").addEventListener("click", () => {
+        abrirFormularioMetaPremioGordo(() => inicializarAdminIndex());
     });
 
     const btnMigrar = document.getElementById("btnMigrarDatos");

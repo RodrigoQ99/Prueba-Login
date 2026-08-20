@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ranking de Colegios</title>
+    <title>El premio gordo</title>
     <link rel="stylesheet" href="estilos.css">
 </head>
 
@@ -59,53 +59,22 @@
 </div>
 
 
-<div id="contenedorRanking">
+<div id="contenedorPremioGordo">
 
-    <h1>Ranking</h1>
+    <h1>💎 El premio gordo</h1>
 
-    <!-- ==========================
-         RANKING PERSONAL (todos: particulares y estudiantes)
-    =========================== -->
-    <section id="seccionRankingPersonal">
+    <p style="text-align:center; color:#555; margin-bottom:20px;">
+        Aprueba lecturas difíciles seguidas con 3 estrellas, sin fallar ninguna en el
+        camino, para clasificar — gana quien lo logre en menos tiempo total.
+    </p>
 
-        <h2>Ranking personal</h2>
+    <section id="seccionPremioGordo">
 
-        <p style="text-align:center; color:#555; margin-bottom:20px;">
-            Se actualiza al instante cada vez que alguien completa una lectura.
-        </p>
-
-        <div id="listaRankingPersonal">
-            <p style="text-align:center;">Cargando ranking...</p>
+        <div id="listaPremioGordo">
+            <p style="text-align:center;">Cargando...</p>
         </div>
 
     </section>
-
-
-    <!-- ==========================
-         RANKING DE COLEGIOS (solo visible para estudiantes)
-    =========================== -->
-    <section id="seccionRankingColegios" style="display:none; margin-top:40px;">
-
-        <h2>🏆 Ranking de colegios</h2>
-
-        <p style="text-align:center; color:#555; margin-bottom:20px;">
-            Comparación de tu colegio y grado contra los demás.
-        </p>
-
-        <div id="listaRanking">
-            <p style="text-align:center;">Cargando ranking...</p>
-        </div>
-
-    </section>
-
-
-    <!-- Mensaje para usuarios particulares, en vez del ranking de colegios -->
-    <section id="seccionSoloEstudiantes" style="display:none; margin-top:40px; text-align:center;">
-        <p style="color:var(--texto-suave);">
-            🏫 El ranking por colegio es exclusivo para usuarios registrados como estudiantes.
-        </p>
-    </section>
-
 
     <div style="text-align:center; margin-top:25px;">
         <a href="index.html">← Volver a mis lecturas</a>
@@ -119,7 +88,8 @@
 <script src="firebase-init.js"></script>
 <script src="admin-comun.js"></script>
 <script src="lecturas.js"></script>
-<script src="ranking.js"></script>
+<script src="premio-gordo-comun.js"></script>
+<script src="premio-gordo.js"></script>
 <script src="menu.js"></script>
 
 </body>

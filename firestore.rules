@@ -74,6 +74,14 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
+    // Ranking de "El premio gordo" (racha de lecturas difíciles seguidas
+    // con 3 estrellas). Mismo criterio que los dos anteriores: se
+    // recalcula solo, disparado por el propio intento de cada usuario.
+    match /rankingPremioGordo/{id} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
     // Contenido de las lecturas (sistema de premios QR). Cualquiera
     // logueado puede leerlas, pero solo la cuenta administradora puede
     // crear, editar o borrar — así el panel de administrador funciona

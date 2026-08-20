@@ -152,6 +152,14 @@ async function canjearCodigoLectura(codigo) {
  * gastar otro código) y la devuelve como destino en su lugar. Si no
  * aplica ninguna de las dos condiciones, devuelve la misma lecturaId
  * sin tocar nada más.
+ *
+ * Excepción para "El premio gordo" (ver premio-gordo-comun.js): mientras
+ * el usuario no haya completado su meta de difíciles seguidas, un
+ * código de una DIFÍCIL que ya tiene en 3/3 no la manda a cualquier
+ * pendiente — la manda específicamente a otra difícil que todavía no
+ * tenga perfeccionada, para no desperdiciar el código fuera del reto.
+ * Si la difícil NO está en 3/3 (nueva o fallida), se deja pasar tal
+ * cual: motor.js es quien le da el reintento libre.
  */
 async function elegirDestinoTrasCanjear(lecturaId) {
 
@@ -174,9 +182,59 @@ async function elegirDestinoTrasCanjear(lecturaId) {
         return lecturaId;
     }
 
-    if (!yaAprobada) return lecturaId;
-
     await cargarCatalogoLecturas();
+    const lecturaCanjeada = obtenerLecturaPorId(lecturaId);
+
+    if (lecturaCanjeada && lecturaCanjeada.nivel === "dificil"
+        && typeof obtenerProgresoPremioGordo === "function") {
+
+        try {
+
+            const progresoGordo = await obtenerProgresoPremioGordo(user.uid);
+
+            if (!progresoGordo.completo) {
+
+                if (!yaAprobada) {
+                    // Nueva o fallida: se deja pasar, motor.js le da el
+                    // reintento libre — no aplica la lógica general de
+                    // "ya aprobada" de aquí abajo.
+                    return lecturaId;
+                }
+
+                const dificilesPendientes = CATALOGO_LECTURAS.filter(l =>
+                    l.nivel === "dificil" && !progresoGordo.lecturasAprobadas.includes(l.id)
+                );
+
+                if (dificilesPendientes.length > 0) {
+
+                    const sugerida = dificilesPendientes[
+                        Math.floor(Math.random() * dificilesPendientes.length)
+                    ];
+
+                    try {
+                        await db.collection("usuarios").doc(user.uid).update({
+                            lecturasDesbloqueadas: firebase.firestore.FieldValue.arrayUnion(sugerida.id)
+                        });
+                        alert("Esa lectura difícil ya la tenías con 3 estrellas. Te llevamos a otra difícil para seguir con El premio gordo.");
+                        return sugerida.id;
+                    } catch (error) {
+                        console.error("No se pudo desbloquear la siguiente difícil:", error);
+                        return lecturaId;
+                    }
+
+                }
+                // Si no quedan difíciles pendientes de perfeccionar, cae
+                // a la lógica general de abajo como red de seguridad.
+
+            }
+
+        } catch (error) {
+            console.error("No se pudo revisar tu progreso de El premio gordo:", error);
+        }
+
+    }
+
+    if (!yaAprobada) return lecturaId;
 
     let desbloqueadas = [];
 

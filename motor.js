@@ -71,6 +71,11 @@ let reloj;
 // de inmediato (ver abandonarPorCambioDeVisibilidad más abajo).
 let intentoEnProgreso = false;
 
+// Marca de tiempo (Date.now()) de cuando arrancó el intento actual — se
+// usa para calcular cuánto tardó en total (ver calificar), dato que
+// necesita "El premio gordo" para su ranking por tiempo.
+let inicioIntentoTimestamp = null;
+
 
 // ==========================
 // TEMPORIZADOR LECTURA
@@ -189,6 +194,27 @@ async function iniciarLectura(){
 
     const lecturasIntentadas = datosUsuario.lecturasIntentadas || [];
     const bonoActivo = datosUsuario.bonoActivo || null;
+
+    // "El premio gordo": mientras el usuario no haya completado su meta
+    // de lecturas difíciles seguidas, cualquier difícil que TODAVÍA no
+    // tenga en 3/3 se puede reintentar sin límite — se salta por
+    // completo la regla normal de "1 sola oportunidad" (lecturasIntentadas)
+    // para esta lectura puntual. Si ya está aprobada o ya completó la
+    // meta, sigue el camino normal de abajo sin cambios.
+    if (lecturaActual.nivel === "dificil" && !yaAprobada
+        && typeof obtenerProgresoPremioGordo === "function") {
+
+        try {
+            const progresoGordo = await obtenerProgresoPremioGordo(user.uid);
+            if (!progresoGordo.completo) {
+                mostrarPantallaInicio(false);
+                return;
+            }
+        } catch (error) {
+            console.error("No se pudo revisar tu progreso de El premio gordo:", error);
+        }
+
+    }
 
     // Si ya la había aprobado antes, es repaso bloqueado (puede releer,
     // pero no responder el cuestionario de nuevo) — sin importar cómo
@@ -379,6 +405,7 @@ async function registrarIntentoYComenzar(esBono){
     }
 
     intentoEnProgreso = true;
+    inicioIntentoTimestamp = Date.now();
 
     mostrarElementosLectura();
     arrancarLecturaCronometrada();
@@ -757,12 +784,19 @@ async function calificar(){
 
     });
 
+    // Cuánto tardó en total este intento (lectura + cuestionario) — lo usa
+    // "El premio gordo" para su ranking por tiempo (ver guardarProgreso).
+    const duracionSegundos = inicioIntentoTimestamp
+        ? Math.round((Date.now() - inicioIntentoTimestamp) / 1000)
+        : null;
+
     // Guardar el progreso, sumar puntos y generar el código de premio en Firestore
     const resultadoGuardado = await guardarProgreso(
         lecturaActual.id,
         lecturaActual.nivel,
         estrellas,
-        totalPreguntas
+        totalPreguntas,
+        duracionSegundos
     );
 
     // Las estrellas y el mensaje final se pintan juntos, en la misma

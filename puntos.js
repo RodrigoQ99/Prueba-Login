@@ -239,8 +239,12 @@ async function crearPremioCanjeable(user, lecturaId, nivel) {
  * @param {string} nivel - "facil" | "intermedio" | "dificil"
  * @param {number} estrellas - cuántas respuestas correctas obtuvo
  * @param {number} totalPreguntas - cuántas preguntas tenía esta lectura
+ * @param {number|null} duracionSegundos - cuánto tardó este intento
+ *   (lectura + cuestionario), o null si no se pudo medir. Solo lo usa
+ *   "El premio gordo" (ver premio-gordo-comun.js) para lecturas
+ *   difíciles, pero se guarda para cualquier nivel por consistencia.
  */
-async function guardarProgreso(lecturaId, nivel, estrellas, totalPreguntas) {
+async function guardarProgreso(lecturaId, nivel, estrellas, totalPreguntas, duracionSegundos) {
     const user = auth.currentUser;
     if (!user) return;
 
@@ -265,6 +269,7 @@ async function guardarProgreso(lecturaId, nivel, estrellas, totalPreguntas) {
         estrellas: estrellas,
         totalPreguntas: totalPreguntas,
         puntosGanados: puntosGanados,
+        duracionSegundos: (typeof duracionSegundos === "number") ? duracionSegundos : null,
         fecha: firebase.firestore.FieldValue.serverTimestamp()
     });
 
@@ -273,6 +278,16 @@ async function guardarProgreso(lecturaId, nivel, estrellas, totalPreguntas) {
     // calificarla ya cuenta como "completarla" hoy (ver racha.js).
     if (typeof registrarActividadRacha === "function") {
         await registrarActividadRacha();
+    }
+
+    // "El premio gordo": cualquier intento (apruebe o no) de una lectura
+    // DIFÍCIL puede cambiar la racha de ese usuario — un fallo la
+    // reinicia igual que un acierto la hace avanzar, así que se
+    // recalcula en ambos casos (ver premio-gordo-comun.js). Se protege
+    // con typeof porque ese archivo no se carga en todas las páginas
+    // que incluyen puntos.js.
+    if (nivel === "dificil" && typeof actualizarRankingPremioGordo === "function") {
+        await actualizarRankingPremioGordo();
     }
 
     // 2. Sumar los puntos al total del usuario, si ganó puntos NUEVOS
