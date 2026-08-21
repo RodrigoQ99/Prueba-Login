@@ -37,6 +37,9 @@ async function iniciarRondaAhorcado(user) {
     const cont = document.getElementById("juegoAhorcado");
     cont.innerHTML = "<p style='text-align:center;'>Cargando...</p>";
 
+    await cargarAdministradores();
+    if (typeof inicializarAdminAhorcado === "function") inicializarAdminAhorcado();
+
     let banco = [];
     try {
         const snapshot = await db.collection("bancoPalabras").get();

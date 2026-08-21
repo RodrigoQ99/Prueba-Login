@@ -2,9 +2,10 @@
 // PANEL DE ADMINISTRADOR
 // ==========================================================
 // Todo lo relacionado a agregar, editar y borrar lecturas (de ambos
-// sistemas) vive en este único archivo. Se incluye en las 4 páginas
-// que muestran o contienen lecturas: index.html, lectura.html,
-// mejora.html y lectura-mejorar.html.
+// sistemas), Hilos del día y palabras de Ahorcado vive en este único
+// archivo. Se incluye en las páginas que muestran o contienen ese
+// contenido: index.html, lectura.html, mejora.html,
+// lectura-mejorar.html, hilo-del-dia.html y ahorcado.html.
 //
 // CÓMO SE IDENTIFICA AL ADMINISTRADOR:
 // esAdmin() (ver admin-comun.js) revisa si el correo de Google del
@@ -1123,6 +1124,44 @@ async function renderizarListaAdminHilos(contenedor) {
 
 
 // ==========================================================
+// PANEL EN "EL HILO DEL DÍA" (hilo-del-dia.html)
+// ==========================================================
+
+function inicializarAdminHiloDia() {
+
+    if (!esAdmin()) return;
+
+    const contenedor = document.getElementById("contenedorHilo");
+    const panelExistente = document.getElementById("panelAdminHilo");
+    if (panelExistente) panelExistente.remove();
+
+    const panel = document.createElement("div");
+    panel.id = "panelAdminHilo";
+    panel.style.marginTop = "35px";
+    panel.innerHTML = `
+        <hr style="margin:30px 0; border:none; border-top:1px solid var(--borde);">
+        <h2 style="text-align:center;">Panel de administrador</h2>
+
+        <div class="seccionAdmin">
+            <h3 class="seccionAdminTitulo">🧵 El Hilo del día</h3>
+            <div class="seccionAdminBotones">
+                <button id="btnNuevoHiloDia">+ Agregar Hilo</button>
+            </div>
+            <div id="listaAdminHilos"></div>
+        </div>
+    `;
+    contenedor.appendChild(panel);
+
+    const listaHilos = document.getElementById("listaAdminHilos");
+    renderizarListaAdminHilos(listaHilos);
+    document.getElementById("btnNuevoHiloDia").addEventListener("click", () => {
+        abrirFormularioHiloDia(null, () => renderizarListaAdminHilos(listaHilos));
+    });
+
+}
+
+
+// ==========================================================
 // FORMULARIO: BANCO DE PALABRAS (Ahorcado)
 // ==========================================================
 // Cada palabra vive en su propio documento, usando la palabra misma
@@ -1268,6 +1307,44 @@ async function renderizarListaAdminPalabras(contenedor) {
 
 
 // ==========================================================
+// PANEL EN "AHORCADO" (ahorcado.html)
+// ==========================================================
+
+function inicializarAdminAhorcado() {
+
+    if (!esAdmin()) return;
+
+    const contenedor = document.getElementById("contenedorAhorcado");
+    const panelExistente = document.getElementById("panelAdminAhorcado");
+    if (panelExistente) panelExistente.remove();
+
+    const panel = document.createElement("div");
+    panel.id = "panelAdminAhorcado";
+    panel.style.marginTop = "35px";
+    panel.innerHTML = `
+        <hr style="margin:30px 0; border:none; border-top:1px solid var(--borde);">
+        <h2 style="text-align:center;">Panel de administrador</h2>
+
+        <div class="seccionAdmin">
+            <h3 class="seccionAdminTitulo">🔤 Ahorcado — banco de palabras</h3>
+            <div class="seccionAdminBotones">
+                <button id="btnNuevaPalabra">+ Agregar palabra</button>
+            </div>
+            <div id="listaAdminPalabras"></div>
+        </div>
+    `;
+    contenedor.appendChild(panel);
+
+    const listaPalabras = document.getElementById("listaAdminPalabras");
+    renderizarListaAdminPalabras(listaPalabras);
+    document.getElementById("btnNuevaPalabra").addEventListener("click", () => {
+        abrirFormularioPalabra(null, () => renderizarListaAdminPalabras(listaPalabras));
+    });
+
+}
+
+
+// ==========================================================
 // PANEL EN "MIS LECTURAS" (index.html)
 // ==========================================================
 
@@ -1323,22 +1400,6 @@ function inicializarAdminIndex() {
                 <button id="btnEditarMetaPremioGordo" class="botonAdminContorno">Editar meta del premio gordo</button>
             </div>
         </div>
-
-        <div class="seccionAdmin">
-            <h3 class="seccionAdminTitulo">🧵 El Hilo del día</h3>
-            <div class="seccionAdminBotones">
-                <button id="btnNuevoHiloDia">+ Agregar Hilo</button>
-            </div>
-            <div id="listaAdminHilos"></div>
-        </div>
-
-        <div class="seccionAdmin">
-            <h3 class="seccionAdminTitulo">🔤 Ahorcado — banco de palabras</h3>
-            <div class="seccionAdminBotones">
-                <button id="btnNuevaPalabra">+ Agregar palabra</button>
-            </div>
-            <div id="listaAdminPalabras"></div>
-        </div>
     `;
     contenedor.appendChild(panel);
 
@@ -1360,18 +1421,6 @@ function inicializarAdminIndex() {
 
     document.getElementById("btnEditarMetaPremioGordo").addEventListener("click", () => {
         abrirFormularioMetaPremioGordo(() => inicializarAdminIndex());
-    });
-
-    const listaHilos = document.getElementById("listaAdminHilos");
-    renderizarListaAdminHilos(listaHilos);
-    document.getElementById("btnNuevoHiloDia").addEventListener("click", () => {
-        abrirFormularioHiloDia(null, () => renderizarListaAdminHilos(listaHilos));
-    });
-
-    const listaPalabras = document.getElementById("listaAdminPalabras");
-    renderizarListaAdminPalabras(listaPalabras);
-    document.getElementById("btnNuevaPalabra").addEventListener("click", () => {
-        abrirFormularioPalabra(null, () => renderizarListaAdminPalabras(listaPalabras));
     });
 
     const btnMigrar = document.getElementById("btnMigrarDatos");

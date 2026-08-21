@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ahorcado</title>
+    <title>Juegos</title>
     <link rel="stylesheet" href="estilos.css">
 </head>
 
@@ -54,16 +54,32 @@
 </div>
 
 
-<div id="contenedorAhorcado" style="max-width:600px; margin:40px auto; padding:0 20px;">
+<div id="contenedorJuegos" style="max-width:600px; margin:40px auto; padding:0 20px;">
 
-    <h1 style="text-align:center;">🔤 Ahorcado</h1>
+    <h1 style="text-align:center;">🎮 Juegos</h1>
 
-    <p style="text-align:center; color:#555; margin-bottom:20px;">
-        Adivina la palabra letra por letra antes de que se acaben tus intentos.
+    <p style="text-align:center; color:var(--texto-suave); margin-bottom:25px;">
+        Minijuegos aparte de tus lecturas, sin premios ni ranking.
     </p>
 
-    <div id="juegoAhorcado">
-        <p style="text-align:center;">Cargando...</p>
+    <div style="display:flex; flex-direction:column; gap:15px;">
+
+        <a href="hilo-del-dia.html" class="tarjetaLectura">
+            <div class="tarjetaInfo">
+                <p class="tarjetaTitulo">🧵 El Hilo del día</p>
+                <p class="tarjetaNivel">Ordena los 5 fragmentos de la historia de hoy.</p>
+            </div>
+            <span class="tarjetaEstado">Jugar →</span>
+        </a>
+
+        <a href="ahorcado.html" class="tarjetaLectura">
+            <div class="tarjetaInfo">
+                <p class="tarjetaTitulo">🔤 Ahorcado</p>
+                <p class="tarjetaNivel">Adivina la palabra letra por letra.</p>
+            </div>
+            <span class="tarjetaEstado">Jugar →</span>
+        </a>
+
     </div>
 
     <div style="text-align:center; margin-top:25px;">
@@ -77,8 +93,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script src="firebase-init.js"></script>
 <script src="admin-comun.js"></script>
-<script src="admin.js"></script>
-<script src="ahorcado.js"></script>
+<script src="lecturas.js"></script>
 <script src="menu.js"></script>
 
 </body>
