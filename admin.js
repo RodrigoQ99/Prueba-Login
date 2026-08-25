@@ -1504,31 +1504,6 @@ function inicializarAdminPremiosConfig() {
 }
 
 
-// ==========================================================
-// SECCIÓN: ADMINISTRADORES (admin-panel.html, en la página de inicio)
-// ==========================================================
-
-function inicializarAdminAdministradores() {
-
-    if (!esAdmin()) return;
-
-    const contenedor = document.getElementById("contenedorAdministradores");
-    if (!contenedor) return;
-
-    contenedor.innerHTML = "";
-
-    const boton = document.createElement("button");
-    boton.id = "btnEditarAdministradores";
-    boton.className = "botonAdminContorno";
-    boton.textContent = "⚙️ Editar administradores";
-    contenedor.appendChild(boton);
-
-    boton.addEventListener("click", () => {
-        abrirFormularioAdministradores(() => inicializarAdminAdministradores());
-    });
-
-}
-
 // Orden fijo en el que se muestran los desplegables de nivel, sin
 // importar el orden en que las lecturas vengan del catálogo.
 const ORDEN_NIVELES_ADMIN = ["facil", "intermedio", "dificil"];

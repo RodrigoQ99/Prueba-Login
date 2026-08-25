@@ -1,10 +1,9 @@
 // ==========================================================
-// PÁGINA "PREMIOS" (dentro del panel de administrador)
+// PÁGINA "MEJORAR LA LECTURA" (dentro del panel de administrador)
 // ==========================================================
 // Mismo patrón de acceso independiente que admin-panel.html: login
-// propio, gate contra esAdmin(). Agrupa todo lo relacionado a premios
-// de cualquier nivel — descripciones, premiadores autorizados, meta de
-// El premio gordo — y el enlace directo a la herramienta de Premiador.
+// propio, gate contra esAdmin(). Administra el catálogo de "Mejorar la
+// lectura" por edad (agregar/editar/eliminar y el rango de edades).
 // ==========================================================
 
 const pantallaLoginAdmin = document.getElementById("pantallaLoginAdmin");
@@ -40,6 +39,27 @@ auth.onAuthStateChanged(async (user) => {
     }
 
     contenedorAdminPanel.style.display = "block";
-    inicializarAdminPremiosConfig();
+    inicializarPanelMejora();
 
 });
+
+async function inicializarPanelMejora() {
+
+    await Promise.all([cargarCatalogoMejora(), cargarRangoEdades()]);
+
+    const select = document.getElementById("selectEdadAdminMejora");
+
+    const opciones = [];
+    for (let e = RANGO_EDADES.min; e <= RANGO_EDADES.max; e++) {
+        opciones.push(`<option value="${e}">${etiquetaEdad(e)}</option>`);
+    }
+    opciones.push(`<option value="${grupoMasDelTope()}">${etiquetaEdad(grupoMasDelTope())}</option>`);
+    select.innerHTML = opciones.join("");
+
+    select.addEventListener("change", () => {
+        inicializarAdminMejora(Number(select.value));
+    });
+
+    inicializarAdminMejora(RANGO_EDADES.min);
+
+}

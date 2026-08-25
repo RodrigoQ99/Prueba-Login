@@ -4,9 +4,10 @@
 // Página independiente (no comparte auth.js ni menu.js con el sitio de
 // participantes) — mismo patrón que premiador.js: login propio,
 // autorización contra esAdmin() (ver admin-comun.js). Desde aquí solo
-// se navega a las tres secciones (admin-premios.html, admin-lecturas.html,
-// admin-estadisticas.html, cada una con su propio login) y se administra
-// la lista de administradores.
+// se navega a las demás secciones (admin-premios.html, admin-lecturas.html,
+// admin-mejora.html, admin-juegos.html, admin-estadisticas.html, cada
+// una con su propio login) y se administra la lista de administradores.
+// "Cerrar sesión" vive SOLO aquí — las demás páginas no lo repiten.
 // ==========================================================
 
 const pantallaLoginAdmin = document.getElementById("pantallaLoginAdmin");
@@ -48,6 +49,9 @@ auth.onAuthStateChanged(async (user) => {
     }
 
     contenedorAdminPanel.style.display = "block";
-    inicializarAdminAdministradores();
 
+});
+
+document.getElementById("btnAbrirAdministradores").addEventListener("click", () => {
+    abrirFormularioAdministradores();
 });

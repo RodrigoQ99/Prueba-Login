@@ -2,10 +2,10 @@
 // PÁGINA "LECTURAS" (dentro del panel de administrador)
 // ==========================================================
 // Mismo patrón de acceso independiente que admin-panel.html: login
-// propio, gate contra esAdmin(). Agrupa todo lo relacionado a
-// contenido de lectura: lecturas de premios, Mejorar la lectura,
-// El Hilo del día, Ahorcado, la encuesta de géneros y las propuestas
-// de "Ser el protagonista de la historia".
+// propio, gate contra esAdmin(). Agrupa las lecturas de premios, la
+// encuesta de géneros y las propuestas de "Ser el protagonista de la
+// historia" — Mejorar la lectura vive en admin-mejora.html, y El Hilo
+// del día / Ahorcado en admin-juegos.html (apartados propios).
 //
 // A propósito NO se carga aquí ningún archivo del motor de lectura
 // real (motor.js, motor-mejorar.js, puntos.js, racha.js,
@@ -27,7 +27,6 @@ document.getElementById("btnLoginGoogleAdmin").addEventListener("click", () => {
 });
 
 document.getElementById("btnCerrarSesionAdminSinPermiso").addEventListener("click", () => auth.signOut());
-document.getElementById("btnCerrarSesionAdmin").addEventListener("click", () => auth.signOut());
 
 
 // ==========================================================
@@ -65,33 +64,16 @@ auth.onAuthStateChanged(async (user) => {
 
 async function inicializarPanelLecturas() {
 
+    // cargarCatalogoMejora/cargarRangoEdades no se muestran en esta
+    // página (viven en admin-mejora.html) pero sí hacen falta aquí: el
+    // botón "Publicar como lectura de Mejorar la lectura" de una
+    // propuesta (más abajo) abre abrirFormularioMejora(), que necesita
+    // RANGO_EDADES para el selector de edad del formulario.
     await Promise.all([cargarCatalogoLecturas(), cargarCatalogoMejora(), cargarRangoEdades(), cargarGenerosLectura()]);
 
     inicializarAdminLecturasPremios();
-    inicializarSelectorEdadMejora();
     inicializarAdminGenerosLectura();
-    inicializarAdminHiloDia();
-    inicializarAdminAhorcado();
     cargarListaPropuestas();
-
-}
-
-function inicializarSelectorEdadMejora() {
-
-    const select = document.getElementById("selectEdadAdminMejora");
-
-    const opciones = [];
-    for (let e = RANGO_EDADES.min; e <= RANGO_EDADES.max; e++) {
-        opciones.push(`<option value="${e}">${etiquetaEdad(e)}</option>`);
-    }
-    opciones.push(`<option value="${grupoMasDelTope()}">${etiquetaEdad(grupoMasDelTope())}</option>`);
-    select.innerHTML = opciones.join("");
-
-    select.addEventListener("change", () => {
-        inicializarAdminMejora(Number(select.value));
-    });
-
-    inicializarAdminMejora(RANGO_EDADES.min);
 
 }
 

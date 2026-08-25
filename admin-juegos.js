@@ -1,10 +1,9 @@
 // ==========================================================
-// PÁGINA "PREMIOS" (dentro del panel de administrador)
+// PÁGINA "JUEGOS" (dentro del panel de administrador)
 // ==========================================================
 // Mismo patrón de acceso independiente que admin-panel.html: login
-// propio, gate contra esAdmin(). Agrupa todo lo relacionado a premios
-// de cualquier nivel — descripciones, premiadores autorizados, meta de
-// El premio gordo — y el enlace directo a la herramienta de Premiador.
+// propio, gate contra esAdmin(). Administra El Hilo del día y el
+// banco de palabras de Ahorcado.
 // ==========================================================
 
 const pantallaLoginAdmin = document.getElementById("pantallaLoginAdmin");
@@ -40,6 +39,7 @@ auth.onAuthStateChanged(async (user) => {
     }
 
     contenedorAdminPanel.style.display = "block";
-    inicializarAdminPremiosConfig();
+    inicializarAdminHiloDia();
+    inicializarAdminAhorcado();
 
 });

@@ -20,7 +20,6 @@ document.getElementById("btnLoginGoogleAdmin").addEventListener("click", () => {
 });
 
 document.getElementById("btnCerrarSesionAdminSinPermiso").addEventListener("click", () => auth.signOut());
-document.getElementById("btnCerrarSesionAdmin").addEventListener("click", () => auth.signOut());
 
 auth.onAuthStateChanged(async (user) => {
 
