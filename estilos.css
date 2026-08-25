@@ -1173,14 +1173,21 @@ button.menuLink{
    CUADRÍCULA DE BOTONES (admin-panel.html)
 ========================== */
 
+/* Flexbox (no grid) a propósito: con "flex-wrap" + "justify-content:center"
+   la última fila incompleta queda centrada sola, y como cada botón tiene
+   un ancho FIJO (no un "1fr" que se estira), todos quedan exactamente
+   del mismo tamaño sin importar cuántos haya por fila. */
 .gridBotonesAdmin{
-    display:grid;
-    grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
     gap:15px;
 }
 
 .botonCuadradoAdmin{
+    width:130px;
     aspect-ratio:1 / 1;
+    flex:0 0 auto;
     display:flex;
     flex-direction:column;
     align-items:center;
