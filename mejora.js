@@ -7,10 +7,8 @@ async function cargarPantallaMejora() {
     const user = auth.currentUser;
     if (!user) return;
 
-    // Trae el catálogo, el rango de edades y la lista de administradores
-    // desde Firestore (todos cacheados) — la última la necesita
-    // inicializarAdminMejora() más abajo (dentro de renderizarListaMejora).
-    await Promise.all([cargarCatalogoMejora(), cargarRangoEdades(), cargarAdministradores()]);
+    // Trae el catálogo y el rango de edades desde Firestore (cacheados).
+    await Promise.all([cargarCatalogoMejora(), cargarRangoEdades()]);
 
     const usuarioDoc = await db.collection("usuarios").doc(user.uid).get();
     const datos = usuarioDoc.exists ? usuarioDoc.data() : {};
@@ -98,8 +96,6 @@ function renderizarListaMejora(edadActual, completadas) {
     encabezado.textContent = `Edad actual: ${etiquetaEdad(edadActual)}`;
 
     const listaDeEstaEdad = CATALOGO_MEJORA[edadActual] || [];
-
-    if (typeof inicializarAdminMejora === "function") inicializarAdminMejora(edadActual);
 
     if (listaDeEstaEdad.length === 0) {
         contenedor.innerHTML = `

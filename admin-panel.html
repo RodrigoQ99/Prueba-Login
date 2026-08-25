@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de administrador</title>
+    <link rel="stylesheet" href="estilos.css">
+
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
+</head>
+
+
+<body>
+
+
+<!-- ==========================
+     PANTALLA DE LOGIN
+=========================== -->
+<div id="pantallaLoginAdmin" class="pantallaAuth" style="display:none;">
+    <div class="cajaAuth">
+        <h1>Panel de administrador</h1>
+        <p>Inicia sesión con la cuenta autorizada para administrar el contenido.</p>
+        <button id="btnLoginGoogleAdmin" class="botonGoogle">
+            Iniciar sesión con Google
+        </button>
+    </div>
+</div>
+
+
+<!-- ==========================
+     SIN PERMISO
+=========================== -->
+<div id="pantallaSinPermiso" class="pantallaAuth" style="display:none;">
+    <div class="cajaAuth">
+        <h1>Sin permiso</h1>
+        <p>Esta cuenta no está autorizada para administrar el contenido.</p>
+        <button id="btnCerrarSesionAdminSinPermiso">Cerrar sesión</button>
+    </div>
+</div>
+
+
+<!-- ==========================
+     PANEL (solo administradores)
+=========================== -->
+<div id="contenedorAdminPanel" style="display:none; max-width:640px; margin:0 auto; padding:20px;">
+
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
+        <h1 style="margin:0;">🛠️ Panel de administrador</h1>
+        <button id="btnCerrarSesionAdmin"
+                style="width:auto; margin:0; padding:10px 16px; background:white; color:var(--texto-suave); border:1px solid var(--borde);">
+            Cerrar sesión
+        </button>
+    </div>
+
+    <p style="text-align:center; color:var(--texto-suave); margin-bottom:20px;">
+        Experiencia separada del sitio de participantes — nada de lo que hagas
+        aquí (incluida la vista previa 👁️ de una lectura) suma puntos, racha
+        ni aparece en ningún ranking.
+    </p>
+
+    <div style="text-align:center; margin-bottom:15px;">
+        <a href="premiador.html" target="_blank" class="botonAdminContorno"
+           style="display:inline-block; padding:15px 25px; border-radius:12px; font-weight:600; text-decoration:none; text-align:center;">
+            Ir a Premiador
+        </a>
+    </div>
+
+    <!-- Edad a administrar en "Mejorar la lectura" — el panel que dispara
+         abajo (inicializarAdminMejora) se agrega dentro de #contenedor,
+         igual que el de Lecturas: ambas funciones ya apuntan ahí. -->
+    <div class="seccionAdmin">
+        <h3 class="seccionAdminTitulo">Edad a administrar en "Mejorar la lectura"</h3>
+        <div class="seccionAdminBotones">
+            <select id="selectEdadAdminMejora" style="width:auto; padding:10px; border-radius:8px; border:1px solid var(--borde);"></select>
+        </div>
+    </div>
+
+    <!-- Lecturas de premios + configuración general (inicializarAdminIndex)
+         y Mejorar la lectura (inicializarAdminMejora) — ambas apuntan a
+         este mismo contenedor y se apilan una tras otra. -->
+    <div id="contenedor"></div>
+
+    <!-- El Hilo del día (inicializarAdminHiloDia) -->
+    <div id="contenedorHilo"></div>
+
+    <!-- Ahorcado (inicializarAdminAhorcado) -->
+    <div id="contenedorAhorcado"></div>
+
+    <!-- Propuestas de usuarios ("Ser el protagonista de la historia") -->
+    <div id="contenedorPropuestas" style="margin-top:35px;">
+        <hr style="margin:30px 0; border:none; border-top:1px solid var(--borde);">
+        <h2 style="text-align:center;">✍️ Propuestas de usuarios</h2>
+        <div id="listaPropuestas"></div>
+    </div>
+
+</div>
+
+
+<script src="firebase-init.js"></script>
+<script src="admin-comun.js"></script>
+<script src="lecturas.js"></script>
+<script src="mejora-lecturas.js"></script>
+<script src="premio-gordo-comun.js"></script>
+<script src="generos.js"></script>
+<script src="editor-preguntas.js"></script>
+<script src="admin.js"></script>
+<script src="migracion-datos.js"></script>
+<script src="admin-panel.js"></script>
+
+
+</body>
+
+
+</html>

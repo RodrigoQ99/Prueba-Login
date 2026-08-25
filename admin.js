@@ -2,10 +2,13 @@
 // PANEL DE ADMINISTRADOR
 // ==========================================================
 // Todo lo relacionado a agregar, editar y borrar lecturas (de ambos
-// sistemas), Hilos del día y palabras de Ahorcado vive en este único
-// archivo. Se incluye en las páginas que muestran o contienen ese
-// contenido: index.html, lectura.html, mejora.html,
-// lectura-mejorar.html, hilo-del-dia.html y ahorcado.html.
+// sistemas), Hilos del día y palabras de Ahorcado, y el resto de la
+// configuración (premios, premiadores, administradores, meta de El
+// premio gordo, géneros de lectura) vive en este único archivo. Se
+// incluye SOLO en admin-panel.html — el portal de administrador,
+// separado del sitio de participantes (mismo patrón que premiador.html:
+// login propio, sin auth.js/menu.js). Depende de construirEditorPreguntas
+// (ver editor-preguntas.js).
 //
 // CÓMO SE IDENTIFICA AL ADMINISTRADOR:
 // esAdmin() (ver admin-comun.js) revisa si el correo de Google del
@@ -41,133 +44,21 @@ function elegirPreguntasAlAzar(banco, cantidad) {
 
 
 // ==========================================================
-// EDITOR DE BANCO DE PREGUNTAS (usado dentro de los formularios)
-// ==========================================================
-// "preguntas" es un arreglo que se modifica EN SITIO (mismo patrón que
-// el resto del proyecto usa para no complicar el manejo de estado).
-
-function construirEditorPreguntas(contenedor, preguntas) {
-
-    function render() {
-
-        contenedor.innerHTML = preguntas.map((pregunta, pi) => `
-            <div style="border:1px solid var(--borde); border-radius:10px; padding:15px; margin-bottom:15px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <strong>Pregunta ${pi + 1}</strong>
-                    <button type="button" class="botonAdminChico botonPeligro" data-accion="quitar-pregunta" data-pi="${pi}">🗑️ Quitar</button>
-                </div>
-                <textarea data-accion="texto-pregunta" data-pi="${pi}" rows="2"
-                          placeholder="Escribe la pregunta"
-                          style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--borde); margin-bottom:10px; font-family:inherit;"
-                >${pregunta.pregunta || ""}</textarea>
-                ${pregunta.opciones.map((opcion, oi) => `
-                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-                        <input type="radio" name="correcta-${pi}" data-accion="marcar-correcta" data-pi="${pi}" data-oi="${oi}"
-                               ${pregunta.correcta === opcion.valor ? "checked" : ""}>
-                        <input type="text" data-accion="texto-opcion" data-pi="${pi}" data-oi="${oi}"
-                               value="${(opcion.texto || "").replace(/"/g, "&quot;")}"
-                               placeholder="Texto de esta opción"
-                               style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--borde);">
-                        <button type="button" class="botonAdminChico botonPeligro" data-accion="quitar-opcion" data-pi="${pi}" data-oi="${oi}">✕</button>
-                    </div>
-                `).join("")}
-                <button type="button" class="botonAdminChico" data-accion="agregar-opcion" data-pi="${pi}" style="margin-top:4px;">+ Agregar opción</button>
-            </div>
-        `).join("") + `<button type="button" data-accion="agregar-pregunta" style="width:100%;">+ Agregar pregunta</button>`;
-
-    }
-
-    contenedor.addEventListener("input", (e) => {
-
-        const pi = Number(e.target.dataset.pi);
-
-        if (e.target.dataset.accion === "texto-pregunta") {
-            preguntas[pi].pregunta = e.target.value;
-        }
-
-        if (e.target.dataset.accion === "texto-opcion") {
-            const oi = Number(e.target.dataset.oi);
-            preguntas[pi].opciones[oi].texto = e.target.value;
-        }
-
-    });
-
-    contenedor.addEventListener("change", (e) => {
-
-        if (e.target.dataset.accion === "marcar-correcta") {
-            const pi = Number(e.target.dataset.pi);
-            const oi = Number(e.target.dataset.oi);
-            preguntas[pi].correcta = preguntas[pi].opciones[oi].valor;
-        }
-
-    });
-
-    contenedor.addEventListener("click", (e) => {
-
-        const accion = e.target.dataset.accion;
-        if (!accion) return;
-
-        const letras = "abcdefghij";
-
-        if (accion === "agregar-pregunta") {
-
-            preguntas.push({
-                pregunta: "",
-                opciones: [
-                    { texto: "", valor: "a" },
-                    { texto: "", valor: "b" },
-                    { texto: "", valor: "c" }
-                ],
-                correcta: "a"
-            });
-
-        } else if (accion === "quitar-pregunta") {
-
-            preguntas.splice(Number(e.target.dataset.pi), 1);
-
-        } else if (accion === "agregar-opcion") {
-
-            const pi = Number(e.target.dataset.pi);
-            const letra = letras[preguntas[pi].opciones.length] || `x${preguntas[pi].opciones.length}`;
-            preguntas[pi].opciones.push({ texto: "", valor: letra });
-
-        } else if (accion === "quitar-opcion") {
-
-            const pi = Number(e.target.dataset.pi);
-            const oi = Number(e.target.dataset.oi);
-            const eraCorrecta = preguntas[pi].opciones[oi].valor === preguntas[pi].correcta;
-
-            preguntas[pi].opciones.splice(oi, 1);
-
-            if (eraCorrecta && preguntas[pi].opciones[0]) {
-                preguntas[pi].correcta = preguntas[pi].opciones[0].valor;
-            }
-
-        } else {
-
-            return; // clic en algo sin acción (ej. una opción de texto), no re-renderizar
-
-        }
-
-        render();
-
-    });
-
-    render();
-
-}
-
-
-// ==========================================================
 // FORMULARIO: CREAR / EDITAR LECTURA (sistema de premios QR)
 // ==========================================================
+// Usa construirEditorPreguntas (ver editor-preguntas.js).
 
 function abrirFormularioLectura(lecturaExistente, alGuardar) {
 
-    const esNueva = !lecturaExistente;
-    const preguntas = esNueva
-        ? []
-        : JSON.parse(JSON.stringify(lecturaExistente.bancoPreguntas || []));
+    // "esNueva" depende de si YA TIENE ID, no de si el objeto vino vacío:
+    // así, "Ser el protagonista de la historia" (ver protagonista.js /
+    // admin-panel.js) puede pasar título/texto/preguntas de una propuesta
+    // PRE-RELLENADOS sin ID (el ID lo asigna el admin al publicar, nunca
+    // el usuario) y el formulario los trata igual que "nueva lectura".
+    const esNueva = !lecturaExistente || !lecturaExistente.id;
+    const preguntas = (lecturaExistente && lecturaExistente.bancoPreguntas)
+        ? JSON.parse(JSON.stringify(lecturaExistente.bancoPreguntas))
+        : [];
 
     const overlay = document.createElement("div");
     overlay.className = "modalOverlay";
@@ -178,12 +69,12 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
 
                 <label>ID de la lectura</label>
                 <input type="text" id="campoId" required autocomplete="off"
-                       value="${esNueva ? "" : lecturaExistente.id}" ${esNueva ? "" : "readonly"}
+                       value="${(lecturaExistente && lecturaExistente.id) || ""}" ${esNueva ? "" : "readonly"}
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
                 <label>Título</label>
                 <input type="text" id="campoTitulo" required autocomplete="off"
-                       value="${esNueva ? "" : (lecturaExistente.titulo || "").replace(/"/g, "&quot;")}"
+                       value="${((lecturaExistente && lecturaExistente.titulo) || "").replace(/"/g, "&quot;")}"
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
                 <label>Nivel</label>
@@ -195,27 +86,27 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
 
                 <label>Tiempo de lectura en segundos</label>
                 <input type="number" id="campoTiempoLectura" min="10" required
-                       value="${esNueva ? 60 : lecturaExistente.tiempoLectura}"
+                       value="${(lecturaExistente && lecturaExistente.tiempoLectura) || 60}"
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
                 <label>Tiempo de cuestionario en segundos</label>
                 <input type="number" id="campoTiempoCuestionario" min="10" required
-                       value="${esNueva ? 30 : lecturaExistente.tiempoCuestionario}"
+                       value="${(lecturaExistente && lecturaExistente.tiempoCuestionario) || 30}"
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
                 <label>Texto</label>
                 <textarea id="campoTexto" rows="10" required
                           style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde); font-family:inherit;"
-                >${esNueva ? "" : (lecturaExistente.texto || []).join("\n\n")}</textarea>
+                >${((lecturaExistente && lecturaExistente.texto) || []).join("\n\n")}</textarea>
 
                 <label>Cuántas preguntas se muestran por sesión</label>
                 <input type="number" id="campoPreguntasAMostrar" min="1"
-                       value="${esNueva ? "" : lecturaExistente.preguntasAMostrar}"
+                       value="${(lecturaExistente && lecturaExistente.preguntasAMostrar) || ""}"
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
                 <label>Orden dentro del catálogo</label>
                 <input type="number" id="campoOrden" min="0"
-                       value="${esNueva ? "" : (lecturaExistente.orden ?? "")}"
+                       value="${(lecturaExistente && lecturaExistente.orden) ?? ""}"
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
                 <h3 style="margin-top:10px;">Banco de preguntas</h3>
@@ -235,7 +126,7 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
 
     document.body.appendChild(overlay);
 
-    overlay.querySelector("#campoNivel").value = esNueva ? "facil" : (lecturaExistente.nivel || "facil");
+    overlay.querySelector("#campoNivel").value = (lecturaExistente && lecturaExistente.nivel) || "facil";
 
     construirEditorPreguntas(overlay.querySelector("#editorPreguntas"), preguntas);
 
@@ -299,6 +190,14 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
             orden: ordenInput !== "" ? Number(ordenInput) : CATALOGO_LECTURAS.length
         };
 
+        // Si esta lectura viene de una propuesta de "Ser el protagonista de
+        // la historia" (ver admin-panel.js), conserva quién la escribió —
+        // así "Mis publicaciones" en su perfil puede encontrarla después.
+        if (lecturaExistente && lecturaExistente.autorUid) {
+            datos.autorUid = lecturaExistente.autorUid;
+            datos.autorNombre = lecturaExistente.autorNombre || "";
+        }
+
         try {
             await db.collection("lecturas").doc(id).set(datos);
             await cargarCatalogoLecturas(true);
@@ -344,10 +243,13 @@ async function eliminarLectura(id, alEliminar) {
 
 function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
 
-    const esNueva = !lecturaExistente;
-    const preguntas = esNueva
-        ? []
-        : JSON.parse(JSON.stringify(lecturaExistente.bancoPreguntas || []));
+    // Ver la misma nota en abrirFormularioLectura: "esNueva" depende de si
+    // YA TIENE ID, para poder prellenar título/texto/preguntas desde una
+    // propuesta de "Ser el protagonista de la historia" sin ID todavía.
+    const esNueva = !lecturaExistente || !lecturaExistente.id;
+    const preguntas = (lecturaExistente && lecturaExistente.bancoPreguntas)
+        ? JSON.parse(JSON.stringify(lecturaExistente.bancoPreguntas))
+        : [];
 
     const opcionesEdad = [];
     for (let e = RANGO_EDADES.min; e <= RANGO_EDADES.max; e++) {
@@ -364,12 +266,12 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
 
                 <label>ID de la lectura</label>
                 <input type="text" id="campoId" required autocomplete="off"
-                       value="${esNueva ? "" : lecturaExistente.id}" ${esNueva ? "" : "readonly"}
+                       value="${(lecturaExistente && lecturaExistente.id) || ""}" ${esNueva ? "" : "readonly"}
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
                 <label>Título</label>
                 <input type="text" id="campoTitulo" required autocomplete="off"
-                       value="${esNueva ? "" : (lecturaExistente.titulo || "").replace(/"/g, "&quot;")}"
+                       value="${((lecturaExistente && lecturaExistente.titulo) || "").replace(/"/g, "&quot;")}"
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
                 <label>Edad</label>
@@ -380,16 +282,16 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
                 <label>Texto</label>
                 <textarea id="campoTexto" rows="10" required
                           style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde); font-family:inherit;"
-                >${esNueva ? "" : (lecturaExistente.texto || []).join("\n\n")}</textarea>
+                >${((lecturaExistente && lecturaExistente.texto) || []).join("\n\n")}</textarea>
 
                 <label>Cuántas preguntas se muestran por sesión</label>
                 <input type="number" id="campoPreguntasAMostrar" min="1"
-                       value="${esNueva ? "" : lecturaExistente.preguntasAMostrar}"
+                       value="${(lecturaExistente && lecturaExistente.preguntasAMostrar) || ""}"
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
                 <label>Orden dentro de esta edad</label>
                 <input type="number" id="campoOrden" min="0"
-                       value="${esNueva ? "" : (lecturaExistente.orden ?? "")}"
+                       value="${(lecturaExistente && lecturaExistente.orden) ?? ""}"
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
                 <h3 style="margin-top:10px;">Banco de preguntas</h3>
@@ -409,7 +311,7 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
 
     document.body.appendChild(overlay);
 
-    overlay.querySelector("#campoEdad").value = String(esNueva ? edadPorDefecto : lecturaExistente.edad);
+    overlay.querySelector("#campoEdad").value = String((lecturaExistente && lecturaExistente.edad) || edadPorDefecto);
 
     construirEditorPreguntas(overlay.querySelector("#editorPreguntas"), preguntas);
 
@@ -468,6 +370,13 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
             preguntasAMostrar: Math.min(preguntasAMostrarInput, preguntas.length),
             orden: ordenInput !== "" ? Number(ordenInput) : listaDeEsaEdad.length
         };
+
+        // Ver la misma nota en abrirFormularioLectura: conserva la autoría
+        // si esta lectura viene de una propuesta de usuario.
+        if (lecturaExistente && lecturaExistente.autorUid) {
+            datos.autorUid = lecturaExistente.autorUid;
+            datos.autorNombre = lecturaExistente.autorNombre || "";
+        }
 
         try {
             await db.collection("mejoraLecturas").doc(id).set(datos);
@@ -739,6 +648,102 @@ async function abrirFormularioPremiadores(alGuardar) {
         } catch (error) {
             console.error("No se pudo agregar el premiador:", error);
             alert("No se pudo agregar el premiador.");
+        }
+
+    });
+
+}
+
+
+// ==========================================================
+// FORMULARIO: GÉNEROS DE LECTURA (encuesta del registro)
+// ==========================================================
+// Misma mecánica que abrirFormularioPremiadores: un solo arreglo dentro
+// de configuracion/generosLectura, editado con arrayUnion/arrayRemove.
+// cargarGenerosLectura()/GENEROS_LECTURA viven en generos.js (también lo
+// usan el registro y "Editar perfil" para pintar la encuesta).
+
+async function abrirFormularioGenerosLectura(alGuardar) {
+
+    await cargarGenerosLectura();
+
+    const overlay = document.createElement("div");
+    overlay.className = "modalOverlay";
+    overlay.innerHTML = `
+        <div class="modalCaja modalCajaInfo" style="text-align:center;">
+            <h2>📖 Géneros de lectura</h2>
+            <p>Opciones que ve el usuario en la encuesta de géneros del registro y de "Editar perfil".</p>
+            <div id="listaGenerosLectura" style="text-align:left; margin:15px 0;"></div>
+            <div style="display:flex; gap:8px;">
+                <input type="text" id="campoNuevoGenero" placeholder="Ej. Poesía"
+                       style="flex:1; padding:10px; border-radius:8px; border:1px solid var(--borde);">
+                <button id="btnAgregarGenero" style="width:auto; margin:0; padding:10px 16px;">+ Agregar</button>
+            </div>
+            <button class="modalCerrar" style="background:white; border:1px solid var(--borde); color:var(--texto-suave); margin-top:15px;">Cerrar</button>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    overlay.querySelector(".modalCerrar").addEventListener("click", () => {
+        overlay.remove();
+        if (alGuardar) alGuardar();
+    });
+
+    function render() {
+
+        const lista = overlay.querySelector("#listaGenerosLectura");
+
+        lista.innerHTML = GENEROS_LECTURA.map(genero => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--borde);">
+                <span style="font-size:14px;">${genero}</span>
+                <button type="button" class="botonAdminChico botonPeligro" data-quitar="${genero.replace(/"/g, "&quot;")}">🗑️</button>
+            </div>
+        `).join("") || "<p style='color:var(--texto-suave); font-size:14px;'>Todavía no hay géneros.</p>";
+
+        lista.querySelectorAll("[data-quitar]").forEach(btn => {
+            btn.addEventListener("click", async () => {
+                try {
+                    await db.collection("configuracion").doc("generosLectura").set({
+                        lista: firebase.firestore.FieldValue.arrayRemove(btn.dataset.quitar)
+                    }, { merge: true });
+                    await cargarGenerosLectura(true);
+                    render();
+                } catch (error) {
+                    console.error("No se pudo quitar el género:", error);
+                    alert("No se pudo quitar el género.");
+                }
+            });
+        });
+
+    }
+
+    render();
+
+    overlay.querySelector("#btnAgregarGenero").addEventListener("click", async () => {
+
+        const campo = overlay.querySelector("#campoNuevoGenero");
+        const genero = campo.value.trim();
+
+        if (!genero) {
+            alert("Escribe un género.");
+            return;
+        }
+
+        if (GENEROS_LECTURA.includes(genero)) {
+            alert("Ese género ya está en la lista.");
+            return;
+        }
+
+        try {
+            await db.collection("configuracion").doc("generosLectura").set({
+                lista: firebase.firestore.FieldValue.arrayUnion(genero)
+            }, { merge: true });
+            await cargarGenerosLectura(true);
+            campo.value = "";
+            render();
+        } catch (error) {
+            console.error("No se pudo agregar el género:", error);
+            alert("No se pudo agregar el género.");
         }
 
     });
@@ -1124,7 +1129,7 @@ async function renderizarListaAdminHilos(contenedor) {
 
 
 // ==========================================================
-// PANEL EN "EL HILO DEL DÍA" (hilo-del-dia.html)
+// PANEL: EL HILO DEL DÍA (admin-panel.html)
 // ==========================================================
 
 function inicializarAdminHiloDia() {
@@ -1140,7 +1145,7 @@ function inicializarAdminHiloDia() {
     panel.style.marginTop = "35px";
     panel.innerHTML = `
         <hr style="margin:30px 0; border:none; border-top:1px solid var(--borde);">
-        <h2 style="text-align:center;">Panel de administrador</h2>
+        <h2 style="text-align:center;">🧵 El Hilo del día</h2>
 
         <div class="seccionAdmin">
             <h3 class="seccionAdminTitulo">🧵 El Hilo del día</h3>
@@ -1307,7 +1312,7 @@ async function renderizarListaAdminPalabras(contenedor) {
 
 
 // ==========================================================
-// PANEL EN "AHORCADO" (ahorcado.html)
+// PANEL: AHORCADO (admin-panel.html)
 // ==========================================================
 
 function inicializarAdminAhorcado() {
@@ -1323,7 +1328,7 @@ function inicializarAdminAhorcado() {
     panel.style.marginTop = "35px";
     panel.innerHTML = `
         <hr style="margin:30px 0; border:none; border-top:1px solid var(--borde);">
-        <h2 style="text-align:center;">Panel de administrador</h2>
+        <h2 style="text-align:center;">🔤 Ahorcado</h2>
 
         <div class="seccionAdmin">
             <h3 class="seccionAdminTitulo">🔤 Ahorcado — banco de palabras</h3>
@@ -1345,7 +1350,7 @@ function inicializarAdminAhorcado() {
 
 
 // ==========================================================
-// PANEL EN "MIS LECTURAS" (index.html)
+// PANEL: LECTURAS Y CONFIGURACIÓN GENERAL (admin-panel.html)
 // ==========================================================
 
 function inicializarAdminIndex() {
@@ -1361,7 +1366,7 @@ function inicializarAdminIndex() {
     panel.style.marginTop = "35px";
     panel.innerHTML = `
         <hr style="margin:30px 0; border:none; border-top:1px solid var(--borde);">
-        <h2 style="text-align:center;">Panel de administrador</h2>
+        <h2 style="text-align:center;">📚 Lecturas y configuración general</h2>
 
         <div class="seccionAdmin">
             <h3 class="seccionAdminTitulo">Lecturas</h3>
@@ -1380,10 +1385,6 @@ function inicializarAdminIndex() {
             <div class="seccionAdminBotones">
                 <button id="btnEditarPremios" class="botonAdminContorno">Editar premios</button>
                 <button id="btnEditarPremiadores" class="botonAdminContorno">Editar premiadores</button>
-                <a href="premiador.html" target="_blank" class="botonAdminContorno"
-                   style="display:inline-block; padding:15px 25px; border-radius:12px; font-weight:600; text-decoration:none; text-align:center;">
-                    Ir a Premiador
-                </a>
             </div>
         </div>
 
@@ -1398,6 +1399,13 @@ function inicializarAdminIndex() {
             <h3 class="seccionAdminTitulo">El premio gordo</h3>
             <div class="seccionAdminBotones">
                 <button id="btnEditarMetaPremioGordo" class="botonAdminContorno">Editar meta del premio gordo</button>
+            </div>
+        </div>
+
+        <div class="seccionAdmin">
+            <h3 class="seccionAdminTitulo">Encuesta de géneros de lectura</h3>
+            <div class="seccionAdminBotones">
+                <button id="btnEditarGenerosLectura" class="botonAdminContorno">Editar géneros</button>
             </div>
         </div>
     `;
@@ -1421,6 +1429,10 @@ function inicializarAdminIndex() {
 
     document.getElementById("btnEditarMetaPremioGordo").addEventListener("click", () => {
         abrirFormularioMetaPremioGordo(() => inicializarAdminIndex());
+    });
+
+    document.getElementById("btnEditarGenerosLectura").addEventListener("click", () => {
+        abrirFormularioGenerosLectura(() => inicializarAdminIndex());
     });
 
     const btnMigrar = document.getElementById("btnMigrarDatos");
@@ -1480,7 +1492,7 @@ function renderizarListaAdminLecturas() {
                 <p class="tarjetaNivel">${(lectura.bancoPreguntas || []).length} preguntas en el banco (muestra ${lectura.preguntasAMostrar})</p>
             </div>
             <div style="display:flex; gap:8px;">
-                <a href="lectura.html?id=${encodeURIComponent(lectura.id)}" target="_blank" class="botonAdminChico" title="Abrir">🔗</a>
+                <button type="button" class="botonAdminChico" data-preview="${lectura.id}" title="Vista previa (sin puntos ni racha)">👁️</button>
                 <button type="button" class="botonAdminChico" data-codigos="${lectura.id}" title="Generar código">🔑</button>
                 <button type="button" class="botonAdminChico" data-editar="${lectura.id}">✏️</button>
                 <button type="button" class="botonAdminChico botonPeligro" data-eliminar="${lectura.id}">🗑️</button>
@@ -1521,6 +1533,13 @@ function renderizarListaAdminLecturas() {
         btn.addEventListener("click", () => {
             const lectura = CATALOGO_LECTURAS.find(l => l.id === btn.dataset.codigos);
             abrirModalCodigosLectura(lectura);
+        });
+    });
+
+    cont.querySelectorAll("[data-preview]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const lectura = CATALOGO_LECTURAS.find(l => l.id === btn.dataset.preview);
+            if (typeof abrirVistaPreviaLectura === "function") abrirVistaPreviaLectura(lectura);
         });
     });
 
@@ -1708,7 +1727,7 @@ function copiarCodigoAlPortapapeles(btnCopiar) {
 
 
 // ==========================================================
-// PANEL EN "MEJORAR LA LECTURA" (mejora.html)
+// PANEL: MEJORAR LA LECTURA (admin-panel.html)
 // ==========================================================
 
 function inicializarAdminMejora(edadActual) {
@@ -1724,7 +1743,7 @@ function inicializarAdminMejora(edadActual) {
     panel.style.marginTop = "35px";
     panel.innerHTML = `
         <hr style="margin:30px 0; border:none; border-top:1px solid var(--borde);">
-        <h2 style="text-align:center;">🔧 Panel de administrador</h2>
+        <h2 style="text-align:center;">📈 Mejorar la lectura</h2>
         <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:15px 0;">
             <button id="btnNuevaMejora" style="max-width:260px;">+ Agregar lectura — ${etiquetaEdad(edadActual)}</button>
             <button id="btnEditarRango" style="max-width:260px; background:white; color:var(--azul); border:2px solid var(--azul);">⚙️ Configuración</button>
@@ -1759,7 +1778,7 @@ function renderizarListaAdminMejora(edadActual) {
                 <p class="tarjetaNivel">${(lectura.bancoPreguntas || []).length} preguntas en el banco (muestra ${lectura.preguntasAMostrar})</p>
             </div>
             <div style="display:flex; gap:8px;">
-                <a href="lectura-mejorar.html?id=${encodeURIComponent(lectura.id)}" target="_blank" class="botonAdminChico" title="Abrir">🔗</a>
+                <button type="button" class="botonAdminChico" data-preview="${lectura.id}" title="Vista previa (sin puntos ni racha)">👁️</button>
                 <button type="button" class="botonAdminChico" data-editar="${lectura.id}">✏️</button>
                 <button type="button" class="botonAdminChico botonPeligro" data-eliminar="${lectura.id}">🗑️</button>
             </div>
@@ -1779,47 +1798,11 @@ function renderizarListaAdminMejora(edadActual) {
         });
     });
 
-}
-
-
-// ==========================================================
-// BOTÓN "EDITAR ESTA LECTURA" DENTRO DE lectura.html / lectura-mejorar.html
-// ==========================================================
-
-function mostrarBotonEditarLectura(lectura) {
-
-    if (!esAdmin()) return;
-    if (document.getElementById("btnEditarLecturaAdmin")) return;
-
-    const btn = document.createElement("button");
-    btn.id = "btnEditarLecturaAdmin";
-    btn.type = "button";
-    btn.textContent = "✏️ Editar esta lectura";
-    btn.style.cssText = "max-width:280px; margin:10px auto; display:block; background:white; color:var(--azul); border:2px solid var(--azul);";
-    btn.addEventListener("click", () => {
-        abrirFormularioLectura(lectura, () => location.reload());
+    cont.querySelectorAll("[data-preview]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const lectura = lista.find(l => l.id === btn.dataset.preview);
+            if (typeof abrirVistaPreviaLectura === "function") abrirVistaPreviaLectura(lectura);
+        });
     });
-
-    const titulo = document.getElementById("tituloLectura");
-    if (titulo) titulo.insertAdjacentElement("afterend", btn);
-
-}
-
-function mostrarBotonEditarMejora(lectura) {
-
-    if (!esAdmin()) return;
-    if (document.getElementById("btnEditarLecturaAdmin")) return;
-
-    const btn = document.createElement("button");
-    btn.id = "btnEditarLecturaAdmin";
-    btn.type = "button";
-    btn.textContent = "✏️ Editar esta lectura";
-    btn.style.cssText = "max-width:280px; margin:10px auto; display:block; background:white; color:var(--azul); border:2px solid var(--azul);";
-    btn.addEventListener("click", () => {
-        abrirFormularioMejora(lectura, lectura.edad, () => location.reload());
-    });
-
-    const titulo = document.getElementById("tituloLecturaMejora");
-    if (titulo) titulo.insertAdjacentElement("afterend", btn);
 
 }

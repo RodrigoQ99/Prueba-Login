@@ -81,10 +81,8 @@ function normalizarPalabra(palabra) {
 
 async function iniciarLectura() {
 
-    // Trae el catálogo, el rango de edades y la lista de administradores
-    // desde Firestore (todos cacheados) — la última la necesita
-    // mostrarBotonEditarMejora() más abajo.
-    await Promise.all([cargarCatalogoMejora(), cargarRangoEdades(), cargarAdministradores()]);
+    // Trae el catálogo y el rango de edades desde Firestore (cacheados).
+    await Promise.all([cargarCatalogoMejora(), cargarRangoEdades()]);
     ubicacion = ubicarLecturaMejora(idLecturaMejora);
 
     if (!ubicacion) {
@@ -136,9 +134,13 @@ async function iniciarLectura() {
     document.title = lectura.titulo;
     tituloLecturaMejora.textContent = lectura.titulo;
 
-    if (typeof mostrarBotonEditarMejora === "function") {
-        mostrarBotonEditarMejora(lectura);
-    }
+    // Cuenta cuántas veces se ha abierto esta lectura (ver "Mis
+    // publicaciones" en perfil.js, para lecturas propuestas por
+    // usuarios vía "Ser el protagonista de la historia"). No bloquea el
+    // render ni afecta puntos/racha/ranking — es solo un contador.
+    db.collection("mejoraLecturas").doc(lectura.id)
+        .update({ vistas: firebase.firestore.FieldValue.increment(1) })
+        .catch(error => console.error("No se pudo registrar la vista de esta lectura:", error));
 
     // Cada palabra (con su espacio pegado, para que el resaltado no deje
     // huecos entre palabras) queda envuelta en su propio <span>, para

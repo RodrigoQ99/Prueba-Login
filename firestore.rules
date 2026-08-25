@@ -87,15 +87,24 @@ service cloud.firestore {
     // crear, editar o borrar — así el panel de administrador funciona
     // solo para esa cuenta, sin importar lo que alguien intente hacer
     // manipulando el código desde el navegador.
+    // El admin puede escribir cualquier campo. Cualquier otro usuario
+    // logueado SOLO puede incrementar "vistas" (contador de cuántas veces
+    // se abrió — ver motor.js y "Mis publicaciones" en perfil.js), mismo
+    // patrón que la regla de /usuarios que limita al admin a un solo
+    // campo (puntosTotales).
     match /lecturas/{lecturaId} {
       allow read: if request.auth != null;
-      allow write: if esAdmin();
+      allow write: if esAdmin() ||
+                   (request.auth != null &&
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(["vistas"]));
     }
 
     // Contenido de "Mejorar la lectura". Mismo criterio que /lecturas.
     match /mejoraLecturas/{lecturaId} {
       allow read: if request.auth != null;
-      allow write: if esAdmin();
+      allow write: if esAdmin() ||
+                   (request.auth != null &&
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(["vistas"]));
     }
 
     // Configuración general (rango de edades, descripción de premios,
@@ -214,6 +223,22 @@ service cloud.firestore {
       allow create: if esAdmin() && request.resource.data.esPrincipal == false;
       allow update: if false;
       allow delete: if esAdmin() && resource.data.esPrincipal == false;
+    }
+
+    // Propuestas de "Ser el protagonista de la historia" (ver
+    // protagonista.js / admin-panel.js): cola de revisión, separada del
+    // catálogo real. Cada quien puede crear y leer SUS PROPIAS
+    // propuestas (para saber que se enviaron); el admin puede leer todas
+    // para revisarlas. Nadie edita una propuesta ya enviada — "publicar"
+    // crea una lectura nueva en /lecturas o /mejoraLecturas (ya requiere
+    // esAdmin) y borra la propuesta; "rechazar" solo la borra.
+    match /propuestasLecturas/{propuestaId} {
+      allow read: if request.auth != null &&
+                  (esAdmin() || resource.data.autorUid == request.auth.uid);
+      allow create: if request.auth != null &&
+                    request.resource.data.autorUid == request.auth.uid;
+      allow update: if false;
+      allow delete: if esAdmin();
     }
   }
 }

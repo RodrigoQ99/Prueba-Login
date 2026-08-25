@@ -386,6 +386,16 @@ button:active{
     font-size:15px;
 }
 
+#datosPerfilRegistro input{
+    display:block;
+    width:100%;
+    padding:10px;
+    margin-bottom:10px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    font-size:15px;
+}
+
 #formRegistro button{
     width:100%;
 }
@@ -997,7 +1007,8 @@ button.menuLink{
     margin-top:15px;
 }
 
-.cajaCheckpoint input[type="text"]{
+.cajaCheckpoint input[type="text"],
+.cajaCheckpoint input[type="number"]{
     display:block;
     width:100%;
     padding:10px;

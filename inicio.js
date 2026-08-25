@@ -16,11 +16,7 @@ async function cargarListaLecturas() {
 
     if (!user) return;
 
-    // Trae el catálogo y la lista de administradores desde Firestore
-    // (ambos cacheados, solo hacen la consulta la primera vez) — la
-    // segunda es la que necesita inicializarAdminIndex() más abajo
-    // para decidir si mostrar el panel de administrador.
-    await Promise.all([cargarCatalogoLecturas(), cargarAdministradores()]);
+    await cargarCatalogoLecturas();
 
     // Averiguar qué lecturas ha DESBLOQUEADO (escaneado) este usuario,
     // cuáles ya intentó (su única oportunidad, usada o no) y si tiene
@@ -83,8 +79,6 @@ async function cargarListaLecturas() {
             .update({ lecturasDesbloqueadas: desbloqueadasCompletas })
             .catch(error => console.error("No se pudo actualizar lecturasDesbloqueadas:", error));
     }
-
-    if (typeof inicializarAdminIndex === "function") inicializarAdminIndex();
 
     if (desbloqueadasCompletas.length === 0) {
         contenedorLista.innerHTML =

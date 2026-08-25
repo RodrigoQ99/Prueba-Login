@@ -59,6 +59,12 @@ auth.onAuthStateChanged(async (user) => {
         pantallaLogin.style.display = "none";
         pantallaRegistro.style.display = "flex";
         appContenido.style.display = "none";
+
+        const contenedorGeneros = document.getElementById("contenedorGenerosRegistro");
+        if (contenedorGeneros) {
+            await cargarGenerosLectura();
+            renderizarCheckboxesGeneros(contenedorGeneros, []);
+        }
     }
 });
 
@@ -71,12 +77,22 @@ formRegistro.addEventListener("submit", async (e) => {
 
     const tipo = document.querySelector('input[name="tipoUsuario"]:checked').value;
 
+    // "edadPerfil" es un dato de perfil informativo, sin relación con
+    // "edadActual" (la edad que navega Mejorar la lectura, ver mejora.js) —
+    // nombres deliberadamente distintos para que no se crucen.
+    const edadPerfilInput = document.getElementById("inputEdadPerfil").value;
+    const contenedorGeneros = document.getElementById("contenedorGenerosRegistro");
+
     const datosUsuario = {
         nombre: user.displayName || "",
         email: user.email || "",
         tipo: tipo,
         puntosTotales: 0,
-        fechaRegistro: firebase.firestore.FieldValue.serverTimestamp()
+        fechaRegistro: firebase.firestore.FieldValue.serverTimestamp(),
+        edadPerfil: edadPerfilInput ? Number(edadPerfilInput) : null,
+        pais: document.getElementById("inputPais").value.trim(),
+        lenguaMaterna: document.getElementById("inputLenguaMaterna").value.trim(),
+        generosLectura: contenedorGeneros ? leerGenerosSeleccionados(contenedorGeneros) : []
     };
 
     if (tipo === "estudiante") {

@@ -177,6 +177,14 @@ async function iniciarLectura(){
 
     if(!user) return;
 
+    // Cuenta cuántas veces se ha abierto esta lectura (ver "Mis
+    // publicaciones" en perfil.js, para lecturas propuestas por
+    // usuarios vía "Ser el protagonista de la historia"). No bloquea el
+    // render ni afecta puntos/racha/ranking — es solo un contador.
+    db.collection("lecturas").doc(lecturaActual.id)
+        .update({ vistas: firebase.firestore.FieldValue.increment(1) })
+        .catch(error => console.error("No se pudo registrar la vista de esta lectura:", error));
+
     let yaAprobada = false;
 
     try{

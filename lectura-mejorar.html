@@ -61,7 +61,16 @@
                 <input type="text" id="inputGrado" placeholder="Grado (ej. 4to bachillerato)">
             </div>
 
-            <button type="submit">Continuar</button>
+            <div id="datosPerfilRegistro" style="margin-top:15px;">
+                <input type="number" id="inputEdadPerfil" min="1" max="120" placeholder="Edad">
+                <input type="text" id="inputPais" placeholder="País">
+                <input type="text" id="inputLenguaMaterna" placeholder="Lengua materna">
+            </div>
+
+            <p style="font-weight:600; margin:15px 0 8px;">¿Qué géneros de lectura te gustan?</p>
+            <div id="contenedorGenerosRegistro"></div>
+
+            <button type="submit" style="margin-top:15px;">Continuar</button>
 
         </form>
     </div>
@@ -147,11 +156,11 @@
 
 <script src="firebase-init.js"></script>
 <script src="admin-comun.js"></script>
+<script src="generos.js"></script>
 <script src="lecturas.js"></script>
 <script src="racha.js"></script>
 <script src="mejora-lecturas.js"></script>
 <script src="motor-mejorar.js"></script>
-<script src="admin.js"></script>
 <script src="auth.js"></script>
 
 

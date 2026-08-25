@@ -50,9 +50,6 @@ async function iniciarHilo(user) {
     const cont = document.getElementById("juegoHilo");
     fechaHoyHilo = _fechaHoyLocalHilo();
 
-    await cargarAdministradores();
-    if (typeof inicializarAdminHiloDia === "function") inicializarAdminHiloDia();
-
     let hiloDoc;
     try {
         hiloDoc = await db.collection("elHiloDelDia").doc(fechaHoyHilo).get();
