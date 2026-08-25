@@ -1,12 +1,8 @@
 // ==========================================================
 // PANTALLA DE INICIO — "Mis lecturas"
 // ==========================================================
-
-const NOMBRE_NIVEL = {
-    facil: "Fácil",
-    intermedio: "Intermedio",
-    dificil: "Difícil"
-};
+// NOMBRE_NIVEL vive en lecturas.js (lo comparte con admin.js y
+// admin-estadisticas.js).
 
 async function cargarListaLecturas() {
 

@@ -1,12 +1,10 @@
 // ==========================================================
-// PÁGINA "PANEL DE ADMINISTRADOR" (INICIO)
+// PÁGINA "PREMIOS" (dentro del panel de administrador)
 // ==========================================================
-// Página independiente (no comparte auth.js ni menu.js con el sitio de
-// participantes) — mismo patrón que premiador.js: login propio,
-// autorización contra esAdmin() (ver admin-comun.js). Desde aquí solo
-// se navega a las tres secciones (admin-premios.html, admin-lecturas.html,
-// admin-estadisticas.html, cada una con su propio login) y se administra
-// la lista de administradores.
+// Mismo patrón de acceso independiente que admin-panel.html: login
+// propio, gate contra esAdmin(). Agrupa todo lo relacionado a premios
+// de cualquier nivel — descripciones, premiadores autorizados, meta de
+// El premio gordo — y el enlace directo a la herramienta de Premiador.
 // ==========================================================
 
 const pantallaLoginAdmin = document.getElementById("pantallaLoginAdmin");
@@ -23,11 +21,6 @@ document.getElementById("btnLoginGoogleAdmin").addEventListener("click", () => {
 
 document.getElementById("btnCerrarSesionAdminSinPermiso").addEventListener("click", () => auth.signOut());
 document.getElementById("btnCerrarSesionAdmin").addEventListener("click", () => auth.signOut());
-
-
-// ==========================================================
-// LOGIN Y VERIFICACIÓN DE PERMISO
-// ==========================================================
 
 auth.onAuthStateChanged(async (user) => {
 
@@ -48,6 +41,6 @@ auth.onAuthStateChanged(async (user) => {
     }
 
     contenedorAdminPanel.style.display = "block";
-    inicializarAdminAdministradores();
+    inicializarAdminPremiosConfig();
 
 });

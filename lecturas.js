@@ -15,6 +15,14 @@
 let CATALOGO_LECTURAS = [];
 let _promesaCatalogoLecturas = null;
 
+// Nombre legible de cada nivel — lo usan inicio.js, admin.js y
+// admin-estadisticas.js.
+const NOMBRE_NIVEL = {
+    facil: "Fácil",
+    intermedio: "Intermedio",
+    dificil: "Difícil"
+};
+
 /**
  * Trae el catálogo completo de lecturas desde Firestore y lo guarda en
  * CATALOGO_LECTURAS. Solo hace la consulta una vez (la cachea); pasa

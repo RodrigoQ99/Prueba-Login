@@ -1353,7 +1353,11 @@ function inicializarAdminAhorcado() {
 // PANEL: LECTURAS Y CONFIGURACIÓN GENERAL (admin-panel.html)
 // ==========================================================
 
-function inicializarAdminIndex() {
+// ==========================================================
+// SECCIÓN: LECTURAS DE PREMIOS (admin-lecturas.html)
+// ==========================================================
+
+function inicializarAdminLecturasPremios() {
 
     if (!esAdmin()) return;
 
@@ -1363,13 +1367,9 @@ function inicializarAdminIndex() {
 
     const panel = document.createElement("div");
     panel.id = "panelAdminIndex";
-    panel.style.marginTop = "35px";
     panel.innerHTML = `
-        <hr style="margin:30px 0; border:none; border-top:1px solid var(--borde);">
-        <h2 style="text-align:center;">📚 Lecturas y configuración general</h2>
-
         <div class="seccionAdmin">
-            <h3 class="seccionAdminTitulo">Lecturas</h3>
+            <h3 class="seccionAdminTitulo">📚 Lecturas de premios</h3>
             <div class="seccionAdminBotones">
                 <button id="btnNuevaLectura">+ Agregar lectura nueva</button>
                 ${(typeof DATOS_ORIGINALES_LECTURAS !== "undefined" && CATALOGO_LECTURAS.length === 0)
@@ -1379,60 +1379,11 @@ function inicializarAdminIndex() {
             </div>
             <div id="listaAdminLecturas"></div>
         </div>
-
-        <div class="seccionAdmin">
-            <h3 class="seccionAdminTitulo">Premios</h3>
-            <div class="seccionAdminBotones">
-                <button id="btnEditarPremios" class="botonAdminContorno">Editar premios</button>
-                <button id="btnEditarPremiadores" class="botonAdminContorno">Editar premiadores</button>
-            </div>
-        </div>
-
-        <div class="seccionAdmin">
-            <h3 class="seccionAdminTitulo">Administradores</h3>
-            <div class="seccionAdminBotones">
-                <button id="btnEditarAdministradores" class="botonAdminContorno">Editar administradores</button>
-            </div>
-        </div>
-
-        <div class="seccionAdmin">
-            <h3 class="seccionAdminTitulo">El premio gordo</h3>
-            <div class="seccionAdminBotones">
-                <button id="btnEditarMetaPremioGordo" class="botonAdminContorno">Editar meta del premio gordo</button>
-            </div>
-        </div>
-
-        <div class="seccionAdmin">
-            <h3 class="seccionAdminTitulo">Encuesta de géneros de lectura</h3>
-            <div class="seccionAdminBotones">
-                <button id="btnEditarGenerosLectura" class="botonAdminContorno">Editar géneros</button>
-            </div>
-        </div>
     `;
     contenedor.appendChild(panel);
 
     document.getElementById("btnNuevaLectura").addEventListener("click", () => {
-        abrirFormularioLectura(null, () => inicializarAdminIndex());
-    });
-
-    document.getElementById("btnEditarPremios").addEventListener("click", () => {
-        abrirFormularioPremios(() => inicializarAdminIndex());
-    });
-
-    document.getElementById("btnEditarPremiadores").addEventListener("click", () => {
-        abrirFormularioPremiadores(() => inicializarAdminIndex());
-    });
-
-    document.getElementById("btnEditarAdministradores").addEventListener("click", () => {
-        abrirFormularioAdministradores(() => inicializarAdminIndex());
-    });
-
-    document.getElementById("btnEditarMetaPremioGordo").addEventListener("click", () => {
-        abrirFormularioMetaPremioGordo(() => inicializarAdminIndex());
-    });
-
-    document.getElementById("btnEditarGenerosLectura").addEventListener("click", () => {
-        abrirFormularioGenerosLectura(() => inicializarAdminIndex());
+        abrirFormularioLectura(null, () => inicializarAdminLecturasPremios());
     });
 
     const btnMigrar = document.getElementById("btnMigrarDatos");
@@ -1468,6 +1419,113 @@ function inicializarAdminIndex() {
     });
 
     renderizarListaAdminLecturas();
+
+}
+
+
+// ==========================================================
+// SECCIÓN: ENCUESTA DE GÉNEROS DE LECTURA (admin-lecturas.html)
+// ==========================================================
+
+function inicializarAdminGenerosLectura() {
+
+    if (!esAdmin()) return;
+
+    const contenedor = document.getElementById("contenedor");
+    const panelExistente = document.getElementById("panelAdminGeneros");
+    if (panelExistente) panelExistente.remove();
+
+    const panel = document.createElement("div");
+    panel.id = "panelAdminGeneros";
+    panel.style.marginTop = "20px";
+    panel.innerHTML = `
+        <div class="seccionAdmin">
+            <h3 class="seccionAdminTitulo">📖 Encuesta de géneros de lectura</h3>
+            <div class="seccionAdminBotones">
+                <button id="btnEditarGenerosLectura" class="botonAdminContorno">Editar géneros</button>
+            </div>
+        </div>
+    `;
+    contenedor.appendChild(panel);
+
+    document.getElementById("btnEditarGenerosLectura").addEventListener("click", () => {
+        abrirFormularioGenerosLectura(() => inicializarAdminGenerosLectura());
+    });
+
+}
+
+
+// ==========================================================
+// SECCIÓN: PREMIOS (admin-premios.html)
+// ==========================================================
+// Todo lo relacionado a premios de cualquier nivel: descripciones,
+// quién puede canjearlos (premiadores) y la meta de El premio gordo.
+
+function inicializarAdminPremiosConfig() {
+
+    if (!esAdmin()) return;
+
+    const contenedor = document.getElementById("contenedor");
+    const panelExistente = document.getElementById("panelAdminPremiosConfig");
+    if (panelExistente) panelExistente.remove();
+
+    const panel = document.createElement("div");
+    panel.id = "panelAdminPremiosConfig";
+    panel.innerHTML = `
+        <div class="seccionAdmin">
+            <h3 class="seccionAdminTitulo">🎁 Premios</h3>
+            <div class="seccionAdminBotones">
+                <button id="btnEditarPremios" class="botonAdminContorno">Editar premios</button>
+                <button id="btnEditarPremiadores" class="botonAdminContorno">Editar premiadores</button>
+            </div>
+        </div>
+
+        <div class="seccionAdmin">
+            <h3 class="seccionAdminTitulo">🏆 El premio gordo</h3>
+            <div class="seccionAdminBotones">
+                <button id="btnEditarMetaPremioGordo" class="botonAdminContorno">Editar meta del premio gordo</button>
+            </div>
+        </div>
+    `;
+    contenedor.appendChild(panel);
+
+    document.getElementById("btnEditarPremios").addEventListener("click", () => {
+        abrirFormularioPremios(() => inicializarAdminPremiosConfig());
+    });
+
+    document.getElementById("btnEditarPremiadores").addEventListener("click", () => {
+        abrirFormularioPremiadores(() => inicializarAdminPremiosConfig());
+    });
+
+    document.getElementById("btnEditarMetaPremioGordo").addEventListener("click", () => {
+        abrirFormularioMetaPremioGordo(() => inicializarAdminPremiosConfig());
+    });
+
+}
+
+
+// ==========================================================
+// SECCIÓN: ADMINISTRADORES (admin-panel.html, en la página de inicio)
+// ==========================================================
+
+function inicializarAdminAdministradores() {
+
+    if (!esAdmin()) return;
+
+    const contenedor = document.getElementById("contenedorAdministradores");
+    if (!contenedor) return;
+
+    contenedor.innerHTML = "";
+
+    const boton = document.createElement("button");
+    boton.id = "btnEditarAdministradores";
+    boton.className = "botonAdminContorno";
+    boton.textContent = "⚙️ Editar administradores";
+    contenedor.appendChild(boton);
+
+    boton.addEventListener("click", () => {
+        abrirFormularioAdministradores(() => inicializarAdminAdministradores());
+    });
 
 }
 
@@ -1519,13 +1577,13 @@ function renderizarListaAdminLecturas() {
     cont.querySelectorAll("[data-editar]").forEach(btn => {
         btn.addEventListener("click", () => {
             const lectura = CATALOGO_LECTURAS.find(l => l.id === btn.dataset.editar);
-            abrirFormularioLectura(lectura, () => inicializarAdminIndex());
+            abrirFormularioLectura(lectura, () => inicializarAdminLecturasPremios());
         });
     });
 
     cont.querySelectorAll("[data-eliminar]").forEach(btn => {
         btn.addEventListener("click", () => {
-            eliminarLectura(btn.dataset.eliminar, () => inicializarAdminIndex());
+            eliminarLectura(btn.dataset.eliminar, () => inicializarAdminLecturasPremios());
         });
     });
 

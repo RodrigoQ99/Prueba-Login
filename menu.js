@@ -48,7 +48,13 @@ async function cargarDatosMenu(user) {
 
         if (menuRacha) {
             const datosUsuario = usuarioDoc.exists ? usuarioDoc.data() : {};
-            menuRacha.textContent = `🔥 ${datosUsuario.rachaActual || 0}`;
+            // calcularRachaVigente (ver racha.js) ya la muestra en 0 si
+            // pasaron 24h+ sin actividad, aunque todavía no haya habido
+            // una actividad nueva que dispare el reinicio en el servidor.
+            const racha = typeof calcularRachaVigente === "function"
+                ? calcularRachaVigente(datosUsuario)
+                : (datosUsuario.rachaActual || 0);
+            menuRacha.textContent = `🔥 ${racha}`;
         }
 
         const idsCompletados = new Set();

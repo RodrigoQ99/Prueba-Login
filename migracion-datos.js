@@ -417,7 +417,7 @@ async function migrarDatosOriginales() {
 
         alert("¡Listo! Se migraron todas las lecturas a la base de datos.");
 
-        if (typeof inicializarAdminIndex === "function") inicializarAdminIndex();
+        if (typeof inicializarAdminLecturasPremios === "function") inicializarAdminLecturasPremios();
 
     } catch (error) {
         console.error("Error migrando los datos originales:", error);

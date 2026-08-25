@@ -242,6 +242,11 @@ async function guardarPalabraJugadaAhorcado() {
         console.error("No se pudo registrar la palabra jugada:", error);
     }
 
+    // Terminar una ronda (ganada o perdida) es actividad verificable —
+    // mantiene viva la racha 🔥 igual que completar una lectura (ver
+    // racha.js).
+    if (typeof registrarActividadRacha === "function") registrarActividadRacha();
+
 }
 
 

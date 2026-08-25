@@ -220,6 +220,11 @@ async function enviarIntentoHilo() {
             completado: hiloCompletado,
             gano: hiloGanado
         });
+
+        // Enviar un intento es actividad verificable — mantiene viva la
+        // racha 🔥 igual que completar una lectura (ver racha.js).
+        if (typeof registrarActividadRacha === "function") registrarActividadRacha();
+
     } catch (error) {
         console.error("No se pudo guardar tu intento de El Hilo:", error);
     }

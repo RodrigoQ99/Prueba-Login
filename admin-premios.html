@@ -5,7 +5,7 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de administrador</title>
+    <title>Premios — Panel de administrador</title>
     <link rel="stylesheet" href="estilos.css">
 
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
@@ -45,44 +45,24 @@
 
 
 <!-- ==========================
-     INICIO DEL PANEL (solo administradores)
+     PANEL (solo administradores)
 =========================== -->
-<div id="contenedorAdminPanel" style="display:none; max-width:520px; margin:0 auto; padding:30px 20px;">
+<div id="contenedorAdminPanel" style="display:none; max-width:640px; margin:0 auto; padding:20px;">
 
-    <h1 style="text-align:center; margin-bottom:30px;">🛠️ Panel de administrador</h1>
-
-    <div style="display:flex; flex-direction:column; gap:15px;">
-
-        <a href="admin-premios.html" class="tarjetaLectura">
-            <div class="tarjetaInfo">
-                <p class="tarjetaTitulo">🎁 Premios</p>
-                <p class="tarjetaNivel">Premios de cualquier nivel, premiadores, El premio gordo y el enlace a Premiador</p>
-            </div>
-            <span class="tarjetaEstado">Entrar →</span>
-        </a>
-
-        <a href="admin-lecturas.html" class="tarjetaLectura">
-            <div class="tarjetaInfo">
-                <p class="tarjetaTitulo">📚 Lecturas</p>
-                <p class="tarjetaNivel">Lecturas de premios y de Mejorar la lectura, El Hilo del día, Ahorcado, encuestas y propuestas</p>
-            </div>
-            <span class="tarjetaEstado">Entrar →</span>
-        </a>
-
-        <a href="admin-estadisticas.html" class="tarjetaLectura">
-            <div class="tarjetaInfo">
-                <p class="tarjetaTitulo">📊 Estadísticas</p>
-                <p class="tarjetaNivel">Edades, preferencias, tiempos de lectura y demás datos para tomar decisiones</p>
-            </div>
-            <span class="tarjetaEstado">Entrar →</span>
-        </a>
-
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:20px;">
+        <a href="admin-panel.html" style="text-decoration:none; color:var(--texto-suave); font-weight:600;">← Inicio</a>
+        <h1 style="margin:0;">🎁 Premios</h1>
+        <span style="width:50px;"></span>
     </div>
 
-    <div class="seccionAdmin" style="margin-top:30px;">
-        <h3 class="seccionAdminTitulo">Administradores</h3>
-        <div id="contenedorAdministradores" class="seccionAdminBotones"></div>
+    <div style="text-align:center; margin-bottom:15px;">
+        <a href="premiador.html" target="_blank" class="botonAdminContorno"
+           style="display:inline-block; padding:15px 25px; border-radius:12px; font-weight:600; text-decoration:none; text-align:center;">
+            Ir a Premiador
+        </a>
     </div>
+
+    <div id="contenedor"></div>
 
     <div style="text-align:center; margin-top:40px;">
         <button id="btnCerrarSesionAdmin"
@@ -96,8 +76,10 @@
 
 <script src="firebase-init.js"></script>
 <script src="admin-comun.js"></script>
+<script src="puntos.js"></script>
+<script src="premio-gordo-comun.js"></script>
 <script src="admin.js"></script>
-<script src="admin-panel.js"></script>
+<script src="admin-premios.js"></script>
 
 
 </body>
