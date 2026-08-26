@@ -47,7 +47,7 @@
 <!-- ==========================
      INICIO DEL PANEL (solo administradores)
 =========================== -->
-<div id="contenedorAdminPanel" style="display:none; min-height:100vh; flex-direction:column; align-items:center; padding:30px 20px; box-sizing:border-box;">
+<div id="contenedorAdminPanel" style="display:none; min-height:100vh; flex-direction:column; align-items:center; padding:30px 20px 0; box-sizing:border-box;">
 
     <div style="max-width:560px; width:100%;">
 
@@ -78,6 +78,12 @@
             <a href="admin-estadisticas.html" class="botonCuadrado">
                 <span class="iconoBotonCuadrado">📊</span>
                 <span>Estadísticas</span>
+            </a>
+
+            <a href="admin-propuestas.html" class="botonCuadrado" style="position:relative;">
+                <span id="badgePropuestasPendientes" class="badgeNotificacionCuadrado" style="display:none;"></span>
+                <span class="iconoBotonCuadrado">✍️</span>
+                <span>Lecturas propuestas</span>
             </a>
 
             <button type="button" id="btnAbrirAdministradores" class="botonCuadrado">

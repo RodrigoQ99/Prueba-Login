@@ -10,6 +10,9 @@
 //
 // La racha 🔥 YA NO se muestra aquí — vive únicamente en perfil.html y
 // en el cuadro "Perfil" de Inicio (ver racha.js, calcularRachaVigente).
+//
+// "Cerrar sesión" NO vive aquí — aparece solo en perfil.html, como
+// botón propio pegado al borde inferior de la pantalla (ver perfil.js).
 // ==========================================================
 
 const menuUsuario = document.getElementById("menuUsuario");
@@ -17,7 +20,6 @@ const btnMenuToggle = document.getElementById("btnMenuToggle");
 const panelMenu = document.getElementById("panelMenu");
 const menuCompletadas = document.getElementById("menuCompletadas");
 const menuPendientes = document.getElementById("menuPendientes");
-const btnCerrarSesionMenu = document.getElementById("btnCerrarSesionMenu");
 
 if (btnMenuToggle) {
     btnMenuToggle.addEventListener("click", () => {
@@ -30,12 +32,6 @@ if (btnMenuToggle) {
         if (!menuUsuario.contains(e.target)) {
             panelMenu.style.display = "none";
         }
-    });
-}
-
-if (btnCerrarSesionMenu) {
-    btnCerrarSesionMenu.addEventListener("click", () => {
-        auth.signOut();
     });
 }
 

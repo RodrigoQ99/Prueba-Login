@@ -617,27 +617,6 @@ button:active{
     background:#e9ecf1;
 }
 
-.menuLinkBoton{
-    display:block;
-    width:100%;
-    text-align:center;
-    background:none;
-    color:#c0392b;
-    border:1px solid #f0d6d3;
-    padding:10px;
-    border-radius:10px;
-    font-size:13px;
-    font-weight:600;
-    margin:10px 0 0;
-    cursor:pointer;
-}
-
-.menuLinkBoton:hover{
-    background:#fdf1f0;
-    opacity:1;
-}
-
-
 /* ==========================
    MIS LECTURAS (pantalla de inicio)
 ========================== */
@@ -1226,6 +1205,12 @@ button.menuLink{
     border-radius:16px;
     text-decoration:none;
     color:var(--texto);
+    /* Algunos de estos botones son <button> (ej. "Administradores"),
+       otros <a> — la regla global "button{ margin:20px auto }" (ver
+       arriba) descuadraba SOLO a los <button>, ya que .botonCuadrado
+       nunca pisaba "margin". Sin este margin:0 explícito, ese botón
+       queda desalineado del resto de la cuadrícula. */
+    margin:0;
     padding:10px;
     text-align:center;
     font-family:inherit;
@@ -1246,6 +1231,26 @@ button.menuLink{
     height:40px;
     font-size:34px;
     line-height:1;
+}
+
+/* Notificación numérica en la esquina de un .botonCuadrado (requiere
+   que el <a>/<button> tenga style="position:relative"), ej. la racha
+   🔥 en "Perfil" (Inicio) o las propuestas pendientes de revisar en
+   "Lecturas propuestas" (admin-panel.html). */
+.badgeNotificacionCuadrado{
+    position:absolute;
+    top:8px;
+    right:8px;
+    min-width:20px;
+    height:20px;
+    padding:0 5px;
+    border-radius:10px;
+    background:#c0392b;
+    color:white;
+    font-size:12px;
+    font-weight:700;
+    line-height:20px;
+    text-align:center;
 }
 
 /* ==========================

@@ -49,8 +49,6 @@
         <a href="juegos.html" class="menuLink">🎮 Juegos</a>
         <a href="premios.html" class="menuLink">🎁 Premios</a>
 
-        <button id="btnCerrarSesionMenu" class="menuLinkBoton">Cerrar sesión</button>
-
     </div>
 </div>
 
@@ -114,7 +112,7 @@
 </div>
 
 
-<div id="contenedor" style="display:none; max-width:560px; margin:0 auto; padding:30px 20px;">
+<div id="contenedor" style="display:none; max-width:560px; margin:0 auto; padding:30px 20px 80px;">
 
     <h1 style="text-align:center; margin-bottom:5px;">👤 Perfil</h1>
 
@@ -138,6 +136,14 @@
         </a>
 
     </div>
+
+    <!-- position:fixed lo pega al borde inferior de la PANTALLA (no solo
+         al final del contenido) — sigue oculto/visible junto con el resto
+         de #contenedor porque es su descendiente. -->
+    <button id="btnCerrarSesionPerfil"
+            style="position:fixed; bottom:14px; left:50%; transform:translateX(-50%); padding:10px 20px; width:auto; background:none; border:none; color:#c0392b; font-weight:600;">
+        Cerrar sesión
+    </button>
 
 </div>
 

@@ -5,8 +5,9 @@
 // participantes) — mismo patrón que premiador.js: login propio,
 // autorización contra esAdmin() (ver admin-comun.js). Desde aquí solo
 // se navega a las demás secciones (admin-premios.html, admin-lecturas.html,
-// admin-mejora.html, admin-juegos.html, admin-estadisticas.html, cada
-// una con su propio login) y se administra la lista de administradores.
+// admin-mejora.html, admin-juegos.html, admin-estadisticas.html,
+// admin-propuestas.html, cada una con su propio login) y se administra
+// la lista de administradores.
 // "Cerrar sesión" vive SOLO aquí — las demás páginas no lo repiten.
 // ==========================================================
 
@@ -53,9 +54,38 @@ auth.onAuthStateChanged(async (user) => {
     // de la pantalla, y "Cerrar sesión" (margin-top:auto) queda pegado
     // hasta abajo del todo.
     contenedorAdminPanel.style.display = "flex";
+    cargarBadgePropuestasPendientes();
 
 });
 
 document.getElementById("btnAbrirAdministradores").addEventListener("click", () => {
     abrirFormularioAdministradores();
 });
+
+
+// ==========================================================
+// NOTIFICACIÓN: PROPUESTAS PENDIENTES DE REVISAR
+// ==========================================================
+// Cuenta cuántas propuestas de usuarios ("Ser el protagonista de la
+// historia") siguen sin revisar (ver admin-propuestas.html) y lo
+// muestra como notificación en la esquina del cuadro correspondiente
+// — mismo lugar/estilo que la racha 🔥 en el cuadro "Perfil" de
+// Inicio, pero como aviso de pendientes en vez de un contador propio.
+async function cargarBadgePropuestasPendientes() {
+
+    const badge = document.getElementById("badgePropuestasPendientes");
+    if (!badge) return;
+
+    try {
+        const snapshot = await db.collection("propuestasLecturas").get();
+        if (snapshot.size > 0) {
+            badge.textContent = snapshot.size;
+            badge.style.display = "block";
+        } else {
+            badge.style.display = "none";
+        }
+    } catch (error) {
+        console.error("No se pudo cargar la cantidad de propuestas pendientes:", error);
+    }
+
+}

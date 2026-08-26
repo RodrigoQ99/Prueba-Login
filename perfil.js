@@ -5,7 +5,15 @@
 // accesos a Información, Mis publicaciones y Ser el protagonista, cada
 // una en su propia página. La racha 🔥 se muestra aquí (además de en
 // el cuadro "Perfil" de Inicio) — en ningún otro lado.
+//
+// "Cerrar sesión" vive SOLO aquí (ver perfil.html) — ya no está en
+// Inicio ni repetido en el menú ☰ de cada página.
 // ==========================================================
+
+const btnCerrarSesionPerfil = document.getElementById("btnCerrarSesionPerfil");
+if (btnCerrarSesionPerfil) {
+    btnCerrarSesionPerfil.addEventListener("click", () => auth.signOut());
+}
 
 async function cargarBadgeRachaPerfil(user) {
 

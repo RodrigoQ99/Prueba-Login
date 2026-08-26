@@ -4,17 +4,13 @@
 // Ya no muestra el catálogo de lecturas (eso se movió a
 // lecturas-premiadas.html / sugerencias.html, ver Etapa 17) — esta
 // pantalla es solo la cuadrícula de accesos a todo lo que antes vivía
-// en el menú ☰ (que aquí ya no aparece).
+// en el menú ☰ (que aquí ya no aparece). "Cerrar sesión" tampoco
+// aparece aquí — vive solo en Perfil (ver perfil.js).
 // ==========================================================
 
 const btnQueEsEsto = document.getElementById("btnQueEsEsto");
 if (btnQueEsEsto) {
     btnQueEsEsto.addEventListener("click", () => mostrarModalInfo());
-}
-
-const btnCerrarSesionInicio = document.getElementById("btnCerrarSesionInicio");
-if (btnCerrarSesionInicio) {
-    btnCerrarSesionInicio.addEventListener("click", () => auth.signOut());
 }
 
 // Racha 🔥 en la esquina del cuadro "Perfil" — el único otro lugar

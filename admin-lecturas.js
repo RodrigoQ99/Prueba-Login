@@ -2,10 +2,11 @@
 // PÁGINA "LECTURAS" (dentro del panel de administrador)
 // ==========================================================
 // Mismo patrón de acceso independiente que admin-panel.html: login
-// propio, gate contra esAdmin(). Agrupa las lecturas de premios, la
-// encuesta de géneros y las propuestas de "Ser el protagonista de la
-// historia" — Mejorar la lectura vive en admin-mejora.html, y El Hilo
-// del día / Ahorcado en admin-juegos.html (apartados propios).
+// propio, gate contra esAdmin(). Agrupa las lecturas de premios y la
+// encuesta de géneros — Mejorar la lectura vive en admin-mejora.html,
+// El Hilo del día / Ahorcado en admin-juegos.html, y las propuestas de
+// "Ser el protagonista de la historia" en admin-propuestas.html
+// (apartados propios).
 //
 // A propósito NO se carga aquí ningún archivo del motor de lectura
 // real (motor.js, motor-mejorar.js, puntos.js, racha.js,
@@ -64,16 +65,10 @@ auth.onAuthStateChanged(async (user) => {
 
 async function inicializarPanelLecturas() {
 
-    // cargarCatalogoMejora/cargarRangoEdades no se muestran en esta
-    // página (viven en admin-mejora.html) pero sí hacen falta aquí: el
-    // botón "Publicar como lectura de Mejorar la lectura" de una
-    // propuesta (más abajo) abre abrirFormularioMejora(), que necesita
-    // RANGO_EDADES para el selector de edad del formulario.
-    await Promise.all([cargarCatalogoLecturas(), cargarCatalogoMejora(), cargarRangoEdades(), cargarGenerosLectura()]);
+    await Promise.all([cargarCatalogoLecturas(), cargarGenerosLectura()]);
 
     inicializarAdminLecturasPremios();
     inicializarAdminGenerosLectura();
-    cargarListaPropuestas();
 
 }
 
@@ -143,148 +138,6 @@ function abrirVistaPreviaLectura(lectura) {
         resultado.textContent = preguntas.length
             ? `${correctas} de ${preguntas.length} correctas (solo de prueba, nada se guardó)`
             : "Sin preguntas que calificar.";
-
-    });
-
-}
-
-
-// ==========================================================
-// PROPUESTAS DE USUARIOS ("Ser el protagonista de la historia")
-// ==========================================================
-
-async function cargarListaPropuestas() {
-
-    const cont = document.getElementById("listaPropuestas");
-    cont.innerHTML = "<p style='text-align:center;'>Cargando...</p>";
-
-    let propuestas = [];
-
-    try {
-        const snapshot = await db.collection("propuestasLecturas").get();
-        propuestas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    } catch (error) {
-        console.error("No se pudieron cargar las propuestas:", error);
-        cont.innerHTML = "<p style='text-align:center;'>No se pudieron cargar las propuestas.</p>";
-        return;
-    }
-
-    if (propuestas.length === 0) {
-        cont.innerHTML = "<p style='text-align:center;'>No hay propuestas pendientes de revisión.</p>";
-        return;
-    }
-
-    cont.innerHTML = propuestas.map(p => `
-        <div class="tarjetaLectura" data-propuesta="${p.id}" style="cursor:pointer;">
-            <div class="tarjetaInfo">
-                <p class="tarjetaTitulo">${p.titulo}</p>
-                <p class="tarjetaNivel">
-                    ${p.autorNombre || p.autorEmail || "Anónimo"} — ${p.genero || "sin género"} — ${p.cantidadPalabras} palabras
-                    (sugerido: ${p.nivelSugerido || "—"})
-                </p>
-            </div>
-            <span class="tarjetaEstado">Revisar →</span>
-        </div>
-    `).join("");
-
-    cont.querySelectorAll("[data-propuesta]").forEach(tarjeta => {
-        tarjeta.addEventListener("click", () => {
-            const propuesta = propuestas.find(p => p.id === tarjeta.dataset.propuesta);
-            abrirRevisionPropuesta(propuesta);
-        });
-    });
-
-}
-
-function abrirRevisionPropuesta(propuesta) {
-
-    const overlay = document.createElement("div");
-    overlay.className = "modalOverlay";
-    overlay.innerHTML = `
-        <div class="modalCaja modalCajaInfo modalCajaAdmin">
-            <h2>✍️ ${propuesta.titulo}</h2>
-            <p style="font-size:13px; color:var(--texto-suave);">
-                Enviado por ${propuesta.autorNombre || "—"} (${propuesta.autorEmail || "sin correo"})
-                — género: ${propuesta.genero || "—"}
-                — ${propuesta.cantidadPalabras} palabras, nivel sugerido: ${propuesta.nivelSugerido || "—"}
-                (${propuesta.preguntasSugeridas || "—"} preguntas sugeridas).
-            </p>
-            <div style="text-align:left; margin:15px 0;">
-                ${(propuesta.texto || []).map(p => `<p style="margin-bottom:12px;">${p}</p>`).join("")}
-            </div>
-            <div style="text-align:left;">
-                ${(propuesta.bancoPreguntas || []).map((pregunta, pi) => `
-                    <div style="margin-bottom:12px;">
-                        <p style="font-weight:600; margin-bottom:4px;">${pi + 1}. ${pregunta.pregunta}</p>
-                        ${pregunta.opciones.map(opcion => `
-                            <p style="margin:2px 0 2px 15px; ${opcion.valor === pregunta.correcta ? "font-weight:700; color:#2e9e5b;" : ""}">
-                                ${opcion.valor === pregunta.correcta ? "✓ " : "— "}${opcion.texto}
-                            </p>
-                        `).join("")}
-                    </div>
-                `).join("")}
-            </div>
-            <div style="display:flex; flex-direction:column; gap:10px; margin-top:20px;">
-                <button type="button" id="btnPublicarPremios">📚 Publicar como lectura de premios</button>
-                <button type="button" id="btnPublicarMejora" style="background:white; color:var(--azul); border:2px solid var(--azul);">📈 Publicar como lectura de Mejorar la lectura</button>
-                <button type="button" id="btnRechazarPropuesta" class="botonAdminContorno" style="border-color:#c0392b; color:#c0392b;">🗑️ Rechazar</button>
-                <button type="button" class="modalCerrar" style="background:white; border:1px solid var(--borde); color:var(--texto-suave);">Cerrar</button>
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(overlay);
-    overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
-    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
-
-    async function borrarPropuestaPublicada() {
-        try {
-            await db.collection("propuestasLecturas").doc(propuesta.id).delete();
-        } catch (error) {
-            console.error("No se pudo quitar la propuesta de la cola:", error);
-        }
-        overlay.remove();
-        cargarListaPropuestas();
-    }
-
-    const prellenado = {
-        titulo: propuesta.titulo,
-        texto: propuesta.texto,
-        genero: propuesta.genero,
-        bancoPreguntas: propuesta.bancoPreguntas,
-        autorUid: propuesta.autorUid,
-        autorNombre: propuesta.autorNombre
-    };
-
-    overlay.querySelector("#btnPublicarPremios").addEventListener("click", () => {
-        abrirFormularioLectura(
-            { ...prellenado, nivel: propuesta.nivelSugerido, preguntasAMostrar: propuesta.preguntasSugeridas },
-            borrarPropuestaPublicada
-        );
-    });
-
-    overlay.querySelector("#btnPublicarMejora").addEventListener("click", () => {
-        abrirFormularioMejora(
-            { ...prellenado, preguntasAMostrar: propuesta.preguntasSugeridas },
-            RANGO_EDADES.min,
-            borrarPropuestaPublicada
-        );
-    });
-
-    overlay.querySelector("#btnRechazarPropuesta").addEventListener("click", async () => {
-
-        if (!confirm(`¿Rechazar la propuesta "${propuesta.titulo}"? Se quita de la cola y no se puede deshacer.`)) {
-            return;
-        }
-
-        try {
-            await db.collection("propuestasLecturas").doc(propuesta.id).delete();
-            overlay.remove();
-            cargarListaPropuestas();
-        } catch (error) {
-            console.error("No se pudo rechazar la propuesta:", error);
-            alert("No se pudo rechazar la propuesta.");
-        }
 
     });
 

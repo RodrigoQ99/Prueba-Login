@@ -5,7 +5,7 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lecturas — Panel de administrador</title>
+    <title>Lecturas propuestas — Panel de administrador</title>
     <link rel="stylesheet" href="estilos.css">
 
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
@@ -51,13 +51,15 @@
 
     <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:20px;">
         <a href="admin-panel.html" style="text-decoration:none; color:var(--texto-suave); font-weight:600;">← Inicio</a>
-        <h1 style="margin:0;">📚 Lecturas</h1>
+        <h1 style="margin:0;">✍️ Lecturas propuestas</h1>
         <span style="width:50px;"></span>
     </div>
 
-    <!-- Lecturas de premios (inicializarAdminLecturasPremios) y
-         Encuesta de géneros (inicializarAdminGenerosLectura) -->
-    <div id="contenedor"></div>
+    <p style="font-size:13px; color:var(--texto-suave); text-align:center; margin-bottom:20px;">
+        Propuestas de usuarios ("Ser el protagonista de la historia") pendientes de revisión.
+    </p>
+
+    <div id="listaPropuestas"></div>
 
 </div>
 
@@ -65,12 +67,10 @@
 <script src="firebase-init.js"></script>
 <script src="admin-comun.js"></script>
 <script src="lecturas.js"></script>
-<script src="puntos.js"></script>
-<script src="generos.js"></script>
+<script src="mejora-lecturas.js"></script>
 <script src="editor-preguntas.js"></script>
 <script src="admin.js"></script>
-<script src="migracion-datos.js"></script>
-<script src="admin-lecturas.js"></script>
+<script src="admin-propuestas.js"></script>
 
 
 </body>
