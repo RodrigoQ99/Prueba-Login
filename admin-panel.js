@@ -48,7 +48,11 @@ auth.onAuthStateChanged(async (user) => {
         return;
     }
 
-    contenedorAdminPanel.style.display = "block";
+    // "flex" (no "block"): #contenedorAdminPanel es flex-column con
+    // align-items:center, así se centra de verdad sin importar el ancho
+    // de la pantalla, y "Cerrar sesión" (margin-top:auto) queda pegado
+    // hasta abajo del todo.
+    contenedorAdminPanel.style.display = "flex";
 
 });
 

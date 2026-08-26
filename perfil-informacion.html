@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Información — Perfil</title>
+    <link rel="stylesheet" href="estilos.css">
+</head>
+
+<body>
+
+<!-- ==========================
+     MENÚ SUPERIOR
+=========================== -->
+<div id="menuUsuario" class="menuUsuario" style="display:none;">
+    <button id="btnMenuToggle" class="botonMenuToggle" aria-label="Abrir menú">
+        <span class="iconoMenu">☰</span>
+    </button>
+
+    <div id="panelMenu" class="panelMenu" style="display:none;">
+
+        <div class="menuSeccion">
+            <a href="perfil.html" class="menuTitulo" style="display:block; text-decoration:none; cursor:pointer;">Ir a perfil</a>
+
+            <div class="menuStat">
+                <span>Lecturas completadas</span>
+                <strong id="menuCompletadas">0</strong>
+            </div>
+
+            <div class="menuStat">
+                <span>Lecturas pendientes</span>
+                <strong id="menuPendientes">0 de 0</strong>
+            </div>
+        </div>
+
+        <a href="index.html" class="menuLink">🏠 Inicio</a>
+        <a href="lecturas.html" class="menuLink">📚 Lecturas</a>
+        <a href="mejora.html" class="menuLink">📈 Mejorar la lectura</a>
+        <a href="ranking.html" class="menuLink">🏆 Ver ranking</a>
+        <a href="juegos.html" class="menuLink">🎮 Juegos</a>
+        <a href="premios.html" class="menuLink">🎁 Premios</a>
+
+        <button id="btnCerrarSesionMenu" class="menuLinkBoton">Cerrar sesión</button>
+
+    </div>
+</div>
+
+
+<div id="contenedor" style="width:90%; max-width:900px; margin:40px auto;">
+
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:20px;">
+        <a href="perfil.html" style="text-decoration:none; color:var(--texto-suave); font-weight:600;">← Perfil</a>
+        <h1 style="margin:0;">👤 Información</h1>
+        <span style="width:60px;"></span>
+    </div>
+
+    <p style="text-align:center; color:var(--texto-suave); margin-bottom:25px;">
+        Así te vamos a mostrar en el ranking.
+    </p>
+
+    <div class="cajaCheckpoint" style="max-width:460px; margin:0 auto;">
+
+        <label style="display:block; font-weight:600; margin-bottom:6px;">Nombre</label>
+        <input type="text" id="campoNombrePerfil" placeholder="Tu nombre">
+
+        <label style="display:block; font-weight:600; margin:15px 0 6px;">Alias (opcional)</label>
+        <input type="text" id="campoAliasPerfil" placeholder="Ej. Lector99">
+        <small style="display:block; color:#888; margin:-8px 0 10px;">
+            Nadie más puede tener exactamente el mismo alias que tú.
+        </small>
+
+        <p id="errorPerfil" class="errorTexto" style="display:none;"></p>
+
+        <p style="font-weight:600; margin:20px 0 10px;">¿Qué quieres que aparezca en el ranking?</p>
+
+        <label class="opcionTipo">
+            <input type="radio" name="mostrarComo" value="nombre" checked>
+            Mi nombre
+        </label>
+        <br>
+        <label class="opcionTipo">
+            <input type="radio" name="mostrarComo" value="alias">
+            Mi alias
+        </label>
+
+        <p style="font-weight:600; margin:20px 0 10px;">Datos de perfil</p>
+
+        <label style="display:block; font-weight:600; margin-bottom:6px;">Edad</label>
+        <p id="campoEdadPerfilTexto" style="padding:10px 0; color:var(--texto-suave);">—</p>
+        <small style="display:block; color:#888; margin:-8px 0 10px;">
+            La edad se calcula con la fecha de nacimiento que diste al registrarte y ya no se puede editar aquí.
+        </small>
+
+        <label style="display:block; font-weight:600; margin:15px 0 6px;">País</label>
+        <input type="text" id="campoPaisPerfil" placeholder="Tu país">
+
+        <label style="display:block; font-weight:600; margin:15px 0 6px;">Lengua materna</label>
+        <input type="text" id="campoLenguaMaternaPerfil" placeholder="Tu lengua materna">
+
+        <p style="font-weight:600; margin:20px 0 10px;">¿Qué géneros de lectura te gustan?</p>
+        <div id="contenedorGenerosPerfil"></div>
+
+        <button id="btnGuardarPerfil" style="margin-top:20px; width:100%;">
+            Guardar cambios
+        </button>
+
+        <p id="mensajePerfil" style="text-align:center; margin-top:12px; font-weight:600;"></p>
+
+    </div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="firebase-init.js"></script>
+<script src="admin-comun.js"></script>
+<script src="generos.js"></script>
+<script src="lecturas.js"></script>
+<script src="puntos.js"></script>
+<script src="perfil-informacion.js"></script>
+<script src="racha.js"></script>
+<script src="menu.js"></script>
+
+</body>
+</html>

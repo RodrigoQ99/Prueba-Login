@@ -47,57 +47,59 @@
 <!-- ==========================
      INICIO DEL PANEL (solo administradores)
 =========================== -->
-<div id="contenedorAdminPanel" style="display:none; max-width:560px; margin:0 auto; padding:30px 20px;">
+<div id="contenedorAdminPanel" style="display:none; min-height:100vh; flex-direction:column; align-items:center; padding:30px 20px; box-sizing:border-box;">
 
-    <h1 style="text-align:center; margin-bottom:30px;">🛠️ Panel de administrador</h1>
+    <div style="max-width:560px; width:100%;">
 
-    <div class="gridBotonesCuadrados">
+        <h1 style="text-align:center; margin-bottom:30px;">🛠️ Panel de administrador</h1>
 
-        <a href="admin-premios.html" class="botonCuadrado">
-            <span class="iconoBotonCuadrado">🎁</span>
-            <span>Premios</span>
-        </a>
+        <div class="gridBotonesCuadrados" style="justify-content:center;">
 
-        <a href="admin-lecturas.html" class="botonCuadrado">
-            <span class="iconoBotonCuadrado">📚</span>
-            <span>Lecturas</span>
-        </a>
+            <a href="admin-premios.html" class="botonCuadrado">
+                <span class="iconoBotonCuadrado">🎁</span>
+                <span>Premios</span>
+            </a>
 
-        <a href="admin-mejora.html" class="botonCuadrado">
-            <span class="iconoBotonCuadrado">📈</span>
-            <span>Mejorar la lectura</span>
-        </a>
+            <a href="admin-lecturas.html" class="botonCuadrado">
+                <span class="iconoBotonCuadrado">📚</span>
+                <span>Lecturas</span>
+            </a>
 
-        <a href="admin-juegos.html" class="botonCuadrado">
-            <span class="iconoBotonCuadrado">🎮</span>
-            <span>Juegos</span>
-        </a>
+            <a href="admin-mejora.html" class="botonCuadrado">
+                <span class="iconoBotonCuadrado">📈</span>
+                <span>Mejorar la lectura</span>
+            </a>
 
-        <a href="admin-estadisticas.html" class="botonCuadrado">
-            <span class="iconoBotonCuadrado">📊</span>
-            <span>Estadísticas</span>
-        </a>
+            <a href="admin-juegos.html" class="botonCuadrado">
+                <span class="iconoBotonCuadrado">🎮</span>
+                <span>Juegos</span>
+            </a>
 
-        <button type="button" id="btnAbrirAdministradores" class="botonCuadrado">
-            <span class="iconoBotonCuadrado">⚙️</span>
-            <span>Administradores</span>
-        </button>
+            <a href="admin-estadisticas.html" class="botonCuadrado">
+                <span class="iconoBotonCuadrado">📊</span>
+                <span>Estadísticas</span>
+            </a>
+
+            <button type="button" id="btnAbrirAdministradores" class="botonCuadrado">
+                <span class="iconoBotonCuadrado">⚙️</span>
+                <span>Administradores</span>
+            </button>
+
+        </div>
+
+        <div style="text-align:center; margin-top:40px;">
+            <a href="index.html" target="_blank" class="botonAdminContorno"
+               style="display:inline-block; padding:12px 22px; border-radius:12px; font-weight:600; text-decoration:none;">
+                👤 Ir a la página de usuarios
+            </a>
+        </div>
 
     </div>
 
-    <div style="text-align:center; margin-top:40px;">
-        <a href="index.html" target="_blank" class="botonAdminContorno"
-           style="display:inline-block; padding:12px 22px; border-radius:12px; font-weight:600; text-decoration:none;">
-            👤 Ir a la página de usuarios
-        </a>
-    </div>
-
-    <div style="text-align:center; margin-top:15px;">
-        <button id="btnCerrarSesionAdmin"
-                style="width:auto; padding:10px 20px; background:none; border:none; color:#c0392b; font-weight:600;">
-            Cerrar sesión
-        </button>
-    </div>
+    <button id="btnCerrarSesionAdmin"
+            style="margin-top:auto; padding:40px 20px 10px; width:auto; background:none; border:none; color:#c0392b; font-weight:600;">
+        Cerrar sesión
+    </button>
 
 </div>
 

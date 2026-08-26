@@ -60,18 +60,36 @@ function sugerirPreguntasProtagonista(cantidadPalabras) {
 
 let _preguntasProtagonista = [];
 let _protagonistaInicializado = false;
+let _nombreAutorProtagonista = "";
 
-function inicializarProtagonista() {
+async function inicializarProtagonista() {
 
     const cont = document.getElementById("contenedorProtagonista");
     if (!cont) return;
 
-    // Este perfil vuelve a llamar a inicializarProtagonista() cada vez
-    // que recarga los datos del usuario — no hace falta reconstruir el
-    // formulario si ya está armado, así no se pierde lo que el usuario
-    // esté escribiendo a medio llenar.
+    // Esta página vuelve a llamar a inicializarProtagonista() cada vez
+    // que recarga (por ejemplo, si auth.js dispara el evento dos veces)
+    // — no hace falta reconstruir el formulario si ya está armado, así
+    // no se pierde lo que el usuario esté escribiendo a medio llenar.
     if (_protagonistaInicializado) return;
     _protagonistaInicializado = true;
+
+    const user = auth.currentUser;
+
+    // Nombre para "autorNombre" — se trae de su perfil (no de un campo
+    // en pantalla: esta página vive sola, sin el formulario de
+    // Información al lado, ver Etapa 20).
+    if (user) {
+        try {
+            const doc = await db.collection("usuarios").doc(user.uid).get();
+            _nombreAutorProtagonista = (doc.exists && doc.data().nombre) || user.displayName || "";
+        } catch (error) {
+            console.error("No se pudo cargar tu nombre para la propuesta:", error);
+            _nombreAutorProtagonista = user.displayName || "";
+        }
+    }
+
+    await cargarGenerosLectura();
 
     _preguntasProtagonista = [];
 
@@ -176,7 +194,7 @@ function inicializarProtagonista() {
 
             await db.collection("propuestasLecturas").add({
                 autorUid: user.uid,
-                autorNombre: (document.getElementById("campoNombrePerfil")?.value || user.displayName || "").trim(),
+                autorNombre: _nombreAutorProtagonista.trim(),
                 autorEmail: user.email || "",
                 titulo: titulo,
                 texto: texto,
@@ -207,3 +225,11 @@ function inicializarProtagonista() {
     });
 
 }
+
+// Cuando vive en su propia página (perfil-protagonista.html) se
+// dispara solo; si algún día se vuelve a incrustar dentro de otra
+// pantalla que ya llame a inicializarProtagonista() por su cuenta, el
+// guard de _protagonistaInicializado evita armar el formulario dos veces.
+auth.onAuthStateChanged((user) => {
+    if (user) inicializarProtagonista();
+});

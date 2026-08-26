@@ -1,17 +1,16 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Juegos</title>
+    <title>Mis publicaciones — Perfil</title>
     <link rel="stylesheet" href="estilos.css">
 </head>
 
 <body>
 
 <!-- ==========================
-     MENÚ SUPERIOR (perfil / progreso / ranking)
+     MENÚ SUPERIOR
 =========================== -->
 <div id="menuUsuario" class="menuUsuario" style="display:none;">
     <button id="btnMenuToggle" class="botonMenuToggle" aria-label="Abrir menú">
@@ -47,36 +46,18 @@
 </div>
 
 
-<div id="contenedorJuegos" style="max-width:600px; margin:40px auto; padding:0 20px;">
+<div id="contenedor" style="width:90%; max-width:900px; margin:40px auto;">
 
-    <h1 style="text-align:center;">🎮 Juegos</h1>
-
-    <p style="text-align:center; color:var(--texto-suave); margin-bottom:25px;">
-        Minijuegos aparte de tus lecturas, sin premios ni ranking.
-    </p>
-
-    <div style="display:flex; flex-direction:column; gap:15px;">
-
-        <a href="hilo-del-dia.html" class="tarjetaLectura">
-            <div class="tarjetaInfo">
-                <p class="tarjetaTitulo">🧵 El Hilo del día</p>
-                <p class="tarjetaNivel">Ordena los 5 fragmentos de la historia de hoy.</p>
-            </div>
-            <span class="tarjetaEstado">Jugar →</span>
-        </a>
-
-        <a href="ahorcado.html" class="tarjetaLectura">
-            <div class="tarjetaInfo">
-                <p class="tarjetaTitulo">🔤 Ahorcado</p>
-                <p class="tarjetaNivel">Adivina la palabra letra por letra.</p>
-            </div>
-            <span class="tarjetaEstado">Jugar →</span>
-        </a>
-
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:20px;">
+        <a href="perfil.html" style="text-decoration:none; color:var(--texto-suave); font-weight:600;">← Perfil</a>
+        <h1 style="margin:0;">📚 Mis publicaciones</h1>
+        <span style="width:60px;"></span>
     </div>
 
-    <div style="text-align:center; margin-top:25px;">
-        <a href="lecturas.html">← Volver a Lecturas</a>
+    <div class="cajaCheckpoint" style="max-width:460px; margin:0 auto;">
+        <div id="listaMisPublicaciones">
+            <p style="text-align:center; color:var(--texto-suave);">Cargando...</p>
+        </div>
     </div>
 
 </div>
@@ -87,6 +68,7 @@
 <script src="firebase-init.js"></script>
 <script src="admin-comun.js"></script>
 <script src="lecturas.js"></script>
+<script src="perfil-publicaciones.js"></script>
 <script src="racha.js"></script>
 <script src="menu.js"></script>
 
