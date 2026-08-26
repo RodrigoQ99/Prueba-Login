@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lectura libre</title>
+    <title>Lecturas premiadas</title>
     <link rel="stylesheet" href="estilos.css">
 </head>
 
@@ -47,21 +46,29 @@
 </div>
 
 
-<div id="contenedorLecturaLibre" style="max-width:600px; margin:40px auto; padding:0 20px;">
+<div id="contenedor" style="width:90%; max-width:900px; margin:40px auto;">
 
-    <h1 id="tituloLecturaLibre" style="text-align:center;">Cargando...</h1>
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
+        <a href="lecturas.html" style="text-decoration:none; color:var(--texto-suave); font-weight:600;">← Lecturas</a>
+        <h1 style="margin:0;">🏆 Lecturas premiadas</h1>
+        <span style="width:70px;"></span>
+    </div>
 
-    <p style="text-align:center; color:var(--texto-suave); margin-bottom:20px;">
-        📖 Lectura libre — a tu propio ritmo, sin cronómetro y sin puntos.
+    <p style="text-align:center; color:var(--texto-suave); margin-bottom:25px;">
+        Ingresa el código de tu golosina o elige una lectura de la lista para comenzar.
     </p>
 
-    <div id="cuerpoLecturaLibre">
-        <p style="text-align:center;">Cargando...</p>
+    <div style="text-align:center; margin-bottom:25px;">
+        <button id="btnIngresarCodigo" style="max-width:260px; display:inline-block;">
+            Ingresar código
+        </button>
     </div>
 
-    <div style="text-align:center; margin-top:25px;">
-        <a href="lecturas.html">← Volver a Lecturas</a>
+    <div id="listaLecturasInicio">
+        <p style="text-align:center;">Cargando lecturas...</p>
     </div>
+
+    <div id="sugerenciaNuevaLectura" class="cajaSugerencia" style="display:none;"></div>
 
 </div>
 
@@ -71,8 +78,11 @@
 <script src="firebase-init.js"></script>
 <script src="admin-comun.js"></script>
 <script src="lecturas.js"></script>
+<script src="premio-gordo-comun.js"></script>
+<script src="puntos.js"></script>
+<script src="lecturas-premiadas.js"></script>
+<script src="desbloqueo.js"></script>
 <script src="racha.js"></script>
-<script src="lectura-libre.js"></script>
 <script src="menu.js"></script>
 
 </body>

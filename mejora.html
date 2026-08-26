@@ -29,12 +29,7 @@
     <div id="panelMenu" class="panelMenu" style="display:none;">
 
         <div class="menuSeccion">
-            <p class="menuTitulo">Mi progreso</p>
-
-            <div class="menuStat">
-                <span>Racha</span>
-                <strong id="menuRacha">🔥 0</strong>
-            </div>
+            <a href="perfil.html" class="menuTitulo" style="display:block; text-decoration:none; cursor:pointer;">Perfil →</a>
 
             <div class="menuStat">
                 <span>Lecturas completadas</span>
@@ -47,13 +42,12 @@
             </div>
         </div>
 
-        <a href="index.html" class="menuLink">📚 Lecturas</a>
+        <a href="index.html" class="menuLink">🏠 Inicio</a>
+        <a href="lecturas.html" class="menuLink">📚 Lecturas</a>
         <a href="mejora.html" class="menuLink">📈 Mejorar la lectura</a>
         <a href="ranking.html" class="menuLink">🏆 Ver ranking</a>
         <a href="juegos.html" class="menuLink">🎮 Juegos</a>
         <a href="premios.html" class="menuLink">🎁 Premios</a>
-        <a href="perfil.html" class="menuLink">✏️ Editar perfil</a>
-        <button id="btnQueEsEsto" class="menuLink">💡 ¿Qué es esto?</button>
 
         <button id="btnCerrarSesionMenu" class="menuLinkBoton">Cerrar sesión</button>
 
@@ -104,7 +98,8 @@
             </div>
 
             <div id="datosPerfilRegistro" style="margin-top:15px;">
-                <input type="number" id="inputEdadPerfil" min="1" max="120" placeholder="Edad">
+                <label style="display:block; text-align:left; color:#555; font-size:13px; margin-bottom:4px;">Fecha de nacimiento</label>
+                <input type="date" id="inputFechaNacimiento">
                 <input type="text" id="inputPais" placeholder="País">
                 <input type="text" id="inputLenguaMaterna" placeholder="Lengua materna">
             </div>

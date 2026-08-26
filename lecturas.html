@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lectura libre</title>
+    <title>Lecturas</title>
     <link rel="stylesheet" href="estilos.css">
 </head>
 
@@ -47,20 +46,22 @@
 </div>
 
 
-<div id="contenedorLecturaLibre" style="max-width:600px; margin:40px auto; padding:0 20px;">
+<div style="max-width:560px; margin:0 auto; padding:30px 20px;">
 
-    <h1 id="tituloLecturaLibre" style="text-align:center;">Cargando...</h1>
+    <h1 style="text-align:center; margin-bottom:30px;">📚 Lecturas</h1>
 
-    <p style="text-align:center; color:var(--texto-suave); margin-bottom:20px;">
-        📖 Lectura libre — a tu propio ritmo, sin cronómetro y sin puntos.
-    </p>
+    <div class="gridBotonesCuadrados">
 
-    <div id="cuerpoLecturaLibre">
-        <p style="text-align:center;">Cargando...</p>
-    </div>
+        <a href="lecturas-premiadas.html" class="botonCuadrado">
+            <span class="iconoBotonCuadrado">🏆</span>
+            <span>Lecturas premiadas</span>
+        </a>
 
-    <div style="text-align:center; margin-top:25px;">
-        <a href="lecturas.html">← Volver a Lecturas</a>
+        <a href="sugerencias.html" class="botonCuadrado">
+            <span class="iconoBotonCuadrado">🔍</span>
+            <span>Sugerencias</span>
+        </a>
+
     </div>
 
 </div>
@@ -72,7 +73,6 @@
 <script src="admin-comun.js"></script>
 <script src="lecturas.js"></script>
 <script src="racha.js"></script>
-<script src="lectura-libre.js"></script>
 <script src="menu.js"></script>
 
 </body>

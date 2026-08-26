@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lectura libre</title>
+    <title>Sugerencias</title>
     <link rel="stylesheet" href="estilos.css">
 </head>
 
@@ -47,20 +46,21 @@
 </div>
 
 
-<div id="contenedorLecturaLibre" style="max-width:600px; margin:40px auto; padding:0 20px;">
+<div style="width:90%; max-width:900px; margin:40px auto;">
 
-    <h1 id="tituloLecturaLibre" style="text-align:center;">Cargando...</h1>
-
-    <p style="text-align:center; color:var(--texto-suave); margin-bottom:20px;">
-        📖 Lectura libre — a tu propio ritmo, sin cronómetro y sin puntos.
-    </p>
-
-    <div id="cuerpoLecturaLibre">
-        <p style="text-align:center;">Cargando...</p>
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
+        <a href="lecturas.html" style="text-decoration:none; color:var(--texto-suave); font-weight:600;">← Lecturas</a>
+        <h1 style="margin:0;">🔍 Sugerencias</h1>
+        <span style="width:70px;"></span>
     </div>
 
-    <div style="text-align:center; margin-top:25px;">
-        <a href="lecturas.html">← Volver a Lecturas</a>
+    <p style="text-align:center; color:var(--texto-suave); margin-bottom:20px;">
+        Lecturas de otros usuarios que coinciden con tus géneros favoritos — sin tiempo, sin puntos,
+        a tu propio ritmo.
+    </p>
+
+    <div id="listaSugerenciasGenero">
+        <p style="text-align:center;">Cargando...</p>
     </div>
 
 </div>
@@ -71,8 +71,8 @@
 <script src="firebase-init.js"></script>
 <script src="admin-comun.js"></script>
 <script src="lecturas.js"></script>
+<script src="sugerencias.js"></script>
 <script src="racha.js"></script>
-<script src="lectura-libre.js"></script>
 <script src="menu.js"></script>
 
 </body>

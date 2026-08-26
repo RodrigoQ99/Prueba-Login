@@ -519,6 +519,34 @@ button:active{
     background:#fafbfc;
 }
 
+/* Botón "¿Qué es esto?" (💡) — SOLO en index.html (Inicio), en la misma
+   esquina y tamaño donde vive el botón de menú (☰) en las demás
+   pantallas, pero cuadrado en vez de la píldora del menú. */
+.botonInfoInicio{
+    position:fixed;
+    top:18px;
+    right:18px;
+    z-index:1000;
+    width:44px;
+    height:44px;
+    margin:0;
+    padding:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:white;
+    border:1px solid var(--borde);
+    border-radius:12px;
+    font-size:20px;
+    cursor:pointer;
+    box-shadow:var(--sombra);
+}
+
+.botonInfoInicio:hover{
+    opacity:1;
+    background:#fafbfc;
+}
+
 .menuNombreBoton{
     max-width:120px;
     overflow:hidden;
@@ -1177,14 +1205,14 @@ button.menuLink{
    la última fila incompleta queda centrada sola, y como cada botón tiene
    un ancho FIJO (no un "1fr" que se estira), todos quedan exactamente
    del mismo tamaño sin importar cuántos haya por fila. */
-.gridBotonesAdmin{
+.gridBotonesCuadrados{
     display:flex;
     flex-wrap:wrap;
     justify-content:center;
     gap:15px;
 }
 
-.botonCuadradoAdmin{
+.botonCuadrado{
     width:130px;
     aspect-ratio:1 / 1;
     flex:0 0 auto;
@@ -1206,12 +1234,12 @@ button.menuLink{
     cursor:pointer;
 }
 
-.botonCuadradoAdmin:hover{
+.botonCuadrado:hover{
     transform:translateY(-2px);
     box-shadow:0 6px 20px rgba(20,30,50,0.12);
 }
 
-.botonCuadradoAdmin .iconoBotonAdmin{
+.botonCuadrado .iconoBotonCuadrado{
     display:flex;
     align-items:center;
     justify-content:center;

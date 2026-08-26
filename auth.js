@@ -13,6 +13,32 @@ const camposEstudiante = document.getElementById("camposEstudiante");
 
 let usuarioActual = null; // guarda el objeto del documento de Firestore del usuario
 
+// El selector de fecha de nacimiento no deja elegir una fecha futura.
+const campoFechaNacimiento = document.getElementById("inputFechaNacimiento");
+if (campoFechaNacimiento) {
+    campoFechaNacimiento.max = new Date().toISOString().split("T")[0];
+}
+
+/**
+ * Calcula la edad en años cumplidos a partir de una fecha de nacimiento
+ * "YYYY-MM-DD" (lo que devuelve un <input type="date">).
+ */
+function calcularEdadDesdeFecha(fechaTexto) {
+
+    const nacimiento = new Date(fechaTexto + "T00:00:00");
+    const hoy = new Date();
+
+    let edad = hoy.getFullYear() - nacimiento.getFullYear();
+    const noHaCumplidoAunEsteAnio =
+        hoy.getMonth() < nacimiento.getMonth() ||
+        (hoy.getMonth() === nacimiento.getMonth() && hoy.getDate() < nacimiento.getDate());
+
+    if (noHaCumplidoAunEsteAnio) edad--;
+
+    return edad;
+
+}
+
 // Mostrar/ocultar campos de colegio y grado según el tipo elegido
 tipoUsuarioInputs.forEach(input => {
     input.addEventListener("change", () => {
@@ -40,6 +66,11 @@ auth.onAuthStateChanged(async (user) => {
         pantallaLogin.style.display = "flex";
         pantallaRegistro.style.display = "none";
         appContenido.style.display = "none";
+        // "btnQueEsEsto" (💡) solo existe en index.html — en las demás
+        // páginas que también cargan auth.js, este guard evita un error.
+        if (typeof btnQueEsEsto !== "undefined" && btnQueEsEsto) {
+            btnQueEsEsto.style.display = "none";
+        }
         return;
     }
 
@@ -79,8 +110,10 @@ formRegistro.addEventListener("submit", async (e) => {
 
     // "edadPerfil" es un dato de perfil informativo, sin relación con
     // "edadActual" (la edad que navega Mejorar la lectura, ver mejora.js) —
-    // nombres deliberadamente distintos para que no se crucen.
-    const edadPerfilInput = document.getElementById("inputEdadPerfil").value;
+    // nombres deliberadamente distintos para que no se crucen. Ya no se
+    // pide como número directo: se calcula sola a partir de la fecha de
+    // nacimiento, para no depender de que la escriban bien a mano.
+    const fechaNacimientoInput = document.getElementById("inputFechaNacimiento").value;
     const contenedorGeneros = document.getElementById("contenedorGenerosRegistro");
 
     const datosUsuario = {
@@ -89,7 +122,8 @@ formRegistro.addEventListener("submit", async (e) => {
         tipo: tipo,
         puntosTotales: 0,
         fechaRegistro: firebase.firestore.FieldValue.serverTimestamp(),
-        edadPerfil: edadPerfilInput ? Number(edadPerfilInput) : null,
+        fechaNacimiento: fechaNacimientoInput || null,
+        edadPerfil: fechaNacimientoInput ? calcularEdadDesdeFecha(fechaNacimientoInput) : null,
         pais: document.getElementById("inputPais").value.trim(),
         lenguaMaterna: document.getElementById("inputLenguaMaterna").value.trim(),
         generosLectura: contenedorGeneros ? leerGenerosSeleccionados(contenedorGeneros) : []

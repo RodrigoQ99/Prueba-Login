@@ -8,7 +8,7 @@
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
 
-    <title>Lecturas</title>
+    <title>Inicio</title>
 
     <link rel="stylesheet"
           href="estilos.css">
@@ -26,50 +26,12 @@
 
 
 <!-- ==========================
-     MENÚ SUPERIOR (perfil / progreso / ranking)
+     "¿QUÉ ES ESTO?" — SOLO en Inicio, mismo lugar/tamaño que el
+     botón de menú (☰) de las demás pantallas, pero cuadrado.
 =========================== -->
-<div id="menuUsuario" class="menuUsuario" style="display:none;">
-    <button id="btnMenuToggle" class="botonMenuToggle" aria-label="Abrir menú">
-        <span class="iconoMenu">☰</span>
-    </button>
-
-    <div id="panelMenu" class="panelMenu" style="display:none;">
-
-        <div class="menuSeccion">
-            <p class="menuTitulo">Mi progreso</p>
-
-            <div class="menuStat">
-                <span>Racha</span>
-                <strong id="menuRacha">🔥 0</strong>
-            </div>
-
-            <div class="menuStat">
-                <span>Lecturas completadas</span>
-                <strong id="menuCompletadas">0</strong>
-            </div>
-
-            <div class="menuStat">
-                <span>Lecturas pendientes</span>
-                <strong id="menuPendientes">0 de 0</strong>
-            </div>
-        </div>
-
-        <a href="mejora.html" class="menuLink">📈 Mejorar la lectura</a>
-
-        <a href="ranking.html" class="menuLink">🏆 Ver ranking</a>
-
-        <a href="juegos.html" class="menuLink">🎮 Juegos</a>
-
-        <a href="premios.html" class="menuLink">🎁 Premios</a>
-
-        <a href="perfil.html" class="menuLink">✏️ Editar perfil</a>
-
-        <button id="btnQueEsEsto" class="menuLink">💡 ¿Qué es esto?</button>
-
-        <button id="btnCerrarSesionMenu" class="menuLinkBoton">Cerrar sesión</button>
-
-    </div>
-</div>
+<button id="btnQueEsEsto" class="botonInfoInicio" title="¿Qué es esto?" style="display:none;">
+    💡
+</button>
 
 
 <!-- ==========================
@@ -115,7 +77,8 @@
             </div>
 
             <div id="datosPerfilRegistro" style="margin-top:15px;">
-                <input type="number" id="inputEdadPerfil" min="1" max="120" placeholder="Edad">
+                <label style="display:block; text-align:left; color:#555; font-size:13px; margin-bottom:4px;">Fecha de nacimiento</label>
+                <input type="date" id="inputFechaNacimiento">
                 <input type="text" id="inputPais" placeholder="País">
                 <input type="text" id="inputLenguaMaterna" placeholder="Lengua materna">
             </div>
@@ -130,37 +93,53 @@
 </div>
 
 
-<div id="contenedor" style="display:none;">
+<!-- ==========================
+     INICIO — cuadrícula de todo lo que antes vivía en el menú ☰
+=========================== -->
+<div id="contenedor" style="display:none; max-width:560px; margin:0 auto; padding:30px 20px;">
 
-    <h1>Lecturas</h1>
+    <h1 style="text-align:center; margin-bottom:30px;">Inicio</h1>
 
-    <h2 style="margin-top:10px;">🏆 Lecturas premiadas</h2>
+    <div class="gridBotonesCuadrados">
 
-    <p style="text-align:center; color:var(--texto-suave); margin-bottom:25px;">
-        Ingresa el código de tu golosina o elige una lectura de la lista para comenzar.
-    </p>
+        <a href="lecturas.html" class="botonCuadrado">
+            <span class="iconoBotonCuadrado">📚</span>
+            <span>Lecturas</span>
+        </a>
 
-    <div style="text-align:center; margin-bottom:25px;">
-        <button id="btnIngresarCodigo" style="max-width:260px; display:inline-block;">
-            Ingresar código
+        <a href="mejora.html" class="botonCuadrado">
+            <span class="iconoBotonCuadrado">📈</span>
+            <span>Mejorar la lectura</span>
+        </a>
+
+        <a href="perfil.html" class="botonCuadrado" style="position:relative;">
+            <span id="badgeRachaInicio" style="position:absolute; top:8px; right:10px; font-size:12px; font-weight:700; color:var(--texto-suave);"></span>
+            <span class="iconoBotonCuadrado">👤</span>
+            <span>Perfil</span>
+        </a>
+
+        <a href="premios.html" class="botonCuadrado">
+            <span class="iconoBotonCuadrado">🎁</span>
+            <span>Premios</span>
+        </a>
+
+        <a href="ranking.html" class="botonCuadrado">
+            <span class="iconoBotonCuadrado">🏆</span>
+            <span>Ranking</span>
+        </a>
+
+        <a href="juegos.html" class="botonCuadrado">
+            <span class="iconoBotonCuadrado">🎮</span>
+            <span>Juegos</span>
+        </a>
+
+    </div>
+
+    <div style="text-align:center; margin-top:40px;">
+        <button id="btnCerrarSesionInicio"
+                style="width:auto; padding:10px 20px; background:none; border:none; color:#c0392b; font-weight:600;">
+            Cerrar sesión
         </button>
-    </div>
-
-    <div id="listaLecturasInicio">
-        <p style="text-align:center;">Cargando lecturas...</p>
-    </div>
-
-    <div id="sugerenciaNuevaLectura" class="cajaSugerencia" style="display:none;"></div>
-
-    <h2 style="margin-top:40px;">🔍 Sugerencias</h2>
-
-    <p style="text-align:center; color:var(--texto-suave); margin-bottom:20px;">
-        Lecturas de otros usuarios que coinciden con tus géneros favoritos — sin tiempo, sin puntos,
-        a tu propio ritmo.
-    </p>
-
-    <div id="listaSugerenciasGenero">
-        <p style="text-align:center;">Cargando...</p>
     </div>
 
 </div>
@@ -169,15 +148,10 @@
 <script src="firebase-init.js"></script>
 <script src="admin-comun.js"></script>
 <script src="generos.js"></script>
-<script src="lecturas.js"></script>
-<script src="mejora-lecturas.js"></script>
-<script src="premio-gordo-comun.js"></script>
-<script src="puntos.js"></script>
-<script src="inicio.js"></script>
-<script src="desbloqueo.js"></script>
 <script src="racha.js"></script>
+<script src="inicio.js"></script>
 <script src="auth.js"></script>
-<script src="menu.js"></script>
+<script src="info-modal.js"></script>
 
 
 </body>

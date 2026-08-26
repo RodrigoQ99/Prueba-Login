@@ -345,7 +345,7 @@ function mostrarPantallaBono(elegidaId){
                style="display:inline-block; max-width:300px; margin:20px auto 0;">
                 ${elegida ? elegida.titulo : "Ir a la lectura"} →
             </a>
-            <a href="index.html" class="menuLink"
+            <a href="lecturas-premiadas.html" class="menuLink"
                style="display:inline-block; max-width:240px; margin:10px auto 0; background:white; border:1px solid var(--borde); color:var(--texto-suave);">
                 ← Volver a Lecturas
             </a>
@@ -501,7 +501,7 @@ function mostrarRepasoBloqueado(bonoPendiente, aprobada){
                     : "Para volver a intentar esta lectura ingresa otro código"}
             </p>
             ${notaBono}
-            <a href="index.html" class="menuLink"
+            <a href="lecturas-premiadas.html" class="menuLink"
                style="display:inline-block; max-width:240px; margin:15px auto 0;">
                 ← Volver a Lecturas
             </a>
@@ -858,7 +858,7 @@ function mostrarBotonVolver(){
     contenedorBoton.style.marginTop = "20px";
 
     contenedorBoton.innerHTML = `
-        <a id="btnVolverInicio" href="index.html" class="menuLink"
+        <a id="btnVolverInicio" href="lecturas-premiadas.html" class="menuLink"
            style="display:inline-block; max-width:240px; margin:0 auto;">
             ← Volver a Lecturas
         </a>

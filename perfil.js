@@ -1,5 +1,5 @@
 // ==========================================================
-// EDITAR PERFIL
+// PERFIL
 // ==========================================================
 // Permite cambiar el nombre y elegir un alias, y decidir cuál de
 // los dos se muestra en el ranking. El alias no se puede repetir
@@ -20,6 +20,14 @@ async function cargarPerfil() {
         console.error("No se pudo cargar tu perfil:", error);
     }
 
+    // Racha 🔥 — SOLO se muestra aquí y en el cuadro "Perfil" de Inicio
+    // (ver racha.js, calcularRachaVigente, y menu.js que ya NO la muestra).
+    const badgeRacha = document.getElementById("badgeRachaPerfil");
+    if (badgeRacha) {
+        const racha = typeof calcularRachaVigente === "function" ? calcularRachaVigente(datos) : (datos.rachaActual || 0);
+        badgeRacha.textContent = `🔥 ${racha}`;
+    }
+
     document.getElementById("campoNombrePerfil").value = datos.nombre || user.displayName || "";
     document.getElementById("campoAliasPerfil").value = datos.alias || "";
 
@@ -29,7 +37,10 @@ async function cargarPerfil() {
 
     // "edadPerfil" es solo un dato informativo del perfil — no tiene
     // relación con "edadActual" (la edad que navega Mejorar la lectura).
-    document.getElementById("campoEdadPerfil").value = datos.edadPerfil ?? "";
+    // Ya NO se edita aquí: se calculó sola a partir de la fecha de
+    // nacimiento que dio al registrarse (ver auth.js) — solo se muestra.
+    document.getElementById("campoEdadPerfilTexto").textContent =
+        typeof datos.edadPerfil === "number" ? `${datos.edadPerfil} años` : "Sin dato";
     document.getElementById("campoPaisPerfil").value = datos.pais || "";
     document.getElementById("campoLenguaMaternaPerfil").value = datos.lenguaMaterna || "";
 
@@ -92,12 +103,12 @@ document.getElementById("btnGuardarPerfil").addEventListener("click", async () =
 
         }
 
-        const edadPerfilInput = document.getElementById("campoEdadPerfil").value;
-
+        // La edad NO se manda aquí a propósito: ya no es editable desde
+        // Perfil (ver campoEdadPerfilTexto arriba), así que el valor
+        // guardado en el registro se conserva tal cual.
         const cambios = {
             nombre: nombre,
             mostrarAlias: mostrarAlias,
-            edadPerfil: edadPerfilInput ? Number(edadPerfilInput) : null,
             pais: document.getElementById("campoPaisPerfil").value.trim(),
             lenguaMaterna: document.getElementById("campoLenguaMaternaPerfil").value.trim(),
             generosLectura: leerGenerosSeleccionados(document.getElementById("contenedorGenerosPerfil"))
