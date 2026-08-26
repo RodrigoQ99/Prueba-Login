@@ -1,5 +1,5 @@
 // ==========================================================
-// PANTALLA "EL PREMIO GORDO"
+// "EL PREMIO GORDO" (sección dentro de premios.html)
 // ==========================================================
 // Top 10 + botón para ver la posición propia (mismo patrón que
 // ranking.js). El doc

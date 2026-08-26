@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>El premio gordo</title>
+    <title>Lectura libre</title>
     <link rel="stylesheet" href="estilos.css">
 </head>
 
@@ -39,20 +39,12 @@
             </div>
         </div>
 
-        <a href="index.html" class="menuLink">📚 Mis lecturas</a>
-
+        <a href="index.html" class="menuLink">📚 Lecturas</a>
         <a href="mejora.html" class="menuLink">📈 Mejorar la lectura</a>
-
         <a href="ranking.html" class="menuLink">🏆 Ver ranking</a>
-
-        <a href="premio-gordo.html" class="menuLink">💎 El premio gordo</a>
-
         <a href="juegos.html" class="menuLink">🎮 Juegos</a>
-
-        <a href="premios.html" class="menuLink">🎁 Mis premios</a>
-
+        <a href="premios.html" class="menuLink">🎁 Premios</a>
         <a href="perfil.html" class="menuLink">✏️ Editar perfil</a>
-
         <button id="btnQueEsEsto" class="menuLink">💡 ¿Qué es esto?</button>
 
         <button id="btnCerrarSesionMenu" class="menuLinkBoton">Cerrar sesión</button>
@@ -61,25 +53,20 @@
 </div>
 
 
-<div id="contenedorPremioGordo">
+<div id="contenedorLecturaLibre" style="max-width:600px; margin:40px auto; padding:0 20px;">
 
-    <h1>💎 El premio gordo</h1>
+    <h1 id="tituloLecturaLibre" style="text-align:center;">Cargando...</h1>
 
-    <p style="text-align:center; color:#555; margin-bottom:20px;">
-        Aprueba lecturas difíciles seguidas con 3 estrellas, sin fallar ninguna en el
-        camino, para clasificar — gana quien lo logre en menos tiempo total.
+    <p style="text-align:center; color:var(--texto-suave); margin-bottom:20px;">
+        📖 Lectura libre — a tu propio ritmo, sin cronómetro y sin puntos.
     </p>
 
-    <section id="seccionPremioGordo">
-
-        <div id="listaPremioGordo">
-            <p style="text-align:center;">Cargando...</p>
-        </div>
-
-    </section>
+    <div id="cuerpoLecturaLibre">
+        <p style="text-align:center;">Cargando...</p>
+    </div>
 
     <div style="text-align:center; margin-top:25px;">
-        <a href="index.html">← Volver a mis lecturas</a>
+        <a href="index.html">← Volver a Lecturas</a>
     </div>
 
 </div>
@@ -89,10 +76,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script src="firebase-init.js"></script>
 <script src="admin-comun.js"></script>
-<script src="lecturas.js"></script>
-<script src="premio-gordo-comun.js"></script>
-<script src="premio-gordo.js"></script>
 <script src="racha.js"></script>
+<script src="lectura-libre.js"></script>
 <script src="menu.js"></script>
 
 </body>

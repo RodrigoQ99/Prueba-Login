@@ -179,7 +179,7 @@ async function cargarListaPropuestas() {
             <div class="tarjetaInfo">
                 <p class="tarjetaTitulo">${p.titulo}</p>
                 <p class="tarjetaNivel">
-                    ${p.autorNombre || p.autorEmail || "Anónimo"} — ${p.cantidadPalabras} palabras
+                    ${p.autorNombre || p.autorEmail || "Anónimo"} — ${p.genero || "sin género"} — ${p.cantidadPalabras} palabras
                     (sugerido: ${p.nivelSugerido || "—"})
                 </p>
             </div>
@@ -205,6 +205,7 @@ function abrirRevisionPropuesta(propuesta) {
             <h2>✍️ ${propuesta.titulo}</h2>
             <p style="font-size:13px; color:var(--texto-suave);">
                 Enviado por ${propuesta.autorNombre || "—"} (${propuesta.autorEmail || "sin correo"})
+                — género: ${propuesta.genero || "—"}
                 — ${propuesta.cantidadPalabras} palabras, nivel sugerido: ${propuesta.nivelSugerido || "—"}
                 (${propuesta.preguntasSugeridas || "—"} preguntas sugeridas).
             </p>
@@ -249,6 +250,7 @@ function abrirRevisionPropuesta(propuesta) {
     const prellenado = {
         titulo: propuesta.titulo,
         texto: propuesta.texto,
+        genero: propuesta.genero,
         bancoPreguntas: propuesta.bancoPreguntas,
         autorUid: propuesta.autorUid,
         autorNombre: propuesta.autorNombre

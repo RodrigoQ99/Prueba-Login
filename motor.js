@@ -167,7 +167,7 @@ async function iniciarLectura(){
         document.body.innerHTML =
             "<div style='text-align:center; margin-top:80px; font-family:sans-serif;'>" +
             "<h1>Lectura bloqueada</h1>" +
-            "<p>Todavía no has desbloqueado esta lectura. Ve a \"Mis lecturas\" e ingresa el código de 8 caracteres de tu golosina.</p>" +
+            "<p>Todavía no has desbloqueado esta lectura. Ve a \"Lecturas\" e ingresa el código de 8 caracteres de tu golosina.</p>" +
             "<a href='index.html'>Volver al inicio</a>" +
             "</div>";
 
@@ -347,7 +347,7 @@ function mostrarPantallaBono(elegidaId){
             </a>
             <a href="index.html" class="menuLink"
                style="display:inline-block; max-width:240px; margin:10px auto 0; background:white; border:1px solid var(--borde); color:var(--texto-suave);">
-                ← Volver a mis lecturas
+                ← Volver a Lecturas
             </a>
         </div>
     `;
@@ -503,7 +503,7 @@ function mostrarRepasoBloqueado(bonoPendiente, aprobada){
             ${notaBono}
             <a href="index.html" class="menuLink"
                style="display:inline-block; max-width:240px; margin:15px auto 0;">
-                ← Volver a mis lecturas
+                ← Volver a Lecturas
             </a>
         </div>
     `;
@@ -860,7 +860,7 @@ function mostrarBotonVolver(){
     contenedorBoton.innerHTML = `
         <a id="btnVolverInicio" href="index.html" class="menuLink"
            style="display:inline-block; max-width:240px; margin:0 auto;">
-            ← Volver a mis lecturas
+            ← Volver a Lecturas
         </a>
     `;
 

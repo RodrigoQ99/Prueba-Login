@@ -9,7 +9,12 @@
 // renderizarCheckboxesGeneros() la usan tanto el formulario de registro
 // (auth.js) como "Editar perfil" (perfil.js) para pintar la misma
 // encuesta — checkboxes por cada género + un campo de texto libre
-// "Otro".
+// "Otro" (varios géneros a la vez).
+//
+// renderizarSelectorGeneroUnico() es la variante de UN SOLO género —
+// mismos géneros configurados + el mismo campo "Otro", pero con radios
+// en vez de checkboxes. La usa protagonista.js para clasificar POR QUÉ
+// género se puede sugerir esa lectura a otros usuarios (ver Etapa 15).
 // ==========================================================
 
 let GENEROS_LECTURA = [
@@ -85,5 +90,54 @@ function leerGenerosSeleccionados(contenedor) {
     if (otro) marcados.push(otro);
 
     return marcados;
+
+}
+
+/**
+ * Pinta UN radio por cada género de GENEROS_LECTURA más el mismo campo
+ * de texto libre "Otro" — para clasificar una lectura con un solo
+ * género (a diferencia de la encuesta de preferencias, que permite
+ * varios). "generoActual" precarga la selección si ya tenía uno.
+ */
+function renderizarSelectorGeneroUnico(contenedor, generoActual) {
+
+    const esOtro = generoActual && !GENEROS_LECTURA.includes(generoActual);
+
+    contenedor.innerHTML = `
+        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+            ${GENEROS_LECTURA.map(genero => `
+                <label class="opcionTipo" style="display:inline-flex; align-items:center; gap:6px; width:auto;">
+                    <input type="radio" name="generoLecturaUnico" value="${genero.replace(/"/g, "&quot;")}"
+                           ${generoActual === genero ? "checked" : ""}>
+                    ${genero}
+                </label>
+            `).join("")}
+            <label class="opcionTipo" style="display:inline-flex; align-items:center; gap:6px; width:auto;">
+                <input type="radio" name="generoLecturaUnico" value="__otro__" ${esOtro ? "checked" : ""}>
+                Otro
+            </label>
+        </div>
+        <input type="text" id="campoGeneroUnicoOtro" placeholder="Escribe el género"
+               value="${(esOtro ? generoActual : "").replace(/"/g, "&quot;")}"
+               style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--borde);">
+    `;
+
+}
+
+/**
+ * Lee lo marcado/escrito en un contenedor pintado por
+ * renderizarSelectorGeneroUnico() y devuelve un solo string (o "" si no
+ * eligió nada).
+ */
+function leerGeneroUnicoSeleccionado(contenedor) {
+
+    const marcado = contenedor.querySelector('input[name="generoLecturaUnico"]:checked');
+    if (!marcado) return "";
+
+    if (marcado.value === "__otro__") {
+        return (contenedor.querySelector("#campoGeneroUnicoOtro")?.value || "").trim();
+    }
+
+    return marcado.value;
 
 }

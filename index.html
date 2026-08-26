@@ -8,7 +8,7 @@
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
 
-    <title>Mis lecturas</title>
+    <title>Lecturas</title>
 
     <link rel="stylesheet"
           href="estilos.css">
@@ -58,11 +58,9 @@
 
         <a href="ranking.html" class="menuLink">🏆 Ver ranking</a>
 
-        <a href="premio-gordo.html" class="menuLink">💎 El premio gordo</a>
-
         <a href="juegos.html" class="menuLink">🎮 Juegos</a>
 
-        <a href="premios.html" class="menuLink">🎁 Mis premios</a>
+        <a href="premios.html" class="menuLink">🎁 Premios</a>
 
         <a href="perfil.html" class="menuLink">✏️ Editar perfil</a>
 
@@ -134,7 +132,9 @@
 
 <div id="contenedor" style="display:none;">
 
-    <h1>Mis lecturas</h1>
+    <h1>Lecturas</h1>
+
+    <h2 style="margin-top:10px;">🏆 Lecturas premiadas</h2>
 
     <p style="text-align:center; color:var(--texto-suave); margin-bottom:25px;">
         Ingresa el código de tu golosina o elige una lectura de la lista para comenzar.
@@ -151,6 +151,17 @@
     </div>
 
     <div id="sugerenciaNuevaLectura" class="cajaSugerencia" style="display:none;"></div>
+
+    <h2 style="margin-top:40px;">🔍 Sugerencias</h2>
+
+    <p style="text-align:center; color:var(--texto-suave); margin-bottom:20px;">
+        Lecturas de otros usuarios que coinciden con tus géneros favoritos — sin tiempo, sin puntos,
+        a tu propio ritmo.
+    </p>
+
+    <div id="listaSugerenciasGenero">
+        <p style="text-align:center;">Cargando...</p>
+    </div>
 
 </div>
 

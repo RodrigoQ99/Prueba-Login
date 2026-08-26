@@ -191,11 +191,16 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
         };
 
         // Si esta lectura viene de una propuesta de "Ser el protagonista de
-        // la historia" (ver admin-panel.js), conserva quién la escribió —
-        // así "Mis publicaciones" en su perfil puede encontrarla después.
+        // la historia" (ver admin-lecturas.js), conserva quién la escribió —
+        // así "Mis publicaciones" en su perfil puede encontrarla después —
+        // y su género, para poder sugerirla luego a otros usuarios con ese
+        // mismo interés (ver inicio.js, "Sugerencias").
         if (lecturaExistente && lecturaExistente.autorUid) {
             datos.autorUid = lecturaExistente.autorUid;
             datos.autorNombre = lecturaExistente.autorNombre || "";
+        }
+        if (lecturaExistente && lecturaExistente.genero) {
+            datos.genero = lecturaExistente.genero;
         }
 
         try {
@@ -372,10 +377,13 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
         };
 
         // Ver la misma nota en abrirFormularioLectura: conserva la autoría
-        // si esta lectura viene de una propuesta de usuario.
+        // y el género si esta lectura viene de una propuesta de usuario.
         if (lecturaExistente && lecturaExistente.autorUid) {
             datos.autorUid = lecturaExistente.autorUid;
             datos.autorNombre = lecturaExistente.autorNombre || "";
+        }
+        if (lecturaExistente && lecturaExistente.genero) {
+            datos.genero = lecturaExistente.genero;
         }
 
         try {

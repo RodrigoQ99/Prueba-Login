@@ -24,8 +24,8 @@
 //
 // Este archivo se incluye en cualquier página que necesite consultar o
 // recalcular este reto: index.html y lectura.html (para las reglas de
-// juego) y premio-gordo.html (para mostrarlo). admin.js lo usa para
-// dejar editar la meta.
+// juego) y premios.html (para mostrarlo, junto con los premios ganados).
+// admin.js lo usa para dejar editar la meta.
 // ==========================================================
 
 let META_PREMIO_GORDO = 6;

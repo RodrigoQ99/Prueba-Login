@@ -8,8 +8,14 @@
 // (construirEditorPreguntas, ver editor-preguntas.js).
 //
 // El usuario NUNCA elige el ID de la lectura — eso lo asigna el admin
-// al publicarla (ver admin-panel.js). Lo que se envía aquí va a una
+// al publicarla (ver admin-lecturas.js). Lo que se envía aquí va a una
 // cola de revisión (propuestasLecturas), no directo al catálogo.
+//
+// También clasifica su historia con UN género (mismos géneros
+// configurables de la encuesta de preferencias — ver generos.js,
+// renderizarSelectorGeneroUnico). Ese género viaja con la propuesta y
+// se conserva al publicarse, para poder sugerir la lectura después a
+// otros usuarios con ese mismo interés (ver inicio.js, "Sugerencias").
 // ==========================================================
 
 const BANDAS_SUGERENCIA_PROTAGONISTA = [
@@ -82,7 +88,10 @@ function inicializarProtagonista() {
             0 palabras.
         </p>
 
-        <h3 style="margin-top:10px;">Preguntas de tu historia</h3>
+        <label style="display:block; font-weight:600; margin:15px 0 6px;">Género de tu historia</label>
+        <div id="contenedorGeneroProtagonista"></div>
+
+        <h3 style="margin-top:15px;">Preguntas de tu historia</h3>
         <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
             Escribe cada pregunta y sus opciones, y marca cuál es la correcta.
         </p>
@@ -96,6 +105,7 @@ function inicializarProtagonista() {
     `;
 
     construirEditorPreguntas(cont.querySelector("#editorPreguntasProtagonista"), _preguntasProtagonista);
+    renderizarSelectorGeneroUnico(cont.querySelector("#contenedorGeneroProtagonista"), "");
 
     const campoTexto = cont.querySelector("#campoTextoProtagonista");
     const sugerenciaEl = cont.querySelector("#sugerenciaProtagonista");
@@ -151,6 +161,13 @@ function inicializarProtagonista() {
             return;
         }
 
+        const genero = leerGeneroUnicoSeleccionado(cont.querySelector("#contenedorGeneroProtagonista"));
+
+        if (!genero) {
+            alert("Elige (o escribe) el género de tu historia.");
+            return;
+        }
+
         const sugerencia = sugerirPreguntasProtagonista(cantidadPalabras);
         const btn = cont.querySelector("#btnEnviarProtagonista");
         btn.disabled = true;
@@ -163,6 +180,7 @@ function inicializarProtagonista() {
                 autorEmail: user.email || "",
                 titulo: titulo,
                 texto: texto,
+                genero: genero,
                 bancoPreguntas: _preguntasProtagonista,
                 cantidadPalabras: cantidadPalabras,
                 nivelSugerido: sugerencia.etiqueta,
@@ -175,6 +193,7 @@ function inicializarProtagonista() {
             cont.querySelector("#campoTituloProtagonista").value = "";
             campoTexto.value = "";
             actualizarSugerencia();
+            renderizarSelectorGeneroUnico(cont.querySelector("#contenedorGeneroProtagonista"), "");
             _preguntasProtagonista.length = 0;
             construirEditorPreguntas(cont.querySelector("#editorPreguntasProtagonista"), _preguntasProtagonista);
 

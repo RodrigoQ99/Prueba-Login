@@ -5,7 +5,7 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mis premios</title>
+    <title>Premios</title>
     <link rel="stylesheet" href="estilos.css">
 
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
@@ -47,12 +47,11 @@
             </div>
         </div>
 
-        <a href="index.html" class="menuLink">📚 Mis lecturas</a>
+        <a href="index.html" class="menuLink">📚 Lecturas</a>
         <a href="mejora.html" class="menuLink">📈 Mejorar la lectura</a>
         <a href="ranking.html" class="menuLink">🏆 Ver ranking</a>
-        <a href="premio-gordo.html" class="menuLink">💎 El premio gordo</a>
         <a href="juegos.html" class="menuLink">🎮 Juegos</a>
-        <a href="premios.html" class="menuLink">🎁 Mis premios</a>
+        <a href="premios.html" class="menuLink">🎁 Premios</a>
         <a href="perfil.html" class="menuLink">✏️ Editar perfil</a>
         <button id="btnQueEsEsto" class="menuLink">💡 ¿Qué es esto?</button>
 
@@ -130,7 +129,7 @@
 
 <div id="contenedor" style="display:none;">
 
-    <h1>🎁 Mis premios</h1>
+    <h1>🎁 Premios</h1>
 
     <p style="text-align:center; color:var(--texto-suave); margin-bottom:25px;">
         Cada lectura que apruebas te gana un premio. Toca "Canjear" y muéstrale
@@ -138,6 +137,17 @@
     </p>
 
     <div id="listaPremios">
+        <p style="text-align:center;">Cargando...</p>
+    </div>
+
+    <h2 style="text-align:center; margin-top:40px;">💎 El premio gordo</h2>
+
+    <p style="text-align:center; color:var(--texto-suave); margin-bottom:20px;">
+        Aprueba lecturas difíciles seguidas con 3 estrellas, sin fallar ninguna en el
+        camino, para clasificar — gana quien lo logre en menos tiempo total.
+    </p>
+
+    <div id="listaPremioGordo">
         <p style="text-align:center;">Cargando...</p>
     </div>
 
@@ -149,7 +159,9 @@
 <script src="generos.js"></script>
 <script src="lecturas.js"></script>
 <script src="puntos.js"></script>
+<script src="premio-gordo-comun.js"></script>
 <script src="premios.js"></script>
+<script src="premio-gordo.js"></script>
 <script src="racha.js"></script>
 <script src="auth.js"></script>
 <script src="menu.js"></script>

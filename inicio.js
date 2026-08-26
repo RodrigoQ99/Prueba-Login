@@ -169,8 +169,91 @@ async function cargarListaLecturas() {
 
 }
 
+// ==========================================================
+// SUGERENCIAS (lecturas de otros usuarios que coinciden con los
+// géneros de interés marcados en el perfil — ver protagonista.js y
+// admin-lecturas.js, "Publicar como lectura de premios")
+// ==========================================================
+// A diferencia de "Lecturas premiadas", aquí NO importa si el usuario
+// tiene o no el código: se muestran TODAS las que coincidan con sus
+// géneros favoritos (aunque también tenga código para alguna — en ese
+// caso aparece en ambos apartados, cada uno con su propio
+// comportamiento). Se abren en lectura-libre.html: sin cronómetro,
+// sin puntos, a su propio ritmo.
+
+async function cargarSugerenciasGenero(user) {
+
+    const contenedor = document.getElementById("listaSugerenciasGenero");
+    if (!contenedor) return;
+
+    let generosUsuario = [];
+
+    try {
+        const usuarioDoc = await db.collection("usuarios").doc(user.uid).get();
+        generosUsuario = (usuarioDoc.exists && usuarioDoc.data().generosLectura) || [];
+    } catch (error) {
+        console.error("No se pudieron cargar tus géneros de interés:", error);
+    }
+
+    if (generosUsuario.length === 0) {
+        contenedor.innerHTML =
+            "<p style='text-align:center; color:var(--texto-suave);'>Marca tus géneros favoritos " +
+            "en \"Editar perfil\" para ver sugerencias aquí.</p>";
+        return;
+    }
+
+    // Firestore solo permite hasta 10 valores en un "in" — si el usuario
+    // marcó más géneros que eso, se usan los primeros 10.
+    const generosConsulta = generosUsuario.slice(0, 10);
+
+    let lecturasSugeridas = [];
+
+    try {
+        const snapshot = await db.collection("lecturas")
+            .where("genero", "in", generosConsulta)
+            .get();
+        lecturasSugeridas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("No se pudieron cargar las sugerencias:", error);
+        contenedor.innerHTML = "<p style='text-align:center; color:var(--texto-suave);'>No se pudieron cargar las sugerencias.</p>";
+        return;
+    }
+
+    if (lecturasSugeridas.length === 0) {
+        contenedor.innerHTML =
+            "<p style='text-align:center; color:var(--texto-suave);'>Todavía no hay lecturas de tus géneros favoritos. ¡Vuelve pronto!</p>";
+        return;
+    }
+
+    const porGenero = {};
+    lecturasSugeridas.forEach(lectura => {
+        if (!porGenero[lectura.genero]) porGenero[lectura.genero] = [];
+        porGenero[lectura.genero].push(lectura);
+    });
+
+    contenedor.innerHTML = Object.keys(porGenero).sort().map(genero => `
+        <details class="grupoNivelAdmin">
+            <summary>${genero} (${porGenero[genero].length})</summary>
+            <div class="listaAdminLecturasNivel">
+                ${porGenero[genero].map(lectura => `
+                    <a href="lectura-libre.html?id=${encodeURIComponent(lectura.id)}" class="tarjetaLectura">
+                        <div class="tarjetaInfo">
+                            <p class="tarjetaTitulo">${lectura.titulo}</p>
+                            <p class="tarjetaNivel">Por ${lectura.autorNombre || "un usuario"}</p>
+                        </div>
+                        <span class="tarjetaEstado">Leer →</span>
+                    </a>
+                `).join("")}
+            </div>
+        </details>
+    `).join("");
+
+}
+
 // auth.js llama a esta función (con este mismo nombre) apenas el
 // usuario inició sesión o terminó de registrarse.
 function iniciarLectura() {
     cargarListaLecturas();
+    const user = auth.currentUser;
+    if (user) cargarSugerenciasGenero(user);
 }

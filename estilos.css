@@ -1212,7 +1212,12 @@ button.menuLink{
 }
 
 .botonCuadradoAdmin .iconoBotonAdmin{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    height:40px;
     font-size:34px;
+    line-height:1;
 }
 
 /* ==========================
