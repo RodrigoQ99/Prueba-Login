@@ -580,6 +580,19 @@ function avanzarAlCuestionario() {
         ubicacion.lectura.preguntasAMostrar
     );
 
+    // Sin preguntas no hay nada que calificar — antes esto dejaba el
+    // cuestionario vacío pero con "Terminar cuestionario" habilitado, y
+    // calificarMejora() lo aprobaba solo (0 correctas === 0 preguntas).
+    // Se corta acá para que ni siquiera se pueda intentar.
+    if (preguntasSeleccionadasMejora.length === 0) {
+        listaPreguntasMejora.innerHTML =
+            "<p style='text-align:center; color:var(--texto-suave);'>" +
+            "Esta lectura todavía no tiene preguntas configuradas. Avísale a un administrador." +
+            "</p>";
+        document.getElementById("btnCalificarMejora").style.display = "none";
+        return;
+    }
+
     listaPreguntasMejora.innerHTML = preguntasSeleccionadasMejora
         .map((pregunta, indice) => `
             <div class="pregunta">
@@ -604,6 +617,12 @@ function avanzarAlCuestionario() {
 async function calificarMejora() {
 
     const preguntas = preguntasSeleccionadasMejora;
+
+    // Ver la misma nota en avanzarAlCuestionario(): sin preguntas no hay
+    // nada que calificar — "correctas === preguntas.length" sería
+    // 0 === 0 (aprobado solo), así que no se puede seguir.
+    if (preguntas.length === 0) return;
+
     let correctas = 0;
 
     preguntas.forEach((pregunta, indice) => {
