@@ -118,12 +118,18 @@ async function actualizarRankingPersonal() {
 
     snapshot.forEach(doc => {
         const data = doc.data();
+
+        // Con 0 puntos no hay nada que rankear todavía — se deja afuera
+        // en vez de mostrar a todo el mundo empatado en "0 pts" (ej. justo
+        // después de borrar todas las lecturas del catálogo).
+        if (!data.puntosTotales) return;
+
         const nombreAMostrar = (data.mostrarAlias && data.alias) ? data.alias : (data.nombre || "Anónimo");
         lista.push({
             uid: doc.id,
             nombre: nombreAMostrar,
             tipo: data.tipo || "particular",
-            puntos: data.puntosTotales || 0
+            puntos: data.puntosTotales
         });
     });
 
@@ -166,7 +172,10 @@ async function actualizarRankingActual() {
         grupos[clave].puntos += data.puntosTotales || 0;
     });
 
+    // Mismo criterio que actualizarRankingPersonal(): un colegio/grado con
+    // 0 puntos todavía no tiene nada que mostrar en el ranking.
     const listaOrdenada = Object.values(grupos)
+        .filter(grupo => grupo.puntos > 0)
         .sort((a, b) => b.puntos - a.puntos);
 
     await db.collection("rankingActual").doc("actual").set({

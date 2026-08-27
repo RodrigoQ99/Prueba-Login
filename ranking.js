@@ -55,7 +55,13 @@ function mostrarRankingPersonal(lista, uidActual) {
 
     const contenedor = document.getElementById("listaRankingPersonal");
 
-    if (!lista || lista.length === 0) {
+    // actualizarRankingPersonal() (ver puntos.js) ya no guarda a nadie con
+    // 0 puntos, pero se filtra también acá por si el documento en
+    // Firestore todavía no se ha vuelto a recalcular desde el último
+    // cambio (ej. justo después de borrar todas las lecturas).
+    lista = (lista || []).filter(item => item.puntos > 0);
+
+    if (lista.length === 0) {
         contenedor.innerHTML = "<p style='text-align:center;'>Todavía no hay puntos registrados.</p>";
         return;
     }
@@ -132,7 +138,11 @@ function mostrarRankingColegios(lista, colegioActual, gradoActual) {
 
     const contenedor = document.getElementById("listaRanking");
 
-    if (!lista || lista.length === 0) {
+    // Mismo criterio que mostrarRankingPersonal(): filtra por si acaso el
+    // documento todavía no se recalculó desde el último cambio.
+    lista = (lista || []).filter(item => item.puntos > 0);
+
+    if (lista.length === 0) {
         contenedor.innerHTML = "<p style='text-align:center;'>Todavía no hay estudiantes con puntos registrados.</p>";
         return;
     }
