@@ -27,6 +27,95 @@
 
 
 // ==========================================================
+// BOTÓN "GENERAR PREGUNTAS CON IA" (compartido por el formulario de
+// lectura de premios y el de Mejorar la lectura — Etapa 20)
+// ==========================================================
+// generarPreguntasConIA() vive en admin-ia.js, EXCLUSIVO de
+// admin-lecturas.html y admin-mejora.html (nunca se carga en páginas de
+// participantes). Si el botón no existe en el overlay, o
+// generarPreguntasConIA no está definida (página que no cargó
+// admin-ia.js), esta función simplemente no hace nada — así
+// abrirFormularioLectura/abrirFormularioMejora la pueden llamar siempre
+// sin preguntarse en qué página están.
+//
+// "editorPreguntas" es el objeto { refrescar } que devuelve
+// construirEditorPreguntas() — se usa para redibujar el banco después
+// de insertar las preguntas que devolvió la IA, sin volver a llamar a
+// construirEditorPreguntas() (eso duplicaría los listeners de
+// input/change/click sobre el mismo contenedor).
+function activarBotonGenerarPreguntasIA(overlay, { campoTexto, editorPreguntas, preguntas, contexto }) {
+
+    const btn = overlay.querySelector("#btnGenerarPreguntasIA");
+    if (!btn || typeof generarPreguntasConIA !== "function") return;
+
+    const estado = overlay.querySelector("#estadoGenerarPreguntasIA");
+
+    function actualizarVisibilidad() {
+        btn.style.display = campoTexto.value.trim() ? "block" : "none";
+    }
+
+    actualizarVisibilidad();
+    campoTexto.addEventListener("input", actualizarVisibilidad);
+
+    btn.addEventListener("click", async () => {
+
+        const texto = campoTexto.value
+            .split(/\n\s*\n/)
+            .map(p => p.trim())
+            .filter(p => p.length > 0);
+
+        if (texto.length === 0) {
+            alert("Escribe el texto de la lectura antes de generar preguntas.");
+            return;
+        }
+
+        // Nunca se descarta trabajo ya escrito sin confirmar primero.
+        if (preguntas.length > 0) {
+            const reemplazar = confirm(
+                `Ya hay ${preguntas.length} pregunta(s) en el banco. ¿Reemplazarlas por las que genere la IA?\n\n` +
+                `Cancelar = conservarlas y agregar las nuevas al final.`
+            );
+            if (reemplazar) preguntas.length = 0;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "🤖 Generando preguntas... (puede tardar unos segundos)";
+        estado.style.display = "none";
+
+        try {
+
+            const generadas = await generarPreguntasConIA({ texto, ...contexto() });
+
+            if (!generadas || generadas.length === 0) {
+                throw new Error("La IA no devolvió ninguna pregunta.");
+            }
+
+            preguntas.push(...generadas);
+            editorPreguntas.refrescar();
+
+            estado.textContent = `✅ Se generaron ${generadas.length} pregunta(s) — revísalas, ajústalas o bórralas antes de guardar.`;
+            estado.style.color = "#2e9e5b";
+            estado.style.display = "block";
+
+        } catch (error) {
+
+            console.error("No se pudo generar preguntas con IA:", error);
+            estado.textContent = "❌ No se pudo generar las preguntas con IA. Puedes seguir escribiéndolas a mano. " +
+                (error && error.message ? `(${error.message})` : "");
+            estado.style.color = "#c0392b";
+            estado.style.display = "block";
+
+        }
+
+        btn.disabled = false;
+        btn.textContent = "🤖 Generar preguntas con IA";
+
+    });
+
+}
+
+
+// ==========================================================
 // FORMULARIO: CREAR / EDITAR LECTURA (sistema de premios QR)
 // ==========================================================
 // Usa construirEditorPreguntas (ver editor-preguntas.js).
@@ -96,6 +185,10 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
                 <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
                     Marca con el círculo cuál opción es la correcta de cada pregunta.
                 </p>
+                <button type="button" id="btnGenerarPreguntasIA" class="botonAdminContorno" style="display:none; width:100%; margin-bottom:8px;">
+                    🤖 Generar preguntas con IA
+                </button>
+                <p id="estadoGenerarPreguntasIA" style="display:none; font-size:13px; margin:-4px 0 12px;"></p>
                 <div id="editorPreguntas"></div>
 
                 <div style="display:flex; gap:10px; margin-top:20px;">
@@ -111,7 +204,14 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
 
     overlay.querySelector("#campoNivel").value = (lecturaExistente && lecturaExistente.nivel) || "facil";
 
-    construirEditorPreguntas(overlay.querySelector("#editorPreguntas"), preguntas);
+    const editorPreguntas = construirEditorPreguntas(overlay.querySelector("#editorPreguntas"), preguntas);
+
+    activarBotonGenerarPreguntasIA(overlay, {
+        campoTexto: overlay.querySelector("#campoTexto"),
+        editorPreguntas,
+        preguntas,
+        contexto: () => ({ tipo: "premio", nivel: overlay.querySelector("#campoNivel").value })
+    });
 
     overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
     overlay.addEventListener("click", (e) => {
@@ -286,6 +386,10 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
                 <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
                     Marca con el círculo cuál opción es la correcta de cada pregunta.
                 </p>
+                <button type="button" id="btnGenerarPreguntasIA" class="botonAdminContorno" style="display:none; width:100%; margin-bottom:8px;">
+                    🤖 Generar preguntas con IA
+                </button>
+                <p id="estadoGenerarPreguntasIA" style="display:none; font-size:13px; margin:-4px 0 12px;"></p>
                 <div id="editorPreguntas"></div>
 
                 <div style="display:flex; gap:10px; margin-top:20px;">
@@ -301,7 +405,14 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
 
     overlay.querySelector("#campoEdad").value = String((lecturaExistente && lecturaExistente.edad) || edadPorDefecto);
 
-    construirEditorPreguntas(overlay.querySelector("#editorPreguntas"), preguntas);
+    const editorPreguntas = construirEditorPreguntas(overlay.querySelector("#editorPreguntas"), preguntas);
+
+    activarBotonGenerarPreguntasIA(overlay, {
+        campoTexto: overlay.querySelector("#campoTexto"),
+        editorPreguntas,
+        preguntas,
+        contexto: () => ({ tipo: "mejora", edad: Number(overlay.querySelector("#campoEdad").value) })
+    });
 
     overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
     overlay.addEventListener("click", (e) => {

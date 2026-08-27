@@ -13,6 +13,11 @@
 // real (motor.js, motor-mejorar.js, puntos.js, racha.js, desbloqueo.js)
 // ni auth.js — así ninguna ruta de escritura de participación es
 // siquiera alcanzable desde esta página.
+//
+// "🤖 Revisar con IA" (ver moderarPropuestaConIA en admin-ia.js) es
+// SOLO una opinión — nunca aprueba, rechaza ni oculta nada por su
+// cuenta. Publicar y Rechazar siguen funcionando exactamente igual y
+// no dependen del resultado de la IA en absoluto.
 // ==========================================================
 
 const pantallaLoginAdmin = document.getElementById("pantallaLoginAdmin");
@@ -124,6 +129,16 @@ function abrirRevisionPropuesta(propuesta) {
                 — ${propuesta.cantidadPalabras} palabras, nivel sugerido: ${propuesta.nivelSugerido || "—"}
                 (${propuesta.preguntasSugeridas || "—"} preguntas sugeridas).
             </p>
+
+            <!-- Solo una opinión para el admin — NUNCA aprueba, rechaza ni
+                 oculta nada por su cuenta (ver moderarPropuestaIA en
+                 functions/lib/moderarPropuestaIA.js). Publicar/Rechazar
+                 más abajo son totalmente independientes de esto. -->
+            <div style="text-align:left; margin:15px 0;">
+                <button type="button" id="btnRevisarConIA" class="botonAdminChico">🤖 Revisar con IA</button>
+                <div id="resultadoRevisionIA" style="display:none; margin-top:10px; padding:10px 12px; border-radius:8px; font-size:13px;"></div>
+            </div>
+
             <div style="text-align:left; margin:15px 0;">
                 ${(propuesta.texto || []).map(p => `<p style="margin-bottom:12px;">${p}</p>`).join("")}
             </div>
@@ -151,6 +166,60 @@ function abrirRevisionPropuesta(propuesta) {
     document.body.appendChild(overlay);
     overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
     overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+
+    // "🤖 Revisar con IA" — solo aparece si admin-ia.js está cargado en
+    // esta página (siempre debería estarlo en admin-propuestas.html).
+    const btnRevisarConIA = overlay.querySelector("#btnRevisarConIA");
+    if (typeof moderarPropuestaConIA !== "function" && btnRevisarConIA) {
+        btnRevisarConIA.style.display = "none";
+    } else if (btnRevisarConIA) {
+        btnRevisarConIA.addEventListener("click", async () => {
+
+            const resultado = overlay.querySelector("#resultadoRevisionIA");
+
+            btnRevisarConIA.disabled = true;
+            btnRevisarConIA.textContent = "🤖 Revisando... (puede tardar unos segundos)";
+
+            try {
+
+                const veredicto = await moderarPropuestaConIA({
+                    texto: propuesta.texto,
+                    preguntas: propuesta.bancoPreguntas
+                });
+
+                const esApropiado = veredicto.veredicto === "apropiado";
+                const colorFondo = esApropiado ? "#e8f6ee" : "#fdf3e3";
+                const colorTexto = esApropiado ? "#1f7a45" : "#a5650a";
+                const etiqueta = esApropiado ? "🟢 Apropiado" : "🟠 Revisar con cuidado";
+                const temas = (veredicto.temas_detectados || []).length > 0
+                    ? `<p style="margin-top:6px;"><strong>Temas detectados:</strong> ${veredicto.temas_detectados.join(", ")}</p>`
+                    : "";
+
+                resultado.style.background = colorFondo;
+                resultado.style.color = colorTexto;
+                resultado.innerHTML = `
+                    <p><strong>${etiqueta}</strong> — opinión de la IA, no decide nada por su cuenta.</p>
+                    <p style="margin-top:4px;">${veredicto.motivo}</p>
+                    ${temas}
+                `;
+                resultado.style.display = "block";
+
+            } catch (error) {
+
+                console.error("No se pudo revisar la propuesta con IA:", error);
+                resultado.style.background = "#fdf1f0";
+                resultado.style.color = "#c0392b";
+                resultado.textContent = "❌ No se pudo revisar con IA. Puedes seguir revisando la propuesta manualmente." +
+                    (error && error.message ? ` (${error.message})` : "");
+                resultado.style.display = "block";
+
+            }
+
+            btnRevisarConIA.disabled = false;
+            btnRevisarConIA.textContent = "🤖 Revisar con IA";
+
+        });
+    }
 
     async function borrarPropuestaPublicada() {
         try {

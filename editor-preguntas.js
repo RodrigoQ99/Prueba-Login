@@ -9,6 +9,14 @@
 //
 // "preguntas" es un arreglo que se modifica EN SITIO (mismo patrón que
 // el resto del proyecto usa para no complicar el manejo de estado).
+//
+// Devuelve { refrescar } — quien llame a construirEditorPreguntas puede
+// seguir modificando "preguntas" desde AFUERA (ej. admin-ia.js, al
+// insertar las preguntas que devolvió la IA) y llamar a refrescar()
+// para que el editor las vuelva a dibujar. A propósito NO se vuelve a
+// llamar construirEditorPreguntas() para esto — haría que se agreguen
+// un segundo juego de listeners de input/change/click sobre el mismo
+// contenedor (cada clic terminaría disparando el manejador dos veces).
 // ==========================================================
 
 function construirEditorPreguntas(contenedor, preguntas) {
@@ -119,5 +127,7 @@ function construirEditorPreguntas(contenedor, preguntas) {
     });
 
     render();
+
+    return { refrescar: render };
 
 }
