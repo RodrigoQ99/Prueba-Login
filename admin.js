@@ -1380,9 +1380,6 @@ function inicializarAdminLecturasPremios() {
             <h3 class="seccionAdminTitulo">📚 Lecturas de premios</h3>
             <div class="seccionAdminBotones">
                 <button id="btnNuevaLectura">+ Agregar lectura nueva</button>
-                ${(typeof DATOS_ORIGINALES_LECTURAS !== "undefined" && CATALOGO_LECTURAS.length === 0)
-                    ? `<button id="btnMigrarDatos" style="background:#2e9e5b;">Migrar datos antiguos</button>`
-                    : ""}
                 <button id="btnRepararPuntos" class="botonAdminContorno">Borrar puntos de lecturas eliminadas</button>
             </div>
             <div id="listaAdminLecturas"></div>
@@ -1393,11 +1390,6 @@ function inicializarAdminLecturasPremios() {
     document.getElementById("btnNuevaLectura").addEventListener("click", () => {
         abrirFormularioLectura(null, () => inicializarAdminLecturasPremios());
     });
-
-    const btnMigrar = document.getElementById("btnMigrarDatos");
-    if (btnMigrar) {
-        btnMigrar.addEventListener("click", () => migrarDatosOriginales());
-    }
 
     document.getElementById("btnRepararPuntos").addEventListener("click", async () => {
 
