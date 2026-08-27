@@ -72,3 +72,34 @@ function esAdmin() {
     const correo = auth.currentUser && auth.currentUser.email;
     return !!(correo && ADMINISTRADORES.some(admin => admin.email === correo));
 }
+
+
+// ==========================================================
+// BANCO DE PREGUNTAS: ELEGIR AL AZAR
+// ==========================================================
+// Dado un banco de preguntas (ej. 10) y cuántas mostrar (ej. 3),
+// devuelve esa cantidad elegida al azar. Cada usuario ve una
+// combinación distinta, así que es más difícil copiarse entre ellos.
+//
+// Vive AQUÍ (y no en admin.js, donde estaba antes) porque no es
+// exclusivo del panel de administrador: motor.js y motor-mejorar.js
+// también la necesitan para armar el cuestionario de cada participante,
+// y esas páginas nunca cargan admin.js. Tenerla solo en admin.js hacía
+// que, apenas alguien abría una lectura real, "elegirPreguntasAlAzar"
+// no existiera ahí — la función tronaba en silencio (Firefox/Chrome
+// solo lo muestran en la consola) y por eso nunca corría el cronómetro,
+// nunca aparecía el cuestionario, y como el texto tampoco alcanzaba a
+// engancharse al scroll bloqueado, quedaba con navegación libre.
+function elegirPreguntasAlAzar(banco, cantidad) {
+
+    const copia = [...(banco || [])];
+
+    for (let i = copia.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copia[i], copia[j]] = [copia[j], copia[i]];
+    }
+
+    const n = Math.min(cantidad || copia.length, copia.length);
+    return copia.slice(0, n);
+
+}

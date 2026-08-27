@@ -21,26 +21,9 @@
 // ==========================================================
 
 
-// ==========================================================
-// BANCO DE PREGUNTAS: ELEGIR AL AZAR
-// ==========================================================
-// Dado un banco de preguntas (ej. 10) y cuántas mostrar (ej. 3),
-// devuelve esa cantidad elegida al azar. Cada usuario ve una
-// combinación distinta, así que es más difícil copiarse entre ellos.
-
-function elegirPreguntasAlAzar(banco, cantidad) {
-
-    const copia = [...(banco || [])];
-
-    for (let i = copia.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [copia[i], copia[j]] = [copia[j], copia[i]];
-    }
-
-    const n = Math.min(cantidad || copia.length, copia.length);
-    return copia.slice(0, n);
-
-}
+// elegirPreguntasAlAzar() ya no vive aquí — se movió a admin-comun.js,
+// que SÍ se carga en lectura.html/lectura-mejorar.html (este archivo,
+// admin.js, no).
 
 
 // ==========================================================
@@ -478,6 +461,70 @@ async function abrirFormularioRangoEdades(alGuardar) {
         try {
             await db.collection("configuracion").doc("rangoEdades").set({ min, max, segundosPresionar });
             await cargarRangoEdades(true);
+            overlay.remove();
+            if (alGuardar) alGuardar();
+        } catch (error) {
+            console.error("No se pudo guardar la configuración:", error);
+            alert("No se pudo guardar la configuración.");
+        }
+
+    });
+
+}
+
+
+// ==========================================================
+// FORMULARIO: CONFIGURACIÓN DEL AVANCE AUTOMÁTICO (lecturas de premios)
+// ==========================================================
+// Ver cargarConfigLecturaPremios en lecturas.js y ESPERA_INICIAL en
+// motor.js — la velocidad del avance se recalcula sola por lectura
+// (según su propio tiempoLectura) para que siempre termine de mostrar
+// todo el texto antes de que se acabe el tiempo, así que aquí solo se
+// edita el ÚNICO valor que es igual para todas: cuánto se espera antes
+// de que el texto empiece a moverse.
+
+async function abrirFormularioConfigLecturaPremios(alGuardar) {
+
+    await cargarConfigLecturaPremios();
+
+    const overlay = document.createElement("div");
+    overlay.className = "modalOverlay";
+    overlay.innerHTML = `
+        <div class="modalCaja modalCajaInfo" style="text-align:center;">
+            <h2>⚙️ Configuración de Lecturas</h2>
+            <p>Define cuánto tiempo espera el texto antes de empezar a avanzar solo.</p>
+
+            <label style="display:block; text-align:left; margin-top:10px;">Segundos de espera antes de avanzar</label>
+            <input type="number" id="campoEsperaInicial" min="0" max="30" step="0.5"
+                   value="${CONFIG_LECTURA_PREMIOS.esperaInicialSegundos}"
+                   style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+            <p style="font-size:13px; color:var(--texto-suave); margin:-8px 0 15px; text-align:left;">
+                Aplica a TODAS las lecturas de premios por igual. El avance en sí siempre se
+                recalcula para terminar de mostrar el texto completo antes de que se acabe el
+                tiempo de cada lectura — no hace falta tocar nada más por eso.
+            </p>
+
+            <button id="btnGuardarConfigLecturaPremios">Guardar</button>
+            <button class="modalCerrar" style="background:white; border:1px solid var(--borde); color:var(--texto-suave); margin-top:10px;">Cancelar</button>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
+
+    overlay.querySelector("#btnGuardarConfigLecturaPremios").addEventListener("click", async () => {
+
+        const esperaInicialSegundos = Number(overlay.querySelector("#campoEsperaInicial").value);
+
+        if (Number.isNaN(esperaInicialSegundos) || esperaInicialSegundos < 0) {
+            alert("Los segundos de espera deben ser un número mayor o igual a 0.");
+            return;
+        }
+
+        try {
+            await db.collection("configuracion").doc("lecturaPremios").set({ esperaInicialSegundos });
+            await cargarConfigLecturaPremios(true);
             overlay.remove();
             if (alGuardar) alGuardar();
         } catch (error) {
@@ -1380,6 +1427,7 @@ function inicializarAdminLecturasPremios() {
             <h3 class="seccionAdminTitulo">📚 Lecturas de premios</h3>
             <div class="seccionAdminBotones">
                 <button id="btnNuevaLectura">+ Agregar lectura nueva</button>
+                <button id="btnConfigLecturaPremios" style="background:white; color:var(--azul); border:2px solid var(--azul);">⚙️ Configuración</button>
                 <button id="btnRepararPuntos" class="botonAdminContorno">Borrar puntos de lecturas eliminadas</button>
             </div>
             <div id="listaAdminLecturas"></div>
@@ -1389,6 +1437,10 @@ function inicializarAdminLecturasPremios() {
 
     document.getElementById("btnNuevaLectura").addEventListener("click", () => {
         abrirFormularioLectura(null, () => inicializarAdminLecturasPremios());
+    });
+
+    document.getElementById("btnConfigLecturaPremios").addEventListener("click", () => {
+        abrirFormularioConfigLecturaPremios();
     });
 
     document.getElementById("btnRepararPuntos").addEventListener("click", async () => {

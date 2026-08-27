@@ -19,8 +19,11 @@
 // ==========================================================
 
 
-// Tiempo de espera antes de comenzar a mover el texto
-const ESPERA_INICIAL = 3;
+// Tiempo de espera antes de comenzar a mover el texto — valor por
+// defecto mientras se carga la configuración real desde Firestore (ver
+// cargarConfigLecturaPremios en lecturas.js); editable desde el panel
+// de administrador (⚙️ Configuración, en "Lecturas").
+let ESPERA_INICIAL = 3;
 
 // Margen de seguridad: el texto termina de moverse un poco antes de que
 // se acabe el tiempo total, para asegurar que SIEMPRE se alcance a leer
@@ -113,10 +116,12 @@ function actualizarTemporizador(){
 
 async function iniciarLectura(){
 
-    // Trae el catálogo y la lista de administradores desde Firestore
-    // (ambos cacheados, solo hacen la consulta la primera vez) — la
-    // segunda es la que necesita accesoAdmin más abajo.
-    await Promise.all([cargarCatalogoLecturas(), cargarAdministradores()]);
+    // Trae el catálogo, la lista de administradores y la configuración
+    // del avance automático desde Firestore (los tres cacheados, solo
+    // hacen la consulta la primera vez) — la segunda es la que necesita
+    // accesoAdmin más abajo, la tercera fija ESPERA_INICIAL.
+    await Promise.all([cargarCatalogoLecturas(), cargarAdministradores(), cargarConfigLecturaPremios()]);
+    ESPERA_INICIAL = CONFIG_LECTURA_PREMIOS.esperaInicialSegundos;
     lecturaActual = obtenerLecturaPorId(idLecturaActual);
 
     // Si el enlace apunta a un ID que no existe en el catálogo
@@ -596,9 +601,15 @@ function renderizarPreguntas(){
 
 // ==========================
 // MOVIMIENTO DE LA LECTURA
-// (avanza sola, sincronizada al tiempo; el usuario puede
-//  adelantarse deslizando hacia abajo, pero no puede regresar)
+// (avanza sola, sincronizada al tiempo; el usuario puede adelantarse
+// deslizando hacia abajo —por si lee más rápido que el avance automático—
+// pero no puede regresar hacia atrás una vez que avanzó)
 // ==========================
+// La velocidad se calcula para que, avanzando SOLO al ritmo automático
+// (sin que el usuario deslice nada), el texto complete su recorrido
+// completo antes de que se acabe TIEMPO_LECTURA — así nadie se queda a
+// medias si no se adelanta manualmente (ver segundosMovimiento abajo,
+// y MARGEN_SEGURIDAD como colchón extra).
 
 function moverTextoLectura(){
 

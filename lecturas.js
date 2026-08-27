@@ -60,3 +60,45 @@ function cargarCatalogoLecturas(forzarRecarga) {
 function obtenerLecturaPorId(id) {
     return CATALOGO_LECTURAS.find(lectura => lectura.id === id);
 }
+
+
+// ==========================================================
+// CONFIGURACIÓN DEL AVANCE AUTOMÁTICO (lecturas de premios)
+// ==========================================================
+// Cuántos segundos espera el texto antes de empezar a desplazarse solo
+// (ver ESPERA_INICIAL en motor.js) — editable desde el panel de
+// administrador (⚙️ Configuración, en "Lecturas"). Mismo patrón que
+// RANGO_EDADES en mejora-lecturas.js: vive aquí (no en motor.js) para
+// que tanto motor.js como admin.js/admin-lecturas.js lo compartan.
+
+let CONFIG_LECTURA_PREMIOS = { esperaInicialSegundos: 3 };
+let _promesaConfigLecturaPremios = null;
+
+function cargarConfigLecturaPremios(forzarRecarga) {
+
+    if (_promesaConfigLecturaPremios && !forzarRecarga) {
+        return _promesaConfigLecturaPremios;
+    }
+
+    _promesaConfigLecturaPremios = db.collection("configuracion").doc("lecturaPremios")
+        .get()
+        .then(doc => {
+            if (doc.exists) {
+                CONFIG_LECTURA_PREMIOS = doc.data();
+                // Por si el documento se guardó antes de que existiera este
+                // campo: sin esto, un doc viejo dejaría esperaInicialSegundos
+                // en undefined en vez del valor por defecto.
+                if (typeof CONFIG_LECTURA_PREMIOS.esperaInicialSegundos !== "number") {
+                    CONFIG_LECTURA_PREMIOS.esperaInicialSegundos = 3;
+                }
+            }
+            return CONFIG_LECTURA_PREMIOS;
+        })
+        .catch(error => {
+            console.error("No se pudo cargar la configuración de lecturas de premios:", error);
+            return CONFIG_LECTURA_PREMIOS;
+        });
+
+    return _promesaConfigLecturaPremios;
+
+}
