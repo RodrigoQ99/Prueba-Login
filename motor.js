@@ -475,10 +475,6 @@ function mostrarRepasoBloqueado(bonoPendiente, aprobada){
     const btnIrCuestionario = document.getElementById("btnIrCuestionario");
     if(btnIrCuestionario) btnIrCuestionario.style.display = "none";
 
-    if (typeof mostrarBotonEditarLectura === "function") {
-        mostrarBotonEditarLectura(lecturaActual);
-    }
-
     let notaBono = "";
 
     if(bonoPendiente){
@@ -554,10 +550,6 @@ function arrancarLecturaCronometrada(){
     tiempoRestanteCuestionario = TIEMPO_CUESTIONARIO;
 
     tituloLectura.textContent = lecturaActual.titulo;
-
-    if (typeof mostrarBotonEditarLectura === "function") {
-        mostrarBotonEditarLectura(lecturaActual);
-    }
 
     // Pintar los párrafos del texto
     lectura.innerHTML = lecturaActual.texto

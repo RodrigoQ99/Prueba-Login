@@ -9,7 +9,7 @@
 //
 // El cuestionario (si la lectura tiene preguntas) es un autochequeo:
 // se califica EN MEMORIA, igual que la vista previa del administrador
-// (ver admin-lecturas.js, abrirVistaPreviaLectura) — nunca se guarda
+// (ver admin.js, abrirVistaPreviaLectura) — nunca se guarda
 // en "progreso" ni afecta ranking.
 // ==========================================================
 
