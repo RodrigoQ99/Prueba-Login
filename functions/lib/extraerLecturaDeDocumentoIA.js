@@ -126,28 +126,48 @@ const extraerLecturaDeDocumentoIA = onCall(
         textoDocumento = textoDocumento.slice(0, LIMITE_CARACTERES_DOCUMENTO);
 
         const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const formato = betaZodOutputFormat(LecturasExtraidasSchema);
 
-        let response;
+        // Con max_tokens tan alto (pensado para varias lecturas largas
+        // en un mismo documento), el SDK EXIGE streaming — client.beta
+        // .messages.parse() usa una petición normal por debajo, y esta
+        // función se puso a tronar con "Streaming is required for
+        // operations that may take longer than 10 minutes" apenas se
+        // probó con un documento real. .stream() no tiene ese límite, y
+        // formato.parse(...) (el mismo validador Zod que usa .parse()
+        // por dentro) se puede llamar a mano sobre el texto final.
+        let parsedOutput;
         try {
-            response = await client.beta.messages.parse({
+
+            const stream = client.beta.messages.stream({
                 model: "claude-opus-5",
                 max_tokens: 32000,
                 messages: [
                     { role: "user", content: construirPrompt({ textoDocumento, tipo, nivel, edad }) }
                 ],
-                output_format: betaZodOutputFormat(LecturasExtraidasSchema)
+                output_format: formato
             });
+
+            const mensaje = await stream.finalMessage();
+            const bloqueTexto = mensaje.content.find(bloque => bloque.type === "text");
+
+            if (!bloqueTexto) {
+                throw new Error("Claude no devolvió contenido de texto.");
+            }
+
+            parsedOutput = formato.parse(bloqueTexto.text);
+
         } catch (error) {
             logger.error("Error llamando a la API de Claude (extraerLecturaDeDocumentoIA):", error);
             throw new HttpsError("internal", "No se pudo procesar el documento con IA. Intenta de nuevo, o completa el formulario a mano.");
         }
 
-        if (!response.parsed_output || !Array.isArray(response.parsed_output.lecturas) || response.parsed_output.lecturas.length === 0) {
-            logger.error("Claude no devolvió ninguna lectura válida:", response.stop_reason);
+        if (!parsedOutput || !Array.isArray(parsedOutput.lecturas) || parsedOutput.lecturas.length === 0) {
+            logger.error("Claude no devolvió ninguna lectura válida.");
             throw new HttpsError("internal", "La IA no devolvió un resultado válido. Intenta de nuevo, o completa el formulario a mano.");
         }
 
-        return { lecturas: response.parsed_output.lecturas };
+        return { lecturas: parsedOutput.lecturas };
 
     }
 );
