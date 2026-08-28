@@ -3,17 +3,23 @@
 // ==========================================================
 // EXCLUSIVA para el panel de administrador (ver verificarAdmin.js).
 // Recibe la ruta (en Firebase Storage) de un documento que el admin
-// subió (PDF, .docx o .txt) con una historia y —opcionalmente— sus
-// preguntas ya escritas, y le pide a Claude que separe todo en el
-// mismo formato que usa el resto del proyecto: título, párrafos, y
-// banco de preguntas — listo para llenar el formulario y que el admin
-// lo revise antes de guardar (nunca se guarda solo).
+// subió (PDF, .docx o .txt). El documento puede traer UNA o VARIAS
+// lecturas (ej. 10 historias con sus propias preguntas cada una) — se
+// devuelven TODAS las que se detecten, en el mismo formato que usa el
+// resto del proyecto: título, párrafos, y banco de preguntas por cada
+// una. Si una lectura ya traía sus preguntas con la respuesta correcta
+// marcada, se copian tal cual (no se parafrasean); si le faltan, se
+// generan (mismas cantidades por nivel/edad que ya usa generarPreguntasIA,
+// descritas directamente en el prompt — ver la nota más abajo sobre por
+// qué no se reusa cantidadPreguntas.js aquí).
 //
-// Si el documento no traía preguntas, se generan igual (misma lógica
-// de cantidadPreguntas.js que ya usa generarPreguntasIA — no se
-// reinventa). El archivo se borra de Storage apenas se termina de
-// leer (éxito o error) — es solo un archivo de entrada transitorio,
-// nunca queda guardado de forma permanente.
+// El frontend (ver activarBotonSubirDocumento en admin.js) llena UN
+// formulario si solo vino una lectura, o abre una fila de formularios
+// —uno a la vez— si vinieron varias; en cualquier caso, cada una queda
+// completamente EDITABLE para que el admin la revise antes de guardar,
+// nunca se guarda sola. El archivo se borra de Storage apenas se
+// termina de leer (éxito o error) — es solo un archivo de entrada
+// transitorio, nunca queda guardado de forma permanente.
 // ==========================================================
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
@@ -23,16 +29,16 @@ const Anthropic = require("@anthropic-ai/sdk");
 // del SDK (^0.70), las salidas estructuradas todavía son beta.
 const { betaZodOutputFormat } = require("@anthropic-ai/sdk/helpers/beta/zod");
 const { verificarAdmin } = require("./verificarAdmin");
-const { contarPalabras, determinarCantidadPreguntas } = require("./cantidadPreguntas");
-const { LecturaExtraidaSchema } = require("./esquemaLecturaExtraida");
+const { LecturasExtraidasSchema } = require("./esquemaLecturaExtraida");
 const { db, admin } = require("../admin-init");
 
 const NOMBRE_NIVEL = { facil: "fácil", intermedio: "intermedio", dificil: "difícil" };
 
-// Tope de seguridad: un documento razonable para UNA lectura nunca se
-// acerca a esto — es solo para no disparar el costo si alguien sube
-// por error un archivo gigante con mucho más que una sola historia.
-const LIMITE_CARACTERES_DOCUMENTO = 60000;
+// Tope de seguridad: pensado para varias lecturas largas en un mismo
+// documento (ej. 10 lecturas de nivel difícil, ~1800 palabras cada
+// una, más sus preguntas) — muy por encima de lo normal, es solo para
+// no disparar el costo si alguien sube por error algo descomunal.
+const LIMITE_CARACTERES_DOCUMENTO = 200000;
 
 // pdf-parse y mammoth se cargan AQUÍ ADENTRO (no arriba, con el resto
 // de los require) a propósito: si algún día uno de los dos no está
@@ -75,21 +81,34 @@ async function extraerTextoDelArchivo(buffer, storagePath) {
 
 }
 
-function construirPrompt({ textoDocumento, tipo, nivel, edad, cantidadPreguntas }) {
+// Las cantidades de preguntas por nivel/edad se describen aquí DENTRO
+// del texto del prompt (en vez de calcularlas nosotros con
+// cantidadPreguntas.js, como sí hace generarPreguntasIA) porque un
+// documento con varias lecturas necesita una cantidad DISTINTA por
+// cada una, según su propia extensión — y esa división en lecturas
+// individuales la hace Claude, no nuestro código. Los números son los
+// mismos de siempre (fácil 200-400→5, intermedio 600-900→8, difícil
+// 1200-1800→11 para premios; 3 fijas para Mejorar la lectura) — si
+// cambian allá, hay que actualizarlos aquí también.
+function construirPrompt({ textoDocumento, tipo, nivel, edad }) {
 
     const contextoAudiencia = tipo === "mejora"
-        ? `Esta lectura es para el catálogo "Mejorar la lectura", dirigida a un lector de ${edad ? `${edad} años` : "la edad indicada"}.`
-        : `Esta lectura pertenece al catálogo de premios, nivel "${NOMBRE_NIVEL[nivel] || nivel || "no especificado"}".`;
+        ? `Estas lecturas son para el catálogo "Mejorar la lectura", dirigidas a un lector de ${edad ? `${edad} años` : "la edad indicada"}. Si a alguna le faltan preguntas, genera 3 preguntas sencillas y directas para esa lectura.`
+        : `Estas lecturas pertenecen al catálogo de premios, nivel "${NOMBRE_NIVEL[nivel] || nivel || "no especificado"}". Si a alguna le faltan preguntas, genera la cantidad correspondiente según la extensión de ESA lectura: 200-400 palabras → 5 preguntas; 600-900 palabras → 8 preguntas; 1200-1800 palabras → 11 preguntas (si no cae exactamente en ninguna banda, usa la cantidad de la banda más cercana).`;
 
-    return `Eres un asistente que ayuda a un administrador a preparar el contenido de una lectura para una plataforma educativa de fomento a la lectura, a partir de un documento que subió.
+    return `Eres un asistente que ayuda a un administrador a preparar el contenido de lecturas para una plataforma educativa de fomento a la lectura, a partir de un documento que subió.
 
 ${contextoAudiencia}
 
-A continuación está el texto completo extraído de ese documento (puede incluir ruido propio de la extracción automática, como saltos de línea irregulares, encabezados o pies de página repetidos — ignora ese ruido). Tu tarea:
+El documento puede contener UNA o VARIAS lecturas distintas (historias independientes, cada una con su propio título) — a veces incluso diez o más. Identifica CADA lectura por separado: nunca mezcles el texto de una con el de otra, ni completes una historia con contenido que en realidad pertenece a la siguiente.
 
-1. Identifica el TÍTULO de la historia (si el documento no trae uno explícito, propone uno breve y apropiado según el contenido).
-2. Separa el TEXTO PRINCIPAL en párrafos coherentes. Excluye de ahí cualquier pregunta, cuestionario, numeración de página o metadato — eso no es parte de la historia.
-3. Si el documento YA incluye preguntas de comprensión con sus opciones y la respuesta correcta marcada o indicada, extráelas tal cual (en español, con el mismo formato pedido abajo). Si el documento NO incluye preguntas (o vienen incompletas, sin indicar cuál es la correcta), genera tú EXACTAMENTE ${cantidadPreguntas} preguntas de opción múltiple de comprensión de lectura sobre el texto, con 3 a 4 opciones cada una, usando "a", "b", "c", "d" como valores de las opciones.
+Para CADA lectura que encuentres:
+
+1. Identifica su TÍTULO (si no tiene uno explícito, propone uno breve y apropiado).
+2. Separa su TEXTO PRINCIPAL en párrafos coherentes. Excluye de ahí cualquier pregunta, cuestionario, numeración de página o metadato — eso no es parte de la historia.
+3. Si esa lectura YA incluye sus preguntas de comprensión con las opciones y la respuesta correcta marcada o indicada, CÓPIALAS TAL CUAL — palabra por palabra, sin parafrasear ni inventar otras distintas, igual que copiar y pegar. Solo si a esa lectura en particular le faltan preguntas (o vienen incompletas, sin indicar cuál es la correcta), genera tú las que falten según la instrucción de arriba.
+
+Devuelve TODAS las lecturas que encuentres, en el mismo orden en que aparecen en el documento.
 
 Texto extraído del documento:
 """
@@ -99,7 +118,7 @@ ${textoDocumento}
 }
 
 const extraerLecturaDeDocumentoIA = onCall(
-    { secrets: ["ANTHROPIC_API_KEY"], memory: "512MiB", timeoutSeconds: 120 },
+    { secrets: ["ANTHROPIC_API_KEY"], memory: "1GiB", timeoutSeconds: 300 },
     async (request) => {
 
         await verificarAdmin(request, db);
@@ -155,32 +174,29 @@ const extraerLecturaDeDocumentoIA = onCall(
 
         textoDocumento = textoDocumento.slice(0, LIMITE_CARACTERES_DOCUMENTO);
 
-        const cantidadPalabras = contarPalabras(textoDocumento);
-        const cantidadPreguntas = determinarCantidadPreguntas(tipo, cantidadPalabras);
-
         const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
         let response;
         try {
             response = await client.beta.messages.parse({
                 model: "claude-opus-5",
-                max_tokens: 8000,
+                max_tokens: 32000,
                 messages: [
-                    { role: "user", content: construirPrompt({ textoDocumento, tipo, nivel, edad, cantidadPreguntas }) }
+                    { role: "user", content: construirPrompt({ textoDocumento, tipo, nivel, edad }) }
                 ],
-                output_format: betaZodOutputFormat(LecturaExtraidaSchema)
+                output_format: betaZodOutputFormat(LecturasExtraidasSchema)
             });
         } catch (error) {
             logger.error("Error llamando a la API de Claude (extraerLecturaDeDocumentoIA):", error);
             throw new HttpsError("internal", "No se pudo procesar el documento con IA. Intenta de nuevo, o completa el formulario a mano.");
         }
 
-        if (!response.parsed_output) {
-            logger.error("Claude no devolvió una lectura válida:", response.stop_reason);
+        if (!response.parsed_output || !Array.isArray(response.parsed_output.lecturas) || response.parsed_output.lecturas.length === 0) {
+            logger.error("Claude no devolvió ninguna lectura válida:", response.stop_reason);
             throw new HttpsError("internal", "La IA no devolvió un resultado válido. Intenta de nuevo, o completa el formulario a mano.");
         }
 
-        return response.parsed_output;
+        return { lecturas: response.parsed_output.lecturas };
 
     }
 );

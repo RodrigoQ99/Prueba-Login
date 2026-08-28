@@ -4,7 +4,7 @@ Tres funciones (`onCall`, Firebase Functions v2), **exclusivas para administrado
 
 - `generarPreguntasIA` — arma el banco de preguntas de una lectura a partir de su texto.
 - `moderarPropuestaIA` — da una opinión sobre si una propuesta de "Ser el protagonista de la historia" parece apropiada (nunca aprueba/rechaza nada por su cuenta).
-- `extraerLecturaDeDocumentoIA` — lee un documento (PDF/.docx/.txt) que el admin subió a Firebase Storage y arma título + texto + banco de preguntas para llenar el formulario de creación de lectura (si el documento no traía preguntas, las genera igual, con la misma lógica de `cantidadPreguntas.js`).
+- `extraerLecturaDeDocumentoIA` — lee un documento (PDF/.docx/.txt) que el admin subió a Firebase Storage y arma título + texto + banco de preguntas para llenar el formulario de creación de lectura. El documento puede traer UNA o VARIAS lecturas (ej. 10 historias con sus propias preguntas cada una) — siempre devuelve un arreglo; si ya traían preguntas con la respuesta correcta marcada, las copia tal cual (no las parafrasea); a las que les falten, se las genera.
 
 Las tres verifican `request.auth` + membresía en la colección `administradores` de Firestore (mismo criterio que `esAdmin()` en el frontend, ver `lib/verificarAdmin.js`) **antes** de llamar a la API de Claude — así nadie gasta presupuesto llamándolas sin permiso.
 

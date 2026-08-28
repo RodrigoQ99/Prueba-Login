@@ -65,15 +65,19 @@ const TAMANIO_MAXIMO_DOCUMENTO = 15 * 1024 * 1024; // 15 MB — igual que storag
 
 /**
  * Sube un documento (PDF, .docx o .txt) a Storage y le pide a la IA
- * que extraiga título, texto y banco de preguntas — mismo resultado
- * "listo para revisar" que generarPreguntasConIA, pero a partir de un
- * archivo en vez de texto ya escrito. El archivo se borra solo del
- * lado del servidor apenas se procesa (nunca queda guardado).
+ * que extraiga título, texto y banco de preguntas de TODAS las
+ * lecturas que encuentre en él (puede ser una sola, o varias — ej. un
+ * documento con 10 historias distintas, cada una con sus propias
+ * preguntas). El archivo se borra solo del lado del servidor apenas
+ * se procesa (nunca queda guardado).
  * @param {File} archivo
  * @param {"premio"|"mejora"} tipo
  * @param {string} [nivel]
  * @param {number} [edad]
- * @returns {Promise<{titulo:string, texto:string[], preguntas:Array}>}
+ * @returns {Promise<Array<{titulo:string, texto:string[], preguntas:Array}>>}
+ *   SIEMPRE un arreglo (de 1 o más) — quien llame decide si llena un
+ *   solo formulario o abre una fila de formularios (ver
+ *   activarBotonSubirDocumento en admin.js).
  */
 async function extraerLecturaDeDocumentoConIA({ archivo, tipo, nivel, edad }) {
 
@@ -96,9 +100,13 @@ async function extraerLecturaDeDocumentoConIA({ archivo, tipo, nivel, edad }) {
     await referencia.put(archivo);
 
     try {
-        const llamar = functionsIA.httpsCallable("extraerLecturaDeDocumentoIA");
+        // Un documento con varias lecturas largas puede tardar bastante
+        // más que las llamadas de solo-preguntas — mismo plazo que
+        // timeoutSeconds en la Cloud Function (5 minutos), si no el
+        // navegador cortaría la espera antes de que el servidor termine.
+        const llamar = functionsIA.httpsCallable("extraerLecturaDeDocumentoIA", { timeout: 300000 });
         const resultado = await llamar({ storagePath: ruta, tipo, nivel: nivel || null, edad: edad ?? null });
-        return resultado.data;
+        return resultado.data.lecturas;
     } catch (error) {
         // La Cloud Function también intenta borrar el archivo del lado
         // del servidor, pero si nunca llegó a correr (ej. rechazada por

@@ -120,11 +120,17 @@ function activarBotonGenerarPreguntasIA(overlay, { campoTexto, editorPreguntas, 
 // ==========================================================
 // Mismo criterio de disponibilidad que activarBotonGenerarPreguntasIA:
 // si extraerLecturaDeDocumentoConIA (admin-ia.js) no existe en esta
-// página, no hace nada. Llena TÍTULO + TEXTO + BANCO DE PREGUNTAS de
-// una — a diferencia del botón de solo-preguntas, aquí si ya hay algo
-// escrito se confirma UNA vez antes de reemplazar todo (no solo las
-// preguntas), porque el documento trae también título y texto.
-function activarBotonSubirDocumento(overlay, { campoTitulo, campoTexto, editorPreguntas, preguntas, contexto }) {
+// página, no hace nada.
+//
+// extraerLecturaDeDocumentoConIA SIEMPRE devuelve un arreglo (el
+// documento puede traer una sola lectura, o varias — ej. 10 historias
+// con sus propias preguntas cada una):
+// - Si vino UNA sola: llena ESTE formulario, igual que siempre.
+// - Si vinieron VARIAS: este formulario ya no aplica (no hay "una"
+//   lectura que llenar aquí) — se cierra y se avisa a "alDetectarVarias"
+//   (ver abrirColaDeLecturasImportadas más abajo), que abre una fila de
+//   formularios, uno a la vez, para revisar cada una por separado.
+function activarBotonSubirDocumento(overlay, { campoTitulo, campoTexto, editorPreguntas, preguntas, contexto, alDetectarVarias }) {
 
     const campoArchivo = overlay.querySelector("#campoSubirDocumento");
     if (!campoArchivo || typeof extraerLecturaDeDocumentoConIA !== "function") return;
@@ -145,13 +151,35 @@ function activarBotonSubirDocumento(overlay, { campoTitulo, campoTexto, editorPr
         }
 
         campoArchivo.disabled = true;
-        estado.textContent = "📄 Leyendo el documento y armando el formulario... (puede tardar un poco más que solo generar preguntas)";
+        estado.textContent = "📄 Leyendo el documento y armando el formulario... (si trae varias lecturas, puede tardar bastante más)";
         estado.style.color = "var(--texto-suave)";
         estado.style.display = "block";
 
         try {
 
-            const resultado = await extraerLecturaDeDocumentoConIA({ archivo, ...contexto() });
+            const lecturasDetectadas = await extraerLecturaDeDocumentoConIA({ archivo, ...contexto() });
+
+            if (!lecturasDetectadas || lecturasDetectadas.length === 0) {
+                throw new Error("No se detectó ninguna lectura en el documento.");
+            }
+
+            if (lecturasDetectadas.length > 1) {
+
+                if (!alDetectarVarias) {
+                    throw new Error("Este documento trae varias lecturas, pero esta pantalla solo admite una a la vez.");
+                }
+
+                estado.textContent = `✅ Se detectaron ${lecturasDetectadas.length} lecturas en "${archivo.name}" — se van a abrir una por una para que las revises.`;
+                estado.style.color = "#2e9e5b";
+                campoArchivo.disabled = false;
+                campoArchivo.value = "";
+
+                alDetectarVarias(lecturasDetectadas);
+                return;
+
+            }
+
+            const resultado = lecturasDetectadas[0];
 
             campoTitulo.value = resultado.titulo;
             campoTexto.value = resultado.texto.join("\n\n");
@@ -185,17 +213,70 @@ function activarBotonSubirDocumento(overlay, { campoTitulo, campoTexto, editorPr
 
 
 // ==========================================================
+// COLA DE IMPORTACIÓN: VARIAS LECTURAS DE UN SOLO DOCUMENTO (Etapa 22)
+// ==========================================================
+// Abre UNA lectura a la vez con el formulario normal de siempre
+// (título/texto/preguntas ya rellenos, SIN ID — el admin lo revisa,
+// ajusta y elige el ID como si fuera nueva, igual que al publicar una
+// propuesta de "Ser el protagonista de la historia", ver
+// admin-propuestas.js). Al guardar ESA lectura, o al cancelarla, se
+// abre automáticamente la siguiente — así ninguna se crea sin que el
+// admin la haya visto y confirmado, aunque vengan diez juntas.
+//
+// "abrirUnFormulario(prellenado, siguiente)" lo define quien llama
+// (abrirFormularioLectura o abrirFormularioMejora, ya con sus propios
+// argumentos de más — ver alDetectarVarias en ambos formularios) y debe
+// pasar "siguiente" como alGuardar Y como alCancelar de ese formulario.
+function abrirColaDeLecturasImportadas(lecturasDetectadas, abrirUnFormulario, alTerminarTodas) {
+
+    let indice = 0;
+
+    function siguiente() {
+
+        if (indice >= lecturasDetectadas.length) {
+            if (alTerminarTodas) alTerminarTodas();
+            alert(`Listo — ya revisaste las ${lecturasDetectadas.length} lectura(s) detectadas en el documento.`);
+            return;
+        }
+
+        const actual = lecturasDetectadas[indice];
+        indice++;
+
+        const prellenado = {
+            titulo: actual.titulo,
+            texto: actual.texto,
+            bancoPreguntas: actual.preguntas,
+            _notaProgreso: `(${indice} de ${lecturasDetectadas.length})`
+        };
+
+        abrirUnFormulario(prellenado, siguiente);
+
+    }
+
+    siguiente();
+
+}
+
+
+// ==========================================================
 // FORMULARIO: CREAR / EDITAR LECTURA (sistema de premios QR)
 // ==========================================================
 // Usa construirEditorPreguntas (ver editor-preguntas.js).
 
-function abrirFormularioLectura(lecturaExistente, alGuardar) {
+// "alCancelar" es OPCIONAL — si se pasa, se llama tanto al cerrar con
+// la X como al hacer clic afuera del modal (no solo al guardar). La
+// usa abrirColaDeLecturasImportadas (Etapa 22) para avanzar a la
+// siguiente lectura de la cola aunque el admin decida NO guardar esta
+// en particular; el resto de los llamados (ej. "+ Agregar lectura
+// nueva") simplemente no la pasan y todo sigue igual que siempre.
+function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
 
     // "esNueva" depende de si YA TIENE ID, no de si el objeto vino vacío:
     // así, "Ser el protagonista de la historia" (ver protagonista.js /
-    // admin-panel.js) puede pasar título/texto/preguntas de una propuesta
-    // PRE-RELLENADOS sin ID (el ID lo asigna el admin al publicar, nunca
-    // el usuario) y el formulario los trata igual que "nueva lectura".
+    // admin-panel.js) y la importación de documentos (Etapa 22) pueden
+    // pasar título/texto/preguntas PRE-RELLENADOS sin ID (el ID lo
+    // asigna el admin al publicar/guardar, nunca antes) y el formulario
+    // los trata igual que "nueva lectura".
     const esNueva = !lecturaExistente || !lecturaExistente.id;
     const preguntas = (lecturaExistente && lecturaExistente.bancoPreguntas)
         ? JSON.parse(JSON.stringify(lecturaExistente.bancoPreguntas))
@@ -205,7 +286,7 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
     overlay.className = "modalOverlay";
     overlay.innerHTML = `
         <div class="modalCaja modalCajaInfo modalCajaAdmin">
-            <h2>${esNueva ? "➕ Nueva lectura" : "✏️ Editar lectura"}</h2>
+            <h2>${esNueva ? "➕ Nueva lectura" : "✏️ Editar lectura"}${(lecturaExistente && lecturaExistente._notaProgreso) ? " " + lecturaExistente._notaProgreso : ""}</h2>
             <form id="formLecturaAdmin">
 
                 <div style="padding:12px; border:1px dashed var(--borde); border-radius:10px; margin-bottom:15px;">
@@ -288,12 +369,26 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
         campoTexto: overlay.querySelector("#campoTexto"),
         editorPreguntas,
         preguntas,
-        contexto: () => ({ tipo: "premio", nivel: overlay.querySelector("#campoNivel").value })
+        contexto: () => ({ tipo: "premio", nivel: overlay.querySelector("#campoNivel").value }),
+        // El documento traía MÁS de una lectura: este formulario ya no
+        // aplica (no hay "una" lectura que llenar aquí) — se cierra y se
+        // abre una fila de formularios, uno por cada lectura detectada.
+        alDetectarVarias: (lecturasDetectadas) => {
+            overlay.remove();
+            abrirColaDeLecturasImportadas(lecturasDetectadas, (prellenado, siguiente) => {
+                abrirFormularioLectura(prellenado, siguiente, siguiente);
+            }, alGuardar);
+        }
     });
 
-    overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
+    function cerrarFormularioLectura() {
+        overlay.remove();
+        if (alCancelar) alCancelar();
+    }
+
+    overlay.querySelector(".modalCerrar").addEventListener("click", cerrarFormularioLectura);
     overlay.addEventListener("click", (e) => {
-        if (e.target === overlay) overlay.remove();
+        if (e.target === overlay) cerrarFormularioLectura();
     });
 
     overlay.querySelector("#formLecturaAdmin").addEventListener("submit", async (e) => {
@@ -438,11 +533,15 @@ async function eliminarLectura(id, alEliminar) {
 // FORMULARIO: CREAR / EDITAR LECTURA (sistema "Mejorar la lectura")
 // ==========================================================
 
-function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
+// "alCancelar" es OPCIONAL — ver la misma nota en abrirFormularioLectura
+// (lo usa abrirColaDeLecturasImportadas para avanzar a la siguiente
+// lectura de la cola aunque el admin decida no guardar esta).
+function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar, alCancelar) {
 
     // Ver la misma nota en abrirFormularioLectura: "esNueva" depende de si
     // YA TIENE ID, para poder prellenar título/texto/preguntas desde una
-    // propuesta de "Ser el protagonista de la historia" sin ID todavía.
+    // propuesta de "Ser el protagonista de la historia" (o de importar un
+    // documento, Etapa 22) sin ID todavía.
     const esNueva = !lecturaExistente || !lecturaExistente.id;
     const preguntas = (lecturaExistente && lecturaExistente.bancoPreguntas)
         ? JSON.parse(JSON.stringify(lecturaExistente.bancoPreguntas))
@@ -458,7 +557,7 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
     overlay.className = "modalOverlay";
     overlay.innerHTML = `
         <div class="modalCaja modalCajaInfo modalCajaAdmin">
-            <h2>${esNueva ? "➕ Nueva lectura de práctica" : "✏️ Editar lectura de práctica"}</h2>
+            <h2>${esNueva ? "➕ Nueva lectura de práctica" : "✏️ Editar lectura de práctica"}${(lecturaExistente && lecturaExistente._notaProgreso) ? " " + lecturaExistente._notaProgreso : ""}</h2>
             <form id="formMejoraAdmin">
 
                 <div style="padding:12px; border:1px dashed var(--borde); border-radius:10px; margin-bottom:15px;">
@@ -529,12 +628,24 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
         campoTexto: overlay.querySelector("#campoTexto"),
         editorPreguntas,
         preguntas,
-        contexto: () => ({ tipo: "mejora", edad: Number(overlay.querySelector("#campoEdad").value) })
+        contexto: () => ({ tipo: "mejora", edad: Number(overlay.querySelector("#campoEdad").value) }),
+        // Ver la misma nota en abrirFormularioLectura.
+        alDetectarVarias: (lecturasDetectadas) => {
+            overlay.remove();
+            abrirColaDeLecturasImportadas(lecturasDetectadas, (prellenado, siguiente) => {
+                abrirFormularioMejora(prellenado, edadPorDefecto, siguiente, siguiente);
+            }, alGuardar);
+        }
     });
 
-    overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
+    function cerrarFormularioMejora() {
+        overlay.remove();
+        if (alCancelar) alCancelar();
+    }
+
+    overlay.querySelector(".modalCerrar").addEventListener("click", cerrarFormularioMejora);
     overlay.addEventListener("click", (e) => {
-        if (e.target === overlay) overlay.remove();
+        if (e.target === overlay) cerrarFormularioMejora();
     });
 
     overlay.querySelector("#formMejoraAdmin").addEventListener("submit", async (e) => {
