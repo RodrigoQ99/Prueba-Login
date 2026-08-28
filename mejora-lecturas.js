@@ -5,17 +5,38 @@
 // en Firestore (colección "mejoraLecturas") y se administra desde el
 // panel de administrador en mejora.html.
 //
-// El rango de edades disponible (antes fijo en 10-15) también es
-// editable ahora, y vive en Firestore en configuracion/rangoEdades —
-// junto con "segundosPresionar" (cuántos segundos hay que mantener
-// presionada una palabra del checkpoint para marcarla como donde se
-// quedó leyendo; ver motor-mejorar.js).
+// El rango de edades disponible es editable, y vive en Firestore en
+// configuracion/rangoEdades — junto con "segundosPresionar" (cuántos
+// segundos hay que mantener presionada una palabra del checkpoint para
+// marcarla como donde se quedó leyendo; ver motor-mejorar.js) y
+// "metaPpmPorEdad" (la meta de palabras por minuto de cada edad, antes
+// vivía fija en código como META_PPM_POR_EDAD — ver metaPpmParaEdad()
+// más abajo). Todo en el MISMO documento a propósito, en vez de uno
+// aparte: son las mismas "edades disponibles", vistas desde ángulos
+// distintos. Editable desde admin-mejora-edades.html.
 // ==========================================================
 
 let CATALOGO_MEJORA = {};
 let _promesaCatalogoMejora = null;
 
-let RANGO_EDADES = { min: 10, max: 17, segundosPresionar: 2 };
+// Meta de ppm por defecto — SOLO se usa si el documento de Firestore
+// todavía no tiene "metaPpmPorEdad" (proyecto nuevo, o antes de que
+// existiera este campo). Una vez que el admin guarda algo desde
+// admin-mejora-edades.html, esto deja de importar.
+const META_PPM_POR_EDAD_POR_DEFECTO = {
+    10: [100, 125],
+    11: [125, 150],
+    12: [140, 170],
+    13: [160, 190],
+    14: [180, 220],
+    15: [200, 250],
+    16: [220, 260],
+    17: [240, 280],
+    18: [250, 290],
+    masDelTope: [250, 300]
+};
+
+let RANGO_EDADES = { min: 10, max: 18, segundosPresionar: 2, metaPpmPorEdad: META_PPM_POR_EDAD_POR_DEFECTO };
 let _promesaRangoEdades = null;
 
 /**
@@ -79,6 +100,11 @@ function cargarRangoEdades(forzarRecarga) {
                 if (typeof RANGO_EDADES.segundosPresionar !== "number") {
                     RANGO_EDADES.segundosPresionar = 2;
                 }
+                // Mismo caso para metaPpmPorEdad: documentos guardados antes
+                // de admin-mejora-edades.html no lo tienen todavía.
+                if (!RANGO_EDADES.metaPpmPorEdad || typeof RANGO_EDADES.metaPpmPorEdad !== "object") {
+                    RANGO_EDADES.metaPpmPorEdad = META_PPM_POR_EDAD_POR_DEFECTO;
+                }
             }
             return RANGO_EDADES;
         })
@@ -122,25 +148,17 @@ function obtenerLecturasPorEdad(edad) {
 
 
 // Meta de palabras por minuto por edad (para mostrar retroalimentación).
-// Las edades que no tengan una meta específica usan la más cercana.
-// "masDelTope" es la meta para el grupo "Más de X años".
-const META_PPM_POR_EDAD = {
-    10: [100, 125],
-    11: [125, 150],
-    12: [140, 170],
-    13: [160, 190],
-    14: [180, 220],
-    15: [200, 250],
-    16: [220, 260],
-    17: [240, 280],
-    masDelTope: [250, 300]
-};
-
+// Editable desde admin-mejora-edades.html — ver RANGO_EDADES.metaPpmPorEdad
+// más arriba. Si una edad todavía no tiene meta configurada (ej. se acaba
+// de ampliar el rango y no se ha guardado nada para ella todavía), usa
+// [0, 0] en vez de tronar — la retroalimentación simplemente no compara
+// contra nada hasta que el admin la configure.
 function metaPpmParaEdad(edad) {
+    const tabla = RANGO_EDADES.metaPpmPorEdad || META_PPM_POR_EDAD_POR_DEFECTO;
     if (esGrupoMasDelTope(edad)) {
-        return META_PPM_POR_EDAD.masDelTope;
+        return tabla.masDelTope || [0, 0];
     }
-    return META_PPM_POR_EDAD[edad] || [0, 0];
+    return tabla[edad] || [0, 0];
 }
 
 

@@ -48,3 +48,63 @@ async function moderarPropuestaConIA({ texto, preguntas }) {
     const resultado = await llamar({ texto, preguntas: preguntas || null });
     return resultado.data;
 }
+
+
+// ==========================================================
+// SUBIR UN DOCUMENTO PARA LLENAR EL FORMULARIO DE LECTURA (Etapa 22)
+// ==========================================================
+// A diferencia de las otras dos, esta necesita Firebase Storage —
+// firebase.storage() solo existe en las páginas que además cargan
+// firebase-storage-compat.js (admin-lecturas.html y admin-mejora.html;
+// admin-propuestas.html NO la necesita y no carga ese script, por eso
+// se pide "lazy" adentro de la función y no en una constante de arriba
+// como functionsIA — así este archivo se puede seguir compartiendo
+// entre las tres páginas sin que las que no la usan truenen al cargar.
+
+const TAMANIO_MAXIMO_DOCUMENTO = 15 * 1024 * 1024; // 15 MB — igual que storage.rules
+
+/**
+ * Sube un documento (PDF, .docx o .txt) a Storage y le pide a la IA
+ * que extraiga título, texto y banco de preguntas — mismo resultado
+ * "listo para revisar" que generarPreguntasConIA, pero a partir de un
+ * archivo en vez de texto ya escrito. El archivo se borra solo del
+ * lado del servidor apenas se procesa (nunca queda guardado).
+ * @param {File} archivo
+ * @param {"premio"|"mejora"} tipo
+ * @param {string} [nivel]
+ * @param {number} [edad]
+ * @returns {Promise<{titulo:string, texto:string[], preguntas:Array}>}
+ */
+async function extraerLecturaDeDocumentoConIA({ archivo, tipo, nivel, edad }) {
+
+    if (typeof firebase.storage !== "function") {
+        throw new Error("Esta página no tiene Firebase Storage cargado.");
+    }
+
+    if (archivo.size > TAMANIO_MAXIMO_DOCUMENTO) {
+        throw new Error("El archivo pesa demasiado (máximo 15 MB).");
+    }
+
+    if (!/\.(pdf|docx|txt)$/i.test(archivo.name)) {
+        throw new Error("Solo se aceptan archivos PDF, .docx o .txt.");
+    }
+
+    const nombreLimpio = archivo.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const ruta = `fuentesLecturas/${Date.now()}-${nombreLimpio}`;
+    const referencia = firebase.storage().ref(ruta);
+
+    await referencia.put(archivo);
+
+    try {
+        const llamar = functionsIA.httpsCallable("extraerLecturaDeDocumentoIA");
+        const resultado = await llamar({ storagePath: ruta, tipo, nivel: nivel || null, edad: edad ?? null });
+        return resultado.data;
+    } catch (error) {
+        // La Cloud Function también intenta borrar el archivo del lado
+        // del servidor, pero si nunca llegó a correr (ej. rechazada por
+        // no ser admin, o error de red), esto limpia igual desde aquí.
+        referencia.delete().catch(() => {});
+        throw error;
+    }
+
+}

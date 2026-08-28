@@ -1,0 +1,56 @@
+// ==========================================================
+// REGLAS DE FIREBASE STORAGE
+// ==========================================================
+// Cómo usarlas: igual que firestore.rules — Firebase Console >
+// Storage > Reglas > pega esto > Publica. (O "firebase deploy --only
+// storage" desde este proyecto, ver firebase.json).
+//
+// Por ahora solo hay UNA carpeta en uso: "fuentesLecturas/", donde el
+// admin sube un documento (PDF/Word/txt) para que una Cloud Function
+// (extraerLecturaDeDocumentoIA, ver functions/lib/) le extraiga el
+// texto y arme el formulario de creación de lectura. Es un archivo de
+// entrada TRANSITORIO — la función lo borra ella misma apenas termina
+// de leerlo (ver functions/lib/extraerLecturaDeDocumentoIA.js) — así
+// que solo el admin necesita poder subirlo/leerlo.
+// ==========================================================
+
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Mismo criterio que esAdmin() en firestore.rules/admin-comun.js,
+    // pero en el lenguaje de reglas de Storage: revisa la MISMA
+    // colección "administradores" de Firestore vía firestore.exists()
+    // (soporte cruzado Storage <-> Firestore de las reglas de
+    // Firebase). Nadie más que un administrador autenticado puede
+    // subir, leer o borrar nada en este bucket.
+    function esAdmin() {
+      return request.auth != null &&
+             firestore.exists(/databases/(default)/documents/administradores/$(request.auth.token.email));
+    }
+
+    // Verbos por separado (en vez de "write") a propósito: una petición
+    // de "delete" no trae request.resource, así que mezclar "write" con
+    // esa referencia habría bloqueado el borrado.
+    match /fuentesLecturas/{archivo} {
+      allow read: if esAdmin();
+      allow create: if esAdmin()
+                    && request.resource.size < 15 * 1024 * 1024
+                    && request.resource.contentType.matches(
+                         'application/pdf|'
+                         + 'application/vnd.openxmlformats-officedocument.wordprocessingml.document|'
+                         + 'text/plain'
+                       );
+      allow delete: if esAdmin();
+    }
+
+    // Por defecto, cualquier otra ruta del bucket queda cerrada — se
+    // van agregando carpetas específicas (con su propia regla) según
+    // se necesiten, nunca un "allow read, write: if true" general.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+  }
+}

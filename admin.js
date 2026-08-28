@@ -116,6 +116,75 @@ function activarBotonGenerarPreguntasIA(overlay, { campoTexto, editorPreguntas, 
 
 
 // ==========================================================
+// SUBIR UN DOCUMENTO PARA LLENAR EL FORMULARIO (Etapa 22)
+// ==========================================================
+// Mismo criterio de disponibilidad que activarBotonGenerarPreguntasIA:
+// si extraerLecturaDeDocumentoConIA (admin-ia.js) no existe en esta
+// página, no hace nada. Llena TÍTULO + TEXTO + BANCO DE PREGUNTAS de
+// una — a diferencia del botón de solo-preguntas, aquí si ya hay algo
+// escrito se confirma UNA vez antes de reemplazar todo (no solo las
+// preguntas), porque el documento trae también título y texto.
+function activarBotonSubirDocumento(overlay, { campoTitulo, campoTexto, editorPreguntas, preguntas, contexto }) {
+
+    const campoArchivo = overlay.querySelector("#campoSubirDocumento");
+    if (!campoArchivo || typeof extraerLecturaDeDocumentoConIA !== "function") return;
+
+    const estado = overlay.querySelector("#estadoSubirDocumento");
+
+    campoArchivo.addEventListener("change", async () => {
+
+        const archivo = campoArchivo.files[0];
+        if (!archivo) return;
+
+        const yaHayContenido = campoTitulo.value.trim() || campoTexto.value.trim() || preguntas.length > 0;
+        if (yaHayContenido && !confirm(
+            "Esto va a reemplazar el título, el texto y las preguntas que ya tengas en este formulario, con lo que se extraiga del documento. ¿Continuar?"
+        )) {
+            campoArchivo.value = "";
+            return;
+        }
+
+        campoArchivo.disabled = true;
+        estado.textContent = "📄 Leyendo el documento y armando el formulario... (puede tardar un poco más que solo generar preguntas)";
+        estado.style.color = "var(--texto-suave)";
+        estado.style.display = "block";
+
+        try {
+
+            const resultado = await extraerLecturaDeDocumentoConIA({ archivo, ...contexto() });
+
+            campoTitulo.value = resultado.titulo;
+            campoTexto.value = resultado.texto.join("\n\n");
+            // El botón de "Generar preguntas con IA" decide si mostrarse
+            // según el contenido de campoTexto — como se llenó a mano
+            // (sin pasar por el input real del usuario), hay que avisarle.
+            campoTexto.dispatchEvent(new Event("input"));
+
+            preguntas.length = 0;
+            preguntas.push(...resultado.preguntas);
+            editorPreguntas.refrescar();
+
+            estado.textContent = `✅ Se armó el formulario a partir de "${archivo.name}" — revísalo con calma antes de guardar.`;
+            estado.style.color = "#2e9e5b";
+
+        } catch (error) {
+
+            console.error("No se pudo leer el documento con IA:", error);
+            estado.textContent = "❌ No se pudo leer ese documento. Puedes seguir llenando el formulario a mano. " +
+                (error && error.message ? `(${error.message})` : "");
+            estado.style.color = "#c0392b";
+
+        }
+
+        campoArchivo.disabled = false;
+        campoArchivo.value = "";
+
+    });
+
+}
+
+
+// ==========================================================
 // FORMULARIO: CREAR / EDITAR LECTURA (sistema de premios QR)
 // ==========================================================
 // Usa construirEditorPreguntas (ver editor-preguntas.js).
@@ -138,6 +207,12 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
         <div class="modalCaja modalCajaInfo modalCajaAdmin">
             <h2>${esNueva ? "➕ Nueva lectura" : "✏️ Editar lectura"}</h2>
             <form id="formLecturaAdmin">
+
+                <div style="padding:12px; border:1px dashed var(--borde); border-radius:10px; margin-bottom:15px;">
+                    <label style="font-weight:600;">📄 O sube un documento (PDF, Word o texto) para llenar esto automáticamente</label>
+                    <input type="file" id="campoSubirDocumento" accept=".pdf,.docx,.txt" style="display:block; margin-top:8px;">
+                    <p id="estadoSubirDocumento" style="display:none; font-size:13px; margin:8px 0 0;"></p>
+                </div>
 
                 <label>ID de la lectura</label>
                 <input type="text" id="campoId" required autocomplete="off"
@@ -176,11 +251,6 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
                        value="${(lecturaExistente && lecturaExistente.preguntasAMostrar) || ""}"
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
-                <label>Orden dentro del catálogo</label>
-                <input type="number" id="campoOrden" min="0"
-                       value="${(lecturaExistente && lecturaExistente.orden) ?? ""}"
-                       style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
-
                 <h3 style="margin-top:10px;">Banco de preguntas</h3>
                 <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
                     Marca con el círculo cuál opción es la correcta de cada pregunta.
@@ -207,6 +277,14 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
     const editorPreguntas = construirEditorPreguntas(overlay.querySelector("#editorPreguntas"), preguntas);
 
     activarBotonGenerarPreguntasIA(overlay, {
+        campoTexto: overlay.querySelector("#campoTexto"),
+        editorPreguntas,
+        preguntas,
+        contexto: () => ({ tipo: "premio", nivel: overlay.querySelector("#campoNivel").value })
+    });
+
+    activarBotonSubirDocumento(overlay, {
+        campoTitulo: overlay.querySelector("#campoTitulo"),
         campoTexto: overlay.querySelector("#campoTexto"),
         editorPreguntas,
         preguntas,
@@ -260,7 +338,6 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
         }
 
         const preguntasAMostrarInput = Number(overlay.querySelector("#campoPreguntasAMostrar").value) || preguntas.length;
-        const ordenInput = overlay.querySelector("#campoOrden").value;
 
         const datos = {
             titulo: overlay.querySelector("#campoTitulo").value.trim(),
@@ -270,7 +347,10 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
             texto: texto,
             bancoPreguntas: preguntas,
             preguntasAMostrar: Math.min(preguntasAMostrarInput, preguntas.length),
-            orden: ordenInput !== "" ? Number(ordenInput) : CATALOGO_LECTURAS.length
+            // Ya no lo escribe el admin a mano: una nueva se agrega al final
+            // (conteo automático); una que ya existía conserva el suyo — se
+            // vuelve a numerar sin huecos solo al eliminar (ver eliminarLectura).
+            orden: esNueva ? CATALOGO_LECTURAS.length : lecturaExistente.orden
         };
 
         // Si esta lectura viene de una propuesta de "Ser el protagonista de
@@ -300,6 +380,28 @@ function abrirFormularioLectura(lecturaExistente, alGuardar) {
 
 }
 
+// ==========================================================
+// RENUMERAR "orden" SIN HUECOS (después de eliminar una lectura)
+// ==========================================================
+// "lista" debe venir ya ordenada como debe quedar numerada (por su
+// "orden" actual, de menor a mayor). Solo escribe los documentos cuyo
+// número realmente cambió — si no quedó ningún hueco, no hace nada.
+async function reordenarConsecutivo(coleccion, lista) {
+
+    const pendientes = lista
+        .map((item, indice) => ({ item, indice }))
+        .filter(({ item, indice }) => item.orden !== indice);
+
+    if (pendientes.length === 0) return;
+
+    const lote = db.batch();
+    pendientes.forEach(({ item, indice }) => {
+        lote.update(db.collection(coleccion).doc(item.id), { orden: indice });
+    });
+    await lote.commit();
+
+}
+
 async function eliminarLectura(id, alEliminar) {
 
     if (!confirm(`¿Seguro que quieres eliminar la lectura "${id}"? Esta acción no se puede deshacer.`)) {
@@ -316,6 +418,13 @@ async function eliminarLectura(id, alEliminar) {
         }
 
         await cargarCatalogoLecturas(true);
+
+        // El "orden" del resto queda sin huecos (0,1,2,...) — el "orden" de
+        // premios es global (no por nivel), ver abrirFormularioLectura.
+        const restantes = [...CATALOGO_LECTURAS].sort((a, b) => a.orden - b.orden);
+        await reordenarConsecutivo("lecturas", restantes);
+        await cargarCatalogoLecturas(true);
+
         if (alEliminar) alEliminar();
     } catch (error) {
         console.error("No se pudo eliminar la lectura:", error);
@@ -352,6 +461,12 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
             <h2>${esNueva ? "➕ Nueva lectura de práctica" : "✏️ Editar lectura de práctica"}</h2>
             <form id="formMejoraAdmin">
 
+                <div style="padding:12px; border:1px dashed var(--borde); border-radius:10px; margin-bottom:15px;">
+                    <label style="font-weight:600;">📄 O sube un documento (PDF, Word o texto) para llenar esto automáticamente</label>
+                    <input type="file" id="campoSubirDocumento" accept=".pdf,.docx,.txt" style="display:block; margin-top:8px;">
+                    <p id="estadoSubirDocumento" style="display:none; font-size:13px; margin:8px 0 0;"></p>
+                </div>
+
                 <label>ID de la lectura</label>
                 <input type="text" id="campoId" required autocomplete="off"
                        value="${(lecturaExistente && lecturaExistente.id) || ""}" ${esNueva ? "" : "readonly"}
@@ -375,11 +490,6 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
                 <label>Cuántas preguntas se muestran por sesión</label>
                 <input type="number" id="campoPreguntasAMostrar" min="1"
                        value="${(lecturaExistente && lecturaExistente.preguntasAMostrar) || ""}"
-                       style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
-
-                <label>Orden dentro de esta edad</label>
-                <input type="number" id="campoOrden" min="0"
-                       value="${(lecturaExistente && lecturaExistente.orden) ?? ""}"
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
                 <h3 style="margin-top:10px;">Banco de preguntas</h3>
@@ -408,6 +518,14 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
     const editorPreguntas = construirEditorPreguntas(overlay.querySelector("#editorPreguntas"), preguntas);
 
     activarBotonGenerarPreguntasIA(overlay, {
+        campoTexto: overlay.querySelector("#campoTexto"),
+        editorPreguntas,
+        preguntas,
+        contexto: () => ({ tipo: "mejora", edad: Number(overlay.querySelector("#campoEdad").value) })
+    });
+
+    activarBotonSubirDocumento(overlay, {
+        campoTitulo: overlay.querySelector("#campoTitulo"),
         campoTexto: overlay.querySelector("#campoTexto"),
         editorPreguntas,
         preguntas,
@@ -459,7 +577,6 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
         }
 
         const preguntasAMostrarInput = Number(overlay.querySelector("#campoPreguntasAMostrar").value) || preguntas.length;
-        const ordenInput = overlay.querySelector("#campoOrden").value;
 
         const datos = {
             edad: edad,
@@ -467,7 +584,11 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar) {
             texto: texto,
             bancoPreguntas: preguntas,
             preguntasAMostrar: Math.min(preguntasAMostrarInput, preguntas.length),
-            orden: ordenInput !== "" ? Number(ordenInput) : listaDeEsaEdad.length
+            // Ver la misma nota en abrirFormularioLectura: ya no es manual.
+            // Si además cambió de edad al editarla, también se va al final
+            // de la lista de la edad NUEVA (su "orden" viejo era relativo a
+            // la edad anterior, ya no tiene sentido ahí).
+            orden: (esNueva || lecturaExistente.edad !== edad) ? listaDeEsaEdad.length : lecturaExistente.orden
         };
 
         // Ver la misma nota en abrirFormularioLectura: conserva la autoría
@@ -500,9 +621,25 @@ async function eliminarMejoraLectura(id, alEliminar) {
         return;
     }
 
+    // Se busca ANTES de borrar (necesita que todavía esté en
+    // CATALOGO_MEJORA) para saber de qué edad era — el "orden" de
+    // Mejorar la lectura es POR EDAD, no global, y además es el mismo
+    // número que usa el desbloqueo secuencial (ver ubicarLecturaMejora
+    // en mejora-lecturas.js y "indice" en motor-mejorar.js), así que
+    // hay que renumerar exactamente esa edad para no dejar huecos que
+    // bloqueen a alguien a mitad de camino.
+    const ubicacionBorrada = ubicarLecturaMejora(id);
+
     try {
         await db.collection("mejoraLecturas").doc(id).delete();
         await cargarCatalogoMejora(true);
+
+        if (ubicacionBorrada) {
+            const restantes = [...(CATALOGO_MEJORA[ubicacionBorrada.edad] || [])].sort((a, b) => a.orden - b.orden);
+            await reordenarConsecutivo("mejoraLecturas", restantes);
+            await cargarCatalogoMejora(true);
+        }
+
         if (alEliminar) alEliminar();
     } catch (error) {
         console.error("No se pudo eliminar la lectura de práctica:", error);
@@ -512,76 +649,10 @@ async function eliminarMejoraLectura(id, alEliminar) {
 }
 
 
-// ==========================================================
-// FORMULARIO: RANGO DE EDADES (Mejorar la lectura)
-// ==========================================================
-
-async function abrirFormularioRangoEdades(alGuardar) {
-
-    await cargarRangoEdades();
-
-    const overlay = document.createElement("div");
-    overlay.className = "modalOverlay";
-    overlay.innerHTML = `
-        <div class="modalCaja modalCajaInfo" style="text-align:center;">
-            <h2>⚙️ Configuración de Mejorar la lectura</h2>
-            <p>Define entre qué edades pueden elegir los usuarios en "Mejorar la lectura".</p>
-
-            <label style="display:block; text-align:left; margin-top:10px;">Edad mínima</label>
-            <input type="number" id="campoEdadMin" min="5" max="18" value="${RANGO_EDADES.min}"
-                   style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
-
-            <label style="display:block; text-align:left;">Edad máxima</label>
-            <input type="number" id="campoEdadMax" min="5" max="18" value="${RANGO_EDADES.max}"
-                   style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
-
-            <label style="display:block; text-align:left;">Segundos para marcar una palabra manteniéndola presionada</label>
-            <input type="number" id="campoSegundosPresionar" min="1" max="10" step="0.5"
-                   value="${RANGO_EDADES.segundosPresionar ?? 2}"
-                   style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
-            <p style="font-size:13px; color:var(--texto-suave); margin:-8px 0 15px; text-align:left;">
-                En el checkpoint del minuto, cuánto tiempo hay que mantener presionada
-                (clic o dedo) la última palabra leída para marcarla como el punto donde se quedó.
-            </p>
-
-            <button id="btnGuardarRango">Guardar</button>
-            <button class="modalCerrar" style="background:white; border:1px solid var(--borde); color:var(--texto-suave); margin-top:10px;">Cancelar</button>
-        </div>
-    `;
-
-    document.body.appendChild(overlay);
-
-    overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
-
-    overlay.querySelector("#btnGuardarRango").addEventListener("click", async () => {
-
-        const min = Number(overlay.querySelector("#campoEdadMin").value);
-        const max = Number(overlay.querySelector("#campoEdadMax").value);
-        const segundosPresionar = Number(overlay.querySelector("#campoSegundosPresionar").value);
-
-        if (!min || !max || min > max) {
-            alert("Revisa los valores: la edad mínima debe ser menor o igual a la máxima.");
-            return;
-        }
-
-        if (!segundosPresionar || segundosPresionar <= 0) {
-            alert("Los segundos para marcar una palabra deben ser un número mayor a 0.");
-            return;
-        }
-
-        try {
-            await db.collection("configuracion").doc("rangoEdades").set({ min, max, segundosPresionar });
-            await cargarRangoEdades(true);
-            overlay.remove();
-            if (alGuardar) alGuardar();
-        } catch (error) {
-            console.error("No se pudo guardar la configuración:", error);
-            alert("No se pudo guardar la configuración.");
-        }
-
-    });
-
-}
+// abrirFormularioRangoEdades() (el modal chico de min/max/segundosPresionar)
+// ya no vive aquí — se reemplazó por la pantalla completa
+// admin-mejora-edades.html (ver botón "⚙️ Configurar edades" en
+// inicializarAdminMejora), que además cubre la meta de ppm por edad.
 
 
 // ==========================================================
@@ -2015,7 +2086,10 @@ function inicializarAdminMejora(edadActual) {
         <h2 style="text-align:center;">📈 Mejorar la lectura</h2>
         <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:15px 0;">
             <button id="btnNuevaMejora" style="max-width:260px;">+ Agregar lectura — ${etiquetaEdad(edadActual)}</button>
-            <button id="btnEditarRango" style="max-width:260px; background:white; color:var(--azul); border:2px solid var(--azul);">⚙️ Configuración</button>
+            <a href="admin-mejora-edades.html" class="botonAdminContorno"
+               style="max-width:260px; display:inline-flex; align-items:center; justify-content:center; padding:12px 22px; border-radius:12px; font-weight:600; text-decoration:none;">
+                ⚙️ Configurar edades
+            </a>
         </div>
         <div id="listaAdminMejora"></div>
     `;
@@ -2023,10 +2097,6 @@ function inicializarAdminMejora(edadActual) {
 
     document.getElementById("btnNuevaMejora").addEventListener("click", () => {
         abrirFormularioMejora(null, edadActual, () => inicializarAdminMejora(edadActual));
-    });
-
-    document.getElementById("btnEditarRango").addEventListener("click", () => {
-        abrirFormularioRangoEdades(() => inicializarAdminMejora(edadActual));
     });
 
     renderizarListaAdminMejora(edadActual);

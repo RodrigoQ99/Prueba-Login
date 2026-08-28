@@ -11,15 +11,20 @@
 // - moderarPropuestaIA: da una opinión sobre una propuesta de "Ser el
 //   protagonista de la historia", sin aprobar/rechazar nada por su
 //   cuenta (panel de administrador, cola de propuestas).
+// - extraerLecturaDeDocumentoIA: lee un documento (PDF/.docx/.txt) que
+//   el admin subió a Storage y arma título + texto + preguntas para
+//   llenar el mismo formulario de creación de lectura.
 //
-// Ambas exigen que quien llama sea un administrador autenticado (ver
-// lib/verificarAdmin.js) — cualquier otra persona recibe un error sin
-// que se llegue a llamar a Claude, así no se gasta presupuesto en
+// Las tres exigen que quien llama sea un administrador autenticado
+// (ver lib/verificarAdmin.js) — cualquier otra persona recibe un error
+// sin que se llegue a llamar a Claude, así no se gasta presupuesto en
 // llamadas no autorizadas.
 // ==========================================================
 
 const { generarPreguntasIA } = require("./lib/generarPreguntasIA");
 const { moderarPropuestaIA } = require("./lib/moderarPropuestaIA");
+const { extraerLecturaDeDocumentoIA } = require("./lib/extraerLecturaDeDocumentoIA");
 
 exports.generarPreguntasIA = generarPreguntasIA;
 exports.moderarPropuestaIA = moderarPropuestaIA;
+exports.extraerLecturaDeDocumentoIA = extraerLecturaDeDocumentoIA;

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurar edades — Mejorar la lectura</title>
+    <link rel="stylesheet" href="estilos.css">
+
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
+</head>
+
+
+<body>
+
+
+<!-- ==========================
+     PANTALLA DE LOGIN
+=========================== -->
+<div id="pantallaLoginAdmin" class="pantallaAuth" style="display:none;">
+    <div class="cajaAuth">
+        <h1>Panel de administrador</h1>
+        <p>Inicia sesión con la cuenta autorizada para administrar el contenido.</p>
+        <button id="btnLoginGoogleAdmin" class="botonGoogle">
+            Iniciar sesión con Google
+        </button>
+    </div>
+</div>
+
+
+<!-- ==========================
+     SIN PERMISO
+=========================== -->
+<div id="pantallaSinPermiso" class="pantallaAuth" style="display:none;">
+    <div class="cajaAuth">
+        <h1>Sin permiso</h1>
+        <p>Esta cuenta no está autorizada para administrar el contenido.</p>
+        <button id="btnCerrarSesionAdminSinPermiso">Cerrar sesión</button>
+    </div>
+</div>
+
+
+<!-- ==========================
+     PANEL (solo administradores)
+=========================== -->
+<div id="contenedorAdminPanel" style="display:none; max-width:560px; margin:0 auto; padding:20px;">
+
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:20px;">
+        <a href="admin-mejora.html" style="text-decoration:none; color:var(--texto-suave); font-weight:600;">← Mejorar la lectura</a>
+        <h1 style="margin:0;">⚙️ Configurar edades</h1>
+        <span style="width:90px;"></span>
+    </div>
+
+    <div class="seccionAdmin">
+        <h3 class="seccionAdminTitulo">Rango de edades</h3>
+        <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
+            Define entre qué edades pueden elegir los usuarios en "Mejorar la lectura".
+        </p>
+
+        <label style="display:block; text-align:left; font-weight:600; font-size:14px; margin-top:4px;">Edad mínima</label>
+        <input type="number" id="campoEdadMin" min="5" max="25"
+               style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+        <label style="display:block; text-align:left; font-weight:600; font-size:14px;">Edad máxima</label>
+        <input type="number" id="campoEdadMax" min="5" max="25"
+               style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+
+        <label style="display:block; text-align:left; font-weight:600; font-size:14px;">Segundos para marcar una palabra manteniéndola presionada</label>
+        <input type="number" id="campoSegundosPresionar" min="1" max="10" step="0.5"
+               style="width:100%; padding:10px; margin:6px 0 6px; border-radius:8px; border:1px solid var(--borde);">
+        <p style="font-size:13px; color:var(--texto-suave); margin:0 0 10px; text-align:left;">
+            En el checkpoint del minuto, cuánto tiempo hay que mantener presionada
+            (clic o dedo) la última palabra leída para marcarla como el punto donde se quedó.
+        </p>
+    </div>
+
+    <div class="seccionAdmin">
+        <h3 class="seccionAdminTitulo">Meta de palabras por minuto (ppm) por edad</h3>
+        <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
+            Es la meta que se le muestra al usuario en su retroalimentación cuando no
+            termina la lectura a tiempo. Una edad recién agregada puede quedar en 0 — no
+            rompe nada, solo no compara contra ninguna meta todavía.
+        </p>
+        <div id="listaMetaPpm"></div>
+    </div>
+
+    <button id="btnGuardarEdades" style="width:100%; margin-top:10px;">Guardar</button>
+    <p id="estadoGuardarEdades" style="display:none; text-align:center; font-size:13px; margin-top:10px;"></p>
+
+</div>
+
+
+<script src="firebase-init.js"></script>
+<script src="admin-comun.js"></script>
+<script src="mejora-lecturas.js"></script>
+<script src="admin-mejora-edades.js"></script>
+
+
+</body>
+
+
+</html>
