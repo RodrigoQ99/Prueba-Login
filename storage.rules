@@ -5,13 +5,19 @@
 // Storage > Reglas > pega esto > Publica. (O "firebase deploy --only
 // storage" desde este proyecto, ver firebase.json).
 //
-// Por ahora solo hay UNA carpeta en uso: "fuentesLecturas/", donde el
-// admin sube un documento (PDF/Word/txt) para que una Cloud Function
-// (extraerLecturaDeDocumentoIA, ver functions/lib/) le extraiga el
-// texto y arme el formulario de creación de lectura. Es un archivo de
-// entrada TRANSITORIO — la función lo borra ella misma apenas termina
-// de leerlo (ver functions/lib/extraerLecturaDeDocumentoIA.js) — así
-// que solo el admin necesita poder subirlo/leerlo.
+// Dos carpetas en uso, las dos exclusivas para administradores:
+//
+// - "fuentesLecturas/": el admin sube un documento (PDF/Word/txt) para
+//   que una Cloud Function (extraerLecturaDeDocumentoIA) le extraiga
+//   el texto y arme el formulario de creación de lectura. Es un
+//   archivo de entrada TRANSITORIO — la función lo borra ella misma
+//   apenas termina de leerlo.
+//
+// - "pdfsHiloDelDia/": PDFs que el admin guarda como fuente reusable
+//   para "El Hilo del día" (ver extraerTextoDePdfGuardado). A
+//   diferencia de la anterior, estos son PERMANENTES — se quedan
+//   guardados para usarlos en varios Hilos a lo largo del tiempo,
+//   hasta que el admin decida borrarlos a mano.
 // ==========================================================
 
 rules_version = '2';
@@ -42,6 +48,14 @@ service firebase.storage {
                          + 'application/vnd.openxmlformats-officedocument.wordprocessingml.document|'
                          + 'text/plain'
                        );
+      allow delete: if esAdmin();
+    }
+
+    match /pdfsHiloDelDia/{archivo} {
+      allow read: if esAdmin();
+      allow create: if esAdmin()
+                    && request.resource.size < 20 * 1024 * 1024
+                    && request.resource.contentType == 'application/pdf';
       allow delete: if esAdmin();
     }
 

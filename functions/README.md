@@ -1,12 +1,14 @@
 # Cloud Functions — funciones de IA del panel de administrador
 
-Tres funciones (`onCall`, Firebase Functions v2), **exclusivas para administradores**:
+Cinco funciones (`onCall`, Firebase Functions v2), **exclusivas para administradores**:
 
 - `generarPreguntasIA` — arma el banco de preguntas de una lectura a partir de su texto.
 - `moderarPropuestaIA` — da una opinión sobre si una propuesta de "Ser el protagonista de la historia" parece apropiada (nunca aprueba/rechaza nada por su cuenta).
 - `extraerLecturaDeDocumentoIA` — lee un documento (PDF/.docx/.txt) que el admin subió a Firebase Storage y arma título + texto + banco de preguntas para llenar el formulario de creación de lectura. El documento puede traer UNA o VARIAS lecturas (ej. 10 historias con sus propias preguntas cada una) — siempre devuelve un arreglo; si ya traían preguntas con la respuesta correcta marcada, las copia tal cual (no las parafrasea); a las que les falten, se las genera.
+- `extraerTextoDePdfGuardado` — devuelve el texto completo de un PDF guardado en Storage, SIN tocarlo con IA (no llama a Claude, es solo lectura) — el admin lo recorta a mano hasta dejar el fragmento exacto que quiere usar en "El Hilo del día". La IA nunca elige esa parte por su cuenta.
+- `dividirFragmentoEnHiloIA` — divide el fragmento YA ELEGIDO por el admin en exactamente 5 partes narrativamente coherentes y en orden (el juego las desordena solo al mostrarlas; la base de datos siempre guarda el orden real).
 
-Las tres verifican `request.auth` + membresía en la colección `administradores` de Firestore (mismo criterio que `esAdmin()` en el frontend, ver `lib/verificarAdmin.js`) **antes** de llamar a la API de Claude — así nadie gasta presupuesto llamándolas sin permiso.
+Todas verifican `request.auth` + membresía en la colección `administradores` de Firestore (mismo criterio que `esAdmin()` en el frontend, ver `lib/verificarAdmin.js`) **antes** de llamar a la API de Claude (excepto `extraerTextoDePdfGuardado`, que nunca la llama) — así nadie gasta presupuesto llamándolas sin permiso.
 
 ## Requisitos
 
@@ -59,7 +61,7 @@ o en la Consola de Firebase → Functions → selecciona la función → pestañ
 
 ```
 functions/
-  index.js                    — exporta las tres funciones
+  index.js                    — exporta las cinco funciones
   admin-init.js                — inicializa el Admin SDK (Firestore + Storage) una sola vez
   lib/
     verificarAdmin.js           — chequeo compartido: ¿quién llama es admin?
@@ -69,13 +71,19 @@ functions/
     esquemaPreguntas.js         — esquema Zod del banco de preguntas
     esquemaModeracion.js        — esquema Zod del veredicto de moderación
     esquemaLecturaExtraida.js   — esquema Zod de título+texto+preguntas extraídos
+    esquemaHiloDia.js           — esquema Zod de los 5 fragmentos de El Hilo del día
     generarPreguntasIA.js
     moderarPropuestaIA.js
     extraerLecturaDeDocumentoIA.js
+    extraerTextoDePdfGuardado.js
+    dividirFragmentoEnHiloIA.js
 ```
 
-El documento que sube el admin vive en Storage, carpeta `fuentesLecturas/` (ver `storage.rules` — solo administradores pueden subir/leer/borrar ahí, máximo 15 MB, solo PDF/.docx/.txt). Es un archivo de entrada TRANSITORIO: `extraerLecturaDeDocumentoIA` lo borra ella misma apenas termina de leerlo, nunca queda guardado.
+Dos carpetas en Storage, las dos exclusivas para administradores (ver `storage.rules`):
+
+- `fuentesLecturas/` — documento que el admin sube para crear una lectura (Etapa 22). TRANSITORIO: `extraerLecturaDeDocumentoIA` lo borra ella misma apenas termina de leerlo, nunca queda guardado. Máximo 15 MB, PDF/.docx/.txt.
+- `pdfsHiloDelDia/` — PDFs que el admin guarda como fuente reusable para "El Hilo del día" (Etapa 23). PERMANENTES: se quedan hasta que el admin los borre a mano desde el panel. Máximo 20 MB, solo PDF.
 
 ## Modelo usado
 
-`claude-opus-5` (el modelo más capaz disponible actualmente) para las tres funciones. Si en algún momento quieres bajar el costo (por ejemplo a `claude-sonnet-5`, más barato pero algo menos capaz), es un solo cambio de línea en cada archivo de `lib/` — no hace falta tocar nada del frontend.
+`claude-opus-5` (el modelo más capaz disponible actualmente) para las funciones que llaman a Claude. Si en algún momento quieres bajar el costo (por ejemplo a `claude-sonnet-5`, más barato pero algo menos capaz), es un solo cambio de línea en cada archivo de `lib/` — no hace falta tocar nada del frontend.

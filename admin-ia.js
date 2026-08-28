@@ -116,3 +116,107 @@ async function extraerLecturaDeDocumentoConIA({ archivo, tipo, nivel, edad }) {
     }
 
 }
+
+
+// ==========================================================
+// PDFs GUARDADOS PARA "EL HILO DEL DÍA" (Etapa 23)
+// ==========================================================
+// A diferencia de fuentesLecturas/ (Etapa 22, transitorio), estos PDFs
+// son PERMANENTES: el admin los guarda una vez y los reusa en varios
+// Hilos a lo largo del tiempo. Subir/listar/borrar son operaciones
+// directas de Storage (storage.rules ya exige ser admin) — no hace
+// falta pasar por ninguna Cloud Function para eso; extraer el TEXTO sí
+// necesita una (pdf-parse corre en el servidor, no en el navegador).
+
+const TAMANIO_MAXIMO_PDF_HILO = 20 * 1024 * 1024; // 20 MB — igual que storage.rules
+
+/**
+ * Sube un PDF a la carpeta permanente "pdfsHiloDelDia/".
+ * @param {File} archivo
+ * @returns {Promise<string>} la ruta en Storage donde quedó guardado.
+ */
+async function subirPdfGuardado(archivo) {
+
+    if (typeof firebase.storage !== "function") {
+        throw new Error("Esta página no tiene Firebase Storage cargado.");
+    }
+
+    if (archivo.size > TAMANIO_MAXIMO_PDF_HILO) {
+        throw new Error("El archivo pesa demasiado (máximo 20 MB).");
+    }
+
+    if (!/\.pdf$/i.test(archivo.name)) {
+        throw new Error("Solo se aceptan archivos PDF.");
+    }
+
+    const nombreLimpio = archivo.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const ruta = `pdfsHiloDelDia/${Date.now()}-${nombreLimpio}`;
+
+    await firebase.storage().ref(ruta).put(archivo);
+
+    return ruta;
+
+}
+
+/**
+ * Lista los PDFs ya guardados.
+ * @returns {Promise<Array<{ruta:string, nombre:string}>>}
+ */
+async function listarPdfsGuardados() {
+
+    if (typeof firebase.storage !== "function") {
+        throw new Error("Esta página no tiene Firebase Storage cargado.");
+    }
+
+    const listado = await firebase.storage().ref("pdfsHiloDelDia").listAll();
+
+    return listado.items
+        .map(item => ({
+            ruta: item.fullPath,
+            // El nombre real queda después del "timestamp-" que le puso
+            // subirPdfGuardado — se le quita para mostrar algo legible.
+            nombre: item.name.replace(/^\d+-/, "")
+        }))
+        .sort((a, b) => b.ruta.localeCompare(a.ruta)); // más reciente primero
+
+}
+
+/**
+ * Borra un PDF guardado (el admin ya no lo quiere conservar).
+ * @param {string} ruta
+ */
+async function eliminarPdfGuardado(ruta) {
+
+    if (typeof firebase.storage !== "function") {
+        throw new Error("Esta página no tiene Firebase Storage cargado.");
+    }
+
+    await firebase.storage().ref(ruta).delete();
+
+}
+
+/**
+ * Devuelve el texto completo de un PDF ya guardado, SIN tocarlo con
+ * IA — el admin lo recorta a mano hasta dejar el fragmento exacto que
+ * quiere usar (nunca lo elige la IA).
+ * @param {string} storagePath
+ * @returns {Promise<string>}
+ */
+async function extraerTextoDePdfGuardadoConIA(storagePath) {
+    const llamar = functionsIA.httpsCallable("extraerTextoDePdfGuardado", { timeout: 120000 });
+    const resultado = await llamar({ storagePath });
+    return resultado.data.texto;
+}
+
+/**
+ * Divide el fragmento YA ELEGIDO por el admin en exactamente 5 partes
+ * narrativamente coherentes y en orden — la IA nunca decide qué
+ * fragmento usar, solo cómo dividirlo.
+ * @param {string} fragmento
+ * @returns {Promise<string[]>} exactamente 5 fragmentos, en orden.
+ */
+async function dividirFragmentoConIA(fragmento) {
+    const llamar = functionsIA.httpsCallable("dividirFragmentoEnHiloIA");
+    const resultado = await llamar({ fragmento });
+    return resultado.data.fragmentos;
+}

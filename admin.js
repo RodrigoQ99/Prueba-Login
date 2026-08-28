@@ -1312,6 +1312,142 @@ function construirEditorFragmentosHilo(contenedor, fragmentos) {
 
     render();
 
+    // Igual que construirEditorPreguntas (ver editor-preguntas.js): quien
+    // llame puede seguir modificando "fragmentos" desde AFUERA (ej. al
+    // insertar los 5 que devolvió la IA, ver activarBotonDividirHiloIA)
+    // y pedirle a este editor que se redibuje, sin volver a llamar
+    // construirEditorFragmentosHilo() (eso duplicaría los listeners).
+    return { refrescar: render };
+
+}
+
+// ==========================================================
+// SECCIÓN "USAR UN PDF GUARDADO" DEL FORMULARIO DE HILO (Etapa 23)
+// ==========================================================
+// Tres pasos, cada uno con su propio botón:
+// 1. Elegir un PDF ya guardado (listarPdfsGuardados, ver admin-ia.js).
+// 2. Extraer su texto completo SIN IA (extraerTextoDePdfGuardadoConIA)
+//    y dejarlo en un textarea editable — el admin lo recorta a mano
+//    hasta dejar SOLO el fragmento que quiere usar. La IA nunca elige
+//    esa parte por su cuenta.
+// 3. Dividir ESE fragmento (tal como quedó en el textarea) en
+//    exactamente 5 partes con IA (dividirFragmentoConIA), que llenan
+//    el editor de párrafos de siempre para revisar/ajustar.
+//
+// Si admin-ia.js no está cargado en esta página, toda la sección se
+// oculta (no debería pasar en admin-juegos.html, pero por consistencia
+// con el resto de los botones de IA del proyecto).
+function activarSeccionPdfHilo(overlay, { fragmentos, editorFragmentos }) {
+
+    const seccion = overlay.querySelector("#seccionPdfHilo");
+    if (!seccion) return;
+
+    if (typeof listarPdfsGuardados !== "function") {
+        seccion.remove();
+        return;
+    }
+
+    const select = overlay.querySelector("#selectPdfHilo");
+    const btnExtraer = overlay.querySelector("#btnExtraerTextoPdfHilo");
+    const estadoExtraer = overlay.querySelector("#estadoExtraerTextoPdfHilo");
+    const cajaFragmento = overlay.querySelector("#cajaFragmentoPdfHilo");
+    const campoFragmento = overlay.querySelector("#campoFragmentoElegido");
+    const btnDividir = overlay.querySelector("#btnDividirFragmentoIA");
+    const estadoDividir = overlay.querySelector("#estadoDividirFragmentoIA");
+
+    listarPdfsGuardados().then(pdfs => {
+
+        if (pdfs.length === 0) {
+            select.innerHTML = `<option value="">No hay PDFs guardados todavía — súbelos en el panel de "El Hilo del día"</option>`;
+            return;
+        }
+
+        select.innerHTML = `<option value="">-- Elegir un PDF guardado --</option>` +
+            pdfs.map(p => `<option value="${p.ruta}">${p.nombre}</option>`).join("");
+
+    }).catch(error => {
+        console.error("No se pudo listar los PDFs guardados:", error);
+        select.innerHTML = `<option value="">No se pudo cargar la lista de PDFs</option>`;
+    });
+
+    select.addEventListener("change", () => {
+        btnExtraer.disabled = !select.value;
+    });
+
+    btnExtraer.addEventListener("click", async () => {
+
+        if (!select.value) return;
+
+        btnExtraer.disabled = true;
+        btnExtraer.textContent = "Extrayendo texto... (puede tardar unos segundos)";
+        estadoExtraer.style.display = "none";
+
+        try {
+
+            const texto = await extraerTextoDePdfGuardadoConIA(select.value);
+            campoFragmento.value = texto;
+            cajaFragmento.style.display = "block";
+
+        } catch (error) {
+
+            console.error("No se pudo extraer el texto del PDF:", error);
+            estadoExtraer.textContent = "❌ No se pudo extraer el texto de ese PDF. " +
+                (error && error.message ? error.message : "");
+            estadoExtraer.style.color = "#c0392b";
+            estadoExtraer.style.display = "block";
+
+        }
+
+        btnExtraer.disabled = false;
+        btnExtraer.textContent = "Extraer texto de este PDF";
+
+    });
+
+    btnDividir.addEventListener("click", async () => {
+
+        const fragmento = campoFragmento.value.trim();
+        if (!fragmento) {
+            alert("Recorta el texto hasta dejar el fragmento que quieres usar antes de dividirlo.");
+            return;
+        }
+
+        if (fragmentos.length > 0 && !confirm(
+            "Esto va a reemplazar los párrafos que ya tengas en el editor de abajo, con las 5 partes que genere la IA. ¿Continuar?"
+        )) {
+            return;
+        }
+
+        btnDividir.disabled = true;
+        btnDividir.textContent = "🤖 Dividiendo en 5 partes...";
+        estadoDividir.style.display = "none";
+
+        try {
+
+            const cincoFragmentos = await dividirFragmentoConIA(fragmento);
+
+            fragmentos.length = 0;
+            fragmentos.push(...cincoFragmentos);
+            editorFragmentos.refrescar();
+
+            estadoDividir.textContent = "✅ Se dividió en 5 partes — revísalas y ajústalas abajo antes de guardar.";
+            estadoDividir.style.color = "#2e9e5b";
+            estadoDividir.style.display = "block";
+
+        } catch (error) {
+
+            console.error("No se pudo dividir el fragmento con IA:", error);
+            estadoDividir.textContent = "❌ No se pudo dividir con IA. Puedes escribir los 5 párrafos a mano, abajo. " +
+                (error && error.message ? `(${error.message})` : "");
+            estadoDividir.style.color = "#c0392b";
+            estadoDividir.style.display = "block";
+
+        }
+
+        btnDividir.disabled = false;
+        btnDividir.textContent = "🤖 Dividir este fragmento en 5 partes con IA";
+
+    });
+
 }
 
 async function abrirFormularioHiloDia(hiloExistente, alGuardar) {
@@ -1336,6 +1472,29 @@ async function abrirFormularioHiloDia(hiloExistente, alGuardar) {
                        value="${esNuevo ? "" : (hiloExistente.titulo || "").replace(/"/g, "&quot;")}"
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
+                <div id="seccionPdfHilo" style="padding:12px; border:1px dashed var(--borde); border-radius:10px; margin-bottom:15px;">
+                    <label style="font-weight:600;">📄 Usar un PDF guardado (opcional)</label>
+                    <select id="selectPdfHilo" style="width:100%; padding:10px; margin:8px 0; border-radius:8px; border:1px solid var(--borde);">
+                        <option value="">Cargando PDFs guardados...</option>
+                    </select>
+                    <button type="button" id="btnExtraerTextoPdfHilo" class="botonAdminContorno" style="width:100%; margin-top:4px;" disabled>
+                        Extraer texto de este PDF
+                    </button>
+                    <p id="estadoExtraerTextoPdfHilo" style="display:none; font-size:13px; margin:8px 0 0;"></p>
+                    <div id="cajaFragmentoPdfHilo" style="display:none; margin-top:12px;">
+                        <label style="font-weight:600; font-size:14px;">Texto extraído — recorta hasta dejar SOLO el fragmento que quieres usar</label>
+                        <p style="font-size:13px; color:var(--texto-suave); margin:4px 0 8px;">
+                            Tú eliges exactamente qué parte usar — la IA no decide eso, solo divide lo que dejes aquí.
+                        </p>
+                        <textarea id="campoFragmentoElegido" rows="8"
+                                  style="width:100%; padding:10px; margin:0 0 8px; border-radius:8px; border:1px solid var(--borde); font-family:inherit;"></textarea>
+                        <button type="button" id="btnDividirFragmentoIA" class="botonAdminContorno" style="width:100%;">
+                            🤖 Dividir este fragmento en 5 partes con IA
+                        </button>
+                        <p id="estadoDividirFragmentoIA" style="display:none; font-size:13px; margin:8px 0 0;"></p>
+                    </div>
+                </div>
+
                 <h3 style="margin-top:10px;">Párrafos (en el orden correcto)</h3>
                 <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
                     Deben ser exactamente 5. El juego se los muestra desordenados a los jugadores.
@@ -1353,7 +1512,9 @@ async function abrirFormularioHiloDia(hiloExistente, alGuardar) {
 
     document.body.appendChild(overlay);
 
-    construirEditorFragmentosHilo(overlay.querySelector("#editorFragmentosHilo"), fragmentos);
+    const editorFragmentos = construirEditorFragmentosHilo(overlay.querySelector("#editorFragmentosHilo"), fragmentos);
+
+    activarSeccionPdfHilo(overlay, { fragmentos, editorFragmentos });
 
     overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
     overlay.addEventListener("click", (e) => {
@@ -1495,6 +1656,18 @@ function inicializarAdminHiloDia() {
         <hr style="margin:30px 0; border:none; border-top:1px solid var(--borde);">
         <h2 style="text-align:center;">🧵 El Hilo del día</h2>
 
+        <div class="seccionAdmin" id="seccionPdfsGuardadosHilo" style="display:none;">
+            <h3 class="seccionAdminTitulo">📄 PDFs guardados</h3>
+            <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
+                Guárdalos aquí una vez y reúsalos para armar el Hilo de cualquier día, sin tener que volver a subirlos.
+            </p>
+            <div class="seccionAdminBotones">
+                <input type="file" id="campoSubirPdfHilo" accept=".pdf">
+            </div>
+            <p id="estadoSubirPdfHilo" style="display:none; font-size:13px; margin:8px 0;"></p>
+            <div id="listaPdfsGuardadosHilo"></div>
+        </div>
+
         <div class="seccionAdmin">
             <h3 class="seccionAdminTitulo">🧵 El Hilo del día</h3>
             <div class="seccionAdminBotones">
@@ -1510,6 +1683,98 @@ function inicializarAdminHiloDia() {
     document.getElementById("btnNuevoHiloDia").addEventListener("click", () => {
         abrirFormularioHiloDia(null, () => renderizarListaAdminHilos(listaHilos));
     });
+
+    activarSeccionPdfsGuardadosHilo();
+
+}
+
+// ==========================================================
+// GESTIÓN DE PDFs GUARDADOS PARA "EL HILO DEL DÍA" (Etapa 23)
+// ==========================================================
+// Subir/listar/borrar — el texto en sí se extrae después, dentro del
+// formulario de un Hilo puntual (ver activarSeccionPdfHilo). Si
+// admin-ia.js no está cargado en esta página, la sección entera queda
+// oculta (mismo criterio que el resto de los botones de IA).
+function activarSeccionPdfsGuardadosHilo() {
+
+    const seccion = document.getElementById("seccionPdfsGuardadosHilo");
+    if (!seccion || typeof listarPdfsGuardados !== "function") return;
+
+    seccion.style.display = "block";
+
+    const campoArchivo = document.getElementById("campoSubirPdfHilo");
+    const estado = document.getElementById("estadoSubirPdfHilo");
+    const lista = document.getElementById("listaPdfsGuardadosHilo");
+
+    async function recargarLista() {
+
+        lista.innerHTML = "<p style='text-align:center;'>Cargando...</p>";
+
+        try {
+
+            const pdfs = await listarPdfsGuardados();
+
+            lista.innerHTML = pdfs.length === 0
+                ? "<p style='text-align:center;'>Todavía no hay ningún PDF guardado.</p>"
+                : pdfs.map(p => `
+                    <div class="tarjetaLectura" style="cursor:default;">
+                        <div class="tarjetaInfo">
+                            <p class="tarjetaTitulo">${p.nombre}</p>
+                        </div>
+                        <button type="button" class="botonAdminChico botonPeligro" data-eliminar-pdf-hilo="${p.ruta}">🗑️</button>
+                    </div>
+                `).join("");
+
+            lista.querySelectorAll("[data-eliminar-pdf-hilo]").forEach(btn => {
+                btn.addEventListener("click", async () => {
+
+                    if (!confirm("¿Borrar este PDF guardado? Esta acción no se puede deshacer.")) return;
+
+                    try {
+                        await eliminarPdfGuardado(btn.dataset.eliminarPdfHilo);
+                        recargarLista();
+                    } catch (error) {
+                        console.error("No se pudo borrar el PDF guardado:", error);
+                        alert("No se pudo borrar el PDF.");
+                    }
+
+                });
+            });
+
+        } catch (error) {
+            console.error("No se pudieron cargar los PDFs guardados:", error);
+            lista.innerHTML = "<p style='text-align:center;'>No se pudieron cargar los PDFs guardados.</p>";
+        }
+
+    }
+
+    campoArchivo.addEventListener("change", async () => {
+
+        const archivo = campoArchivo.files[0];
+        if (!archivo) return;
+
+        campoArchivo.disabled = true;
+        estado.textContent = "📄 Subiendo...";
+        estado.style.color = "var(--texto-suave)";
+        estado.style.display = "block";
+
+        try {
+            await subirPdfGuardado(archivo);
+            estado.textContent = `✅ "${archivo.name}" guardado.`;
+            estado.style.color = "#2e9e5b";
+            recargarLista();
+        } catch (error) {
+            console.error("No se pudo subir el PDF:", error);
+            estado.textContent = "❌ No se pudo subir el PDF. " + (error && error.message ? error.message : "");
+            estado.style.color = "#c0392b";
+        }
+
+        campoArchivo.disabled = false;
+        campoArchivo.value = "";
+
+    });
+
+    recargarLista();
 
 }
 
