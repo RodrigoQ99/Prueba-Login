@@ -20,11 +20,24 @@
 // - dividirFragmentoEnHiloIA: divide el fragmento YA ELEGIDO por el
 //   admin en exactamente 5 partes narrativamente coherentes y en
 //   orden — nunca decide qué fragmento usar, solo cómo dividirlo.
+// - extraerPalabraDeUrlIA: lee una página de diccionario en línea (ej.
+//   RAE) y extrae SOLO la palabra y su definición, para el banco
+//   general de Ahorcado.
+// - extraerPalabrasDeDocumentoIA: lee un documento con una lista de
+//   palabras (con o sin definiciones) para el banco general de
+//   Ahorcado.
 //
-// Todas exigen que quien llama sea un administrador autenticado (ver
-// lib/verificarAdmin.js) — cualquier otra persona recibe un error sin
-// que se llegue a llamar a Claude, así no se gasta presupuesto en
-// llamadas no autorizadas.
+// Todas las de arriba exigen que quien llama sea un administrador
+// autenticado (ver lib/verificarAdmin.js) — cualquier otra persona
+// recibe un error sin que se llegue a llamar a Claude, así no se gasta
+// presupuesto en llamadas no autorizadas.
+//
+// - cargarGlosarioPersonalIA: ÚNICA EXCEPCIÓN — abierta a CUALQUIER
+//   usuario autenticado (no solo admins), con límites estrictos de
+//   costo/abuso (2 MB, 100 palabras por carga, 3 cargas al día por
+//   usuario) — deja que cada usuario suba su propio glosario y juegue
+//   Ahorcado con sus palabras, privado, nunca mezclado con el banco
+//   general.
 // ==========================================================
 
 const { generarPreguntasIA } = require("./lib/generarPreguntasIA");
@@ -32,9 +45,15 @@ const { moderarPropuestaIA } = require("./lib/moderarPropuestaIA");
 const { extraerLecturaDeDocumentoIA } = require("./lib/extraerLecturaDeDocumentoIA");
 const { extraerTextoDePdfGuardado } = require("./lib/extraerTextoDePdfGuardado");
 const { dividirFragmentoEnHiloIA } = require("./lib/dividirFragmentoEnHiloIA");
+const { extraerPalabraDeUrlIA } = require("./lib/extraerPalabraDeUrlIA");
+const { extraerPalabrasDeDocumentoIA } = require("./lib/extraerPalabrasDeDocumentoIA");
+const { cargarGlosarioPersonalIA } = require("./lib/cargarGlosarioPersonalIA");
 
 exports.generarPreguntasIA = generarPreguntasIA;
 exports.moderarPropuestaIA = moderarPropuestaIA;
 exports.extraerLecturaDeDocumentoIA = extraerLecturaDeDocumentoIA;
 exports.extraerTextoDePdfGuardado = extraerTextoDePdfGuardado;
 exports.dividirFragmentoEnHiloIA = dividirFragmentoEnHiloIA;
+exports.extraerPalabraDeUrlIA = extraerPalabraDeUrlIA;
+exports.extraerPalabrasDeDocumentoIA = extraerPalabrasDeDocumentoIA;
+exports.cargarGlosarioPersonalIA = cargarGlosarioPersonalIA;

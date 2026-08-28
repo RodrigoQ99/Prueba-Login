@@ -30,6 +30,7 @@ const Anthropic = require("@anthropic-ai/sdk");
 const { betaZodOutputFormat } = require("@anthropic-ai/sdk/helpers/beta/zod");
 const { verificarAdmin } = require("./verificarAdmin");
 const { LecturasExtraidasSchema } = require("./esquemaLecturaExtraida");
+const { extraerTextoDeStorage } = require("./extraerTextoStorage");
 const { db, admin } = require("../admin-init");
 
 const NOMBRE_NIVEL = { facil: "fácil", intermedio: "intermedio", dificil: "difícil" };
@@ -39,47 +40,6 @@ const NOMBRE_NIVEL = { facil: "fácil", intermedio: "intermedio", dificil: "dif�
 // una, más sus preguntas) — muy por encima de lo normal, es solo para
 // no disparar el costo si alguien sube por error algo descomunal.
 const LIMITE_CARACTERES_DOCUMENTO = 200000;
-
-// pdf-parse y mammoth se cargan AQUÍ ADENTRO (no arriba, con el resto
-// de los require) a propósito: si algún día uno de los dos no está
-// instalado (ej. falló su descarga al hacer npm install — pasó en la
-// práctica con mammoth por un problema del registro de npm), que solo
-// se caiga ESE formato específico al usarlo, no toda la función desde
-// que arranca. Así PDF y .txt siguen funcionando aunque falte Word, y
-// viceversa.
-async function extraerTextoDelArchivo(buffer, storagePath) {
-
-    const extension = (storagePath.split(".").pop() || "").toLowerCase();
-
-    if (extension === "pdf") {
-        let pdfParse;
-        try {
-            pdfParse = require("pdf-parse");
-        } catch (error) {
-            throw new Error("El soporte para PDF no está instalado en el servidor todavía (falta \"pdf-parse\" — revisa functions/README.md).");
-        }
-        const data = await pdfParse(buffer);
-        return data.text;
-    }
-
-    if (extension === "docx") {
-        let mammoth;
-        try {
-            mammoth = require("mammoth");
-        } catch (error) {
-            throw new Error("El soporte para Word (.docx) no está instalado en el servidor todavía (falta \"mammoth\" — revisa functions/README.md). Mientras tanto puedes subir el mismo documento como PDF o .txt.");
-        }
-        const resultado = await mammoth.extractRawText({ buffer });
-        return resultado.value;
-    }
-
-    if (extension === "txt") {
-        return buffer.toString("utf8");
-    }
-
-    throw new Error(`Formato de archivo no soportado: .${extension}`);
-
-}
 
 // Las cantidades de preguntas por nivel/edad se describen aquí DENTRO
 // del texto del prompt (en vez de calcularlas nosotros con
@@ -142,18 +102,9 @@ const extraerLecturaDeDocumentoIA = onCall(
 
         const archivo = admin.storage().bucket().file(storagePath);
 
-        let buffer;
-        try {
-            const [contenido] = await archivo.download();
-            buffer = contenido;
-        } catch (error) {
-            logger.error("No se pudo descargar el documento subido:", error);
-            throw new HttpsError("not-found", "No se pudo encontrar el documento subido. Intenta subirlo de nuevo.");
-        }
-
         let textoDocumento;
         try {
-            textoDocumento = (await extraerTextoDelArchivo(buffer, storagePath)).trim();
+            textoDocumento = (await extraerTextoDeStorage(storagePath)).trim();
         } catch (error) {
             logger.error("No se pudo extraer texto del documento:", error);
             archivo.delete().catch(() => {});

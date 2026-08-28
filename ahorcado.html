@@ -53,6 +53,28 @@
         Adivina la palabra letra por letra antes de que se acaben tus intentos.
     </p>
 
+    <!-- Elegir entre el banco general y el glosario personal (Etapa
+         24) — oculto hasta que ahorcado-ia.js confirme que puede
+         inicializarse (necesita sesión iniciada). -->
+    <div id="modoAhorcado" style="display:none; margin-bottom:20px;">
+        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:8px;">
+            <button type="button" id="btnModoGeneral" class="botonAdminChico">🔤 Banco general</button>
+            <button type="button" id="btnModoPersonal" class="botonAdminChico">📘 Mi glosario personal</button>
+        </div>
+        <p style="text-align:center; margin-bottom:10px;">
+            <a href="#" id="linkCambiarGlosario" style="font-size:13px;">✏️ Subir / cambiar mi glosario personal</a>
+        </p>
+        <div id="cajaGlosarioPersonal" style="display:none; padding:12px; border:1px dashed var(--borde); border-radius:10px;">
+            <label style="font-weight:600; font-size:14px;">Sube un documento con tu lista de palabras (PDF, Word o texto) — con o sin definiciones</label>
+            <input type="file" id="campoSubirGlosario" accept=".pdf,.docx,.txt" style="display:block; margin-top:8px;">
+            <p style="font-size:12px; color:var(--texto-suave); margin:6px 0 0;">
+                Máximo 2 MB, hasta 100 palabras por carga, 3 cargas al día.
+            </p>
+            <p id="estadoSubirGlosario" style="display:none; font-size:13px; margin:8px 0 0;"></p>
+            <div id="revisionGlosario" style="display:none; margin-top:12px;"></div>
+        </div>
+    </div>
+
     <div id="juegoAhorcado">
         <p style="text-align:center;">Cargando...</p>
     </div>
@@ -66,10 +88,16 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<!-- Solo para el glosario personal (ver ahorcado-ia.js) — ÚNICA función
+     de IA de todo el proyecto abierta a cualquier usuario, no solo al
+     admin (ver cargarGlosarioPersonalIA en functions/lib/). -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-functions-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js"></script>
 <script src="firebase-init.js"></script>
 <script src="admin-comun.js"></script>
 <script src="lecturas.js"></script>
 <script src="racha.js"></script>
+<script src="ahorcado-ia.js"></script>
 <script src="ahorcado.js"></script>
 <script src="menu.js"></script>
 

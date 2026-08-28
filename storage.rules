@@ -18,6 +18,17 @@
 //   diferencia de la anterior, estos son PERMANENTES — se quedan
 //   guardados para usarlos en varios Hilos a lo largo del tiempo,
 //   hasta que el admin decida borrarlos a mano.
+//
+// - "fuentesPalabras/": documento con una lista de palabras (admin,
+//   banco general de Ahorcado). TRANSITORIO, igual que fuentesLecturas/.
+//
+// - "fuentesGlosarioPersonal/{uid}/": documento con el glosario
+//   personal de UN usuario para Ahorcado. A diferencia de todo lo
+//   anterior, NO es exclusivo del admin — cualquier usuario autenticado
+//   puede subir aquí, pero SOLO dentro de su propia subcarpeta (con su
+//   propio uid) — nunca puede leer, subir ni borrar en la de otro
+//   usuario. TRANSITORIO. Límites más chicos (2 MB) porque es la única
+//   carpeta abierta a cualquiera, no solo al admin.
 // ==========================================================
 
 rules_version = '2';
@@ -57,6 +68,35 @@ service firebase.storage {
                     && request.resource.size < 20 * 1024 * 1024
                     && request.resource.contentType == 'application/pdf';
       allow delete: if esAdmin();
+    }
+
+    match /fuentesPalabras/{archivo} {
+      allow read: if esAdmin();
+      allow create: if esAdmin()
+                    && request.resource.size < 10 * 1024 * 1024
+                    && request.resource.contentType.matches(
+                         'application/pdf|'
+                         + 'application/vnd.openxmlformats-officedocument.wordprocessingml.document|'
+                         + 'text/plain'
+                       );
+      allow delete: if esAdmin();
+    }
+
+    // Cada usuario SOLO puede tocar su propia subcarpeta ({uid} debe
+    // coincidir con su propio uid) — ni siquiera puede leer o borrar la
+    // de otro, mucho menos subir ahí. Límite de tamaño más chico (2 MB)
+    // y cantidad de palabras (revisada en la Cloud Function, no aquí)
+    // porque es la única carpeta de este archivo abierta a cualquier
+    // usuario, no solo al admin.
+    match /fuentesGlosarioPersonal/{uid}/{archivo} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid
+                    && request.resource.size < 2 * 1024 * 1024
+                    && request.resource.contentType.matches(
+                         'application/pdf|'
+                         + 'application/vnd.openxmlformats-officedocument.wordprocessingml.document|'
+                         + 'text/plain'
+                       );
     }
 
     // Por defecto, cualquier otra ruta del bucket queda cerrada — se

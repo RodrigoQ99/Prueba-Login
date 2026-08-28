@@ -1,12 +1,20 @@
 // ==========================================================
 // AHORCADO
 // ==========================================================
-// Palabra al azar del banco (bancoPalabras, ver admin.js), adivinada
-// letra por letra con 6 errores permitidos. Para no repetir la misma
-// palabra seguido, cada usuario lleva su propio registro de palabras ya
-// jugadas (usuarios/{uid}.palabrasJugadasAhorcado) — se evita elegir
-// cualquiera de esas mientras queden alternativas, y en cuanto el banco
-// se agota (todas ya jugadas) el registro se reinicia solo.
+// Palabra al azar del banco, adivinada letra por letra con 6 errores
+// permitidos. Dos bancos posibles (ver "modoActual" más abajo, Etapa
+// 24): el banco general (bancoPalabras, ver admin.js) o el glosario
+// PERSONAL de cada usuario (usuarios/{uid}.glosarioPersonal, que él
+// mismo sube con IA — ver ahorcado-ia.js — y que nunca se mezcla con
+// el banco general ni es visible para otros usuarios).
+//
+// Para no repetir la misma palabra seguido, cada usuario lleva su
+// propio registro de palabras ya jugadas — uno POR BANCO, para que
+// jugar en un modo no afecte el progreso del otro:
+// usuarios/{uid}.palabrasJugadasAhorcado (banco general) y
+// .palabrasJugadasGlosarioPersonal (glosario personal). Se evita
+// elegir cualquiera de esas mientras queden alternativas, y en cuanto
+// el banco se agota (todas ya jugadas) el registro se reinicia solo.
 // ==========================================================
 
 const ERRORES_MAX_AHORCADO = 6;
@@ -15,6 +23,9 @@ let palabraActual = null;
 let letrasAcertadas = [];
 let letrasFalladas = [];
 let erroresRestantesAhorcado = ERRORES_MAX_AHORCADO;
+
+// "general" | "personal" — qué banco de palabras está jugando ahora.
+let modoActual = "general";
 
 // Mapa explícito en vez de normalize("NFD") + quitar acentos: la Ñ se
 // descompone bajo NFD en "N" + tilde combinada (mismo rango Unicode que
@@ -37,29 +48,54 @@ async function iniciarRondaAhorcado(user) {
     const cont = document.getElementById("juegoAhorcado");
     cont.innerHTML = "<p style='text-align:center;'>Cargando...</p>";
 
-    let banco = [];
-    try {
-        const snapshot = await db.collection("bancoPalabras").get();
-        banco = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    } catch (error) {
-        console.error("No se pudo cargar el banco de palabras:", error);
-        cont.innerHTML = "<p style='text-align:center;'>Ocurrió un error al cargar el banco de palabras.</p>";
-        return;
-    }
-
-    if (banco.length === 0) {
-        cont.innerHTML =
-            "<p style='text-align:center;'>Todavía no hay palabras en el banco. Pídele al administrador que agregue algunas. 📖</p>";
-        return;
-    }
-
-    let jugadas = [];
+    let datosUsuario = {};
     try {
         const usuarioDoc = await db.collection("usuarios").doc(user.uid).get();
-        jugadas = (usuarioDoc.exists && usuarioDoc.data().palabrasJugadasAhorcado) || [];
+        datosUsuario = usuarioDoc.exists ? usuarioDoc.data() : {};
     } catch (error) {
-        console.error("No se pudo revisar tus palabras jugadas:", error);
+        console.error("No se pudo cargar tu perfil:", error);
     }
+
+    let banco = [];
+
+    if (modoActual === "personal") {
+
+        // El glosario personal vive completo dentro del documento del
+        // usuario (arreglo, no colección aparte) — no necesita ID real
+        // como bancoPalabras, así que se usa la palabra misma (igual
+        // criterio que el banco general) para llevar el registro de
+        // "ya jugadas" sin chocar entre sí.
+        banco = (datosUsuario.glosarioPersonal || []).map(p => ({ id: (p.palabra || "").toLowerCase(), ...p }));
+
+        if (banco.length === 0) {
+            cont.innerHTML =
+                "<p style='text-align:center;'>Todavía no tienes un glosario personal — súbelo arriba para jugar con tus propias palabras. 📘</p>";
+            return;
+        }
+
+    } else {
+
+        try {
+            const snapshot = await db.collection("bancoPalabras").get();
+            banco = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (error) {
+            console.error("No se pudo cargar el banco de palabras:", error);
+            cont.innerHTML = "<p style='text-align:center;'>Ocurrió un error al cargar el banco de palabras.</p>";
+            return;
+        }
+
+        if (banco.length === 0) {
+            cont.innerHTML =
+                "<p style='text-align:center;'>Todavía no hay palabras en el banco. Pídele al administrador que agregue algunas. 📖</p>";
+            return;
+        }
+
+    }
+
+    // Un registro de "jugadas" POR BANCO (ver nota al inicio del
+    // archivo) — así cambiar de modo nunca afecta el progreso del otro.
+    const campoJugadas = modoActual === "personal" ? "palabrasJugadasGlosarioPersonal" : "palabrasJugadasAhorcado";
+    const jugadas = datosUsuario[campoJugadas] || [];
 
     let candidatas = banco.filter(p => !jugadas.includes(p.id));
     const bancoAgotado = candidatas.length === 0;
@@ -70,7 +106,7 @@ async function iniciarRondaAhorcado(user) {
 
         try {
             await db.collection("usuarios").doc(user.uid).update({
-                palabrasJugadasAhorcado: []
+                [campoJugadas]: []
             });
         } catch (error) {
             console.error("No se pudo reiniciar el registro de palabras jugadas:", error);
@@ -234,9 +270,11 @@ async function guardarPalabraJugadaAhorcado() {
     const user = auth.currentUser;
     if (!user) return;
 
+    const campoJugadas = modoActual === "personal" ? "palabrasJugadasGlosarioPersonal" : "palabrasJugadasAhorcado";
+
     try {
         await db.collection("usuarios").doc(user.uid).update({
-            palabrasJugadasAhorcado: firebase.firestore.FieldValue.arrayUnion(palabraActual.id)
+            [campoJugadas]: firebase.firestore.FieldValue.arrayUnion(palabraActual.id)
         });
     } catch (error) {
         console.error("No se pudo registrar la palabra jugada:", error);
@@ -246,6 +284,183 @@ async function guardarPalabraJugadaAhorcado() {
     // mantiene viva la racha 🔥 igual que completar una lectura (ver
     // racha.js).
     if (typeof registrarActividadRacha === "function") registrarActividadRacha();
+
+}
+
+
+// ==========================
+// GLOSARIO PERSONAL (Etapa 24)
+// ==========================
+// subirGlosarioPersonalConIA vive en ahorcado-ia.js — si no está
+// cargada (no debería pasar en esta página), todo este bloque
+// simplemente no se activa y el juego sigue funcionando con el banco
+// general de siempre, sin el selector de modo.
+
+function actualizarBotonesModoAhorcado() {
+
+    const btnGeneral = document.getElementById("btnModoGeneral");
+    const btnPersonal = document.getElementById("btnModoPersonal");
+    if (!btnGeneral || !btnPersonal) return;
+
+    btnGeneral.style.background = modoActual === "general" ? "var(--azul)" : "";
+    btnGeneral.style.color = modoActual === "general" ? "white" : "";
+    btnPersonal.style.background = modoActual === "personal" ? "var(--azul)" : "";
+    btnPersonal.style.color = modoActual === "personal" ? "white" : "";
+
+}
+
+function activarSelectorModoAhorcado(user) {
+
+    const contenedorModo = document.getElementById("modoAhorcado");
+    if (!contenedorModo || typeof subirGlosarioPersonalConIA !== "function") return;
+
+    contenedorModo.style.display = "block";
+    actualizarBotonesModoAhorcado();
+
+    document.getElementById("btnModoGeneral").addEventListener("click", () => {
+        modoActual = "general";
+        actualizarBotonesModoAhorcado();
+        iniciarRondaAhorcado(user);
+    });
+
+    document.getElementById("btnModoPersonal").addEventListener("click", () => {
+        modoActual = "personal";
+        actualizarBotonesModoAhorcado();
+        iniciarRondaAhorcado(user);
+    });
+
+    const linkCambiar = document.getElementById("linkCambiarGlosario");
+    const cajaGlosario = document.getElementById("cajaGlosarioPersonal");
+
+    linkCambiar.addEventListener("click", (e) => {
+        e.preventDefault();
+        cajaGlosario.style.display = cajaGlosario.style.display === "block" ? "none" : "block";
+    });
+
+    activarSubidaGlosarioPersonal(user);
+
+}
+
+function activarSubidaGlosarioPersonal(user) {
+
+    const campoArchivo = document.getElementById("campoSubirGlosario");
+    const estado = document.getElementById("estadoSubirGlosario");
+    const cajaRevision = document.getElementById("revisionGlosario");
+
+    campoArchivo.addEventListener("change", async () => {
+
+        const archivo = campoArchivo.files[0];
+        if (!archivo) return;
+
+        campoArchivo.disabled = true;
+        estado.textContent = "📘 Leyendo tu documento y preparando las palabras... (puede tardar unos segundos)";
+        estado.style.color = "var(--texto-suave)";
+        estado.style.display = "block";
+        cajaRevision.style.display = "none";
+        cajaRevision.innerHTML = "";
+
+        try {
+
+            const palabras = await subirGlosarioPersonalConIA(archivo);
+
+            if (!palabras || palabras.length === 0) {
+                throw new Error("No se encontraron palabras en el documento.");
+            }
+
+            estado.textContent = `✅ Se encontraron ${palabras.length} palabra(s) — revísalas y ajústalas antes de guardar.`;
+            estado.style.color = "#2e9e5b";
+
+            mostrarRevisionGlosario(palabras, user);
+
+        } catch (error) {
+
+            console.error("No se pudo subir el glosario personal:", error);
+            estado.textContent = "❌ No se pudo procesar el documento. " + (error && error.message ? error.message : "");
+            estado.style.color = "#c0392b";
+
+        }
+
+        campoArchivo.disabled = false;
+        campoArchivo.value = "";
+
+    });
+
+}
+
+// Lista editable de las palabras que devolvió la IA — el usuario puede
+// corregir el texto, quitar alguna que no quiera, y solo entonces
+// guardar. Nunca se guarda automáticamente sin que las vea primero.
+function mostrarRevisionGlosario(palabrasIniciales, user) {
+
+    const cajaRevision = document.getElementById("revisionGlosario");
+    const palabras = palabrasIniciales.map(p => ({ ...p }));
+
+    function render() {
+
+        cajaRevision.innerHTML = palabras.map((p, i) => `
+            <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
+                <input type="text" data-campo="palabra" data-i="${i}" value="${(p.palabra || "").replace(/"/g, "&quot;")}"
+                       placeholder="Palabra" style="flex:1; padding:6px; border-radius:6px; border:1px solid var(--borde);">
+                <input type="text" data-campo="pista" data-i="${i}" value="${(p.pista || "").replace(/"/g, "&quot;")}"
+                       placeholder="Pista" style="flex:2; padding:6px; border-radius:6px; border:1px solid var(--borde);">
+                <button type="button" class="botonAdminChico botonPeligro" data-quitar="${i}">✕</button>
+            </div>
+        `).join("") + `<button type="button" id="btnGuardarGlosario" style="width:100%; margin-top:10px;">💾 Guardar glosario y jugar</button>`;
+
+        cajaRevision.querySelectorAll("[data-campo]").forEach(input => {
+            input.addEventListener("input", () => {
+                palabras[Number(input.dataset.i)][input.dataset.campo] = input.value;
+            });
+        });
+
+        cajaRevision.querySelectorAll("[data-quitar]").forEach(btn => {
+            btn.addEventListener("click", () => {
+                palabras.splice(Number(btn.dataset.quitar), 1);
+                render();
+            });
+        });
+
+        document.getElementById("btnGuardarGlosario").addEventListener("click", () => guardarGlosarioPersonal(palabras, user));
+
+    }
+
+    cajaRevision.style.display = "block";
+    render();
+
+}
+
+async function guardarGlosarioPersonal(palabras, user) {
+
+    const limpias = palabras
+        .map(p => ({ palabra: (p.palabra || "").trim(), pista: (p.pista || "").trim() }))
+        .filter(p => p.palabra.length > 0);
+
+    if (limpias.length === 0) {
+        alert("Agrega al menos una palabra antes de guardar.");
+        return;
+    }
+
+    try {
+
+        await db.collection("usuarios").doc(user.uid).update({
+            glosarioPersonal: limpias,
+            // Un glosario nuevo empieza su propio registro de "ya
+            // jugadas" desde cero — las palabras anteriores ya no existen.
+            palabrasJugadasGlosarioPersonal: []
+        });
+
+        document.getElementById("cajaGlosarioPersonal").style.display = "none";
+        document.getElementById("revisionGlosario").style.display = "none";
+        document.getElementById("estadoSubirGlosario").style.display = "none";
+
+        modoActual = "personal";
+        actualizarBotonesModoAhorcado();
+        iniciarRondaAhorcado(user);
+
+    } catch (error) {
+        console.error("No se pudo guardar el glosario personal:", error);
+        alert("No se pudo guardar el glosario. Intenta de nuevo.");
+    }
 
 }
 
@@ -262,6 +477,7 @@ auth.onAuthStateChanged((user) => {
         return;
     }
 
+    activarSelectorModoAhorcado(user);
     iniciarRondaAhorcado(user);
 
 });

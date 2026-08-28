@@ -1788,7 +1788,13 @@ function activarSeccionPdfsGuardadosHilo() {
 
 async function abrirFormularioPalabra(palabraExistente, alGuardar) {
 
-    const esNueva = !palabraExistente;
+    // "esNueva" depende de si YA TIENE ID (no de si el objeto vino
+    // vacío) — mismo criterio que abrirFormularioLectura: así, cargar
+    // una palabra desde URL/documento (Etapa 24) puede pasar
+    // palabra/pista PRE-RELLENADOS sin ID todavía, y el formulario los
+    // trata igual que "nueva" (con su chequeo de duplicados), en vez de
+    // intentar "editar" un ID que nunca existió.
+    const esNueva = !palabraExistente || !palabraExistente.id;
 
     const overlay = document.createElement("div");
     overlay.className = "modalOverlay";
@@ -1798,12 +1804,12 @@ async function abrirFormularioPalabra(palabraExistente, alGuardar) {
 
             <label style="display:block; text-align:left; margin-top:10px;">Palabra</label>
             <input type="text" id="campoPalabra" required autocomplete="off"
-                   value="${esNueva ? "" : (palabraExistente.palabra || "").replace(/"/g, "&quot;")}"
+                   value="${((palabraExistente && palabraExistente.palabra) || "").replace(/"/g, "&quot;")}"
                    style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
             <label style="display:block; text-align:left;">Pista / significado (opcional)</label>
             <input type="text" id="campoPista" autocomplete="off"
-                   value="${esNueva ? "" : (palabraExistente.pista || "").replace(/"/g, "&quot;")}"
+                   value="${((palabraExistente && palabraExistente.pista) || "").replace(/"/g, "&quot;")}"
                    style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
             <button id="btnGuardarPalabra">${esNueva ? "Agregar" : "Guardar cambios"}</button>
@@ -1948,6 +1954,24 @@ function inicializarAdminAhorcado() {
             <div class="seccionAdminBotones">
                 <button id="btnNuevaPalabra">+ Agregar palabra</button>
             </div>
+
+            <div id="seccionCargaPalabrasIA" style="display:none; text-align:left; padding:12px; border:1px dashed var(--borde); border-radius:10px; margin:15px 0;">
+
+                <label style="font-weight:600; font-size:14px;">🔗 Cargar una palabra desde un enlace de diccionario</label>
+                <div style="display:flex; gap:8px; margin:8px 0;">
+                    <input type="url" id="campoUrlPalabra" placeholder="https://dle.rae.es/..."
+                           style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--borde);">
+                    <button type="button" id="btnCargarUrlPalabra" class="botonAdminChico" style="white-space:nowrap;">Cargar</button>
+                </div>
+                <p id="estadoCargaUrlPalabra" style="display:none; font-size:13px; margin:0 0 15px;"></p>
+
+                <label style="font-weight:600; font-size:14px;">📄 O subir un documento con una lista de palabras (con o sin definiciones)</label>
+                <input type="file" id="campoSubirDocumentoPalabras" accept=".pdf,.docx,.txt" style="display:block; margin:8px 0;">
+                <p id="estadoSubirDocumentoPalabras" style="display:none; font-size:13px; margin:0;"></p>
+                <div id="revisionDocumentoPalabras" style="display:none; margin-top:12px;"></div>
+
+            </div>
+
             <div id="listaAdminPalabras"></div>
         </div>
     `;
@@ -1958,6 +1982,184 @@ function inicializarAdminAhorcado() {
     document.getElementById("btnNuevaPalabra").addEventListener("click", () => {
         abrirFormularioPalabra(null, () => renderizarListaAdminPalabras(listaPalabras));
     });
+
+    activarCargaPalabrasConIA(() => renderizarListaAdminPalabras(listaPalabras));
+
+}
+
+// ==========================================================
+// CARGA DEL BANCO DE PALABRAS CON IA — URL o documento (Etapa 24,
+// Parte A). Si admin-ia.js no está cargado en esta página, la sección
+// entera queda oculta (mismo criterio que el resto de los botones de
+// IA del proyecto).
+// ==========================================================
+function activarCargaPalabrasConIA(alGuardarAlguna) {
+
+    const seccion = document.getElementById("seccionCargaPalabrasIA");
+    if (!seccion || typeof extraerPalabraDeUrlConIA !== "function") return;
+
+    seccion.style.display = "block";
+
+    // --- Desde URL: reusa el formulario normal de una sola palabra,
+    // ya pre-llenado, para revisar/ajustar antes de guardar. ---
+
+    const campoUrl = document.getElementById("campoUrlPalabra");
+    const btnCargarUrl = document.getElementById("btnCargarUrlPalabra");
+    const estadoUrl = document.getElementById("estadoCargaUrlPalabra");
+
+    btnCargarUrl.addEventListener("click", async () => {
+
+        const url = campoUrl.value.trim();
+        if (!url) {
+            alert("Pega un enlace primero.");
+            return;
+        }
+
+        btnCargarUrl.disabled = true;
+        btnCargarUrl.textContent = "Cargando...";
+        estadoUrl.style.display = "none";
+
+        try {
+
+            const { palabra, pista } = await extraerPalabraDeUrlConIA(url);
+            campoUrl.value = "";
+            abrirFormularioPalabra({ palabra, pista }, alGuardarAlguna);
+
+        } catch (error) {
+
+            console.error("No se pudo cargar la palabra desde la URL:", error);
+            estadoUrl.textContent = "❌ No se pudo cargar esa página. " + (error && error.message ? error.message : "");
+            estadoUrl.style.color = "#c0392b";
+            estadoUrl.style.display = "block";
+
+        }
+
+        btnCargarUrl.disabled = false;
+        btnCargarUrl.textContent = "Cargar";
+
+    });
+
+    // --- Desde documento: puede traer VARIAS palabras — se revisan
+    // todas juntas en una lista editable antes de agregarlas. ---
+
+    const campoArchivo = document.getElementById("campoSubirDocumentoPalabras");
+    const estadoArchivo = document.getElementById("estadoSubirDocumentoPalabras");
+    const cajaRevision = document.getElementById("revisionDocumentoPalabras");
+
+    campoArchivo.addEventListener("change", async () => {
+
+        const archivo = campoArchivo.files[0];
+        if (!archivo) return;
+
+        campoArchivo.disabled = true;
+        estadoArchivo.textContent = "📄 Leyendo el documento... (puede tardar unos segundos)";
+        estadoArchivo.style.color = "var(--texto-suave)";
+        estadoArchivo.style.display = "block";
+        cajaRevision.style.display = "none";
+        cajaRevision.innerHTML = "";
+
+        try {
+
+            const palabras = await subirDocumentoPalabrasConIA(archivo);
+
+            if (!palabras || palabras.length === 0) {
+                throw new Error("No se encontraron palabras en el documento.");
+            }
+
+            estadoArchivo.textContent = `✅ Se encontraron ${palabras.length} palabra(s) — revísalas y elige cuáles agregar.`;
+            estadoArchivo.style.color = "#2e9e5b";
+
+            mostrarRevisionPalabrasDocumento(palabras, alGuardarAlguna);
+
+        } catch (error) {
+
+            console.error("No se pudo procesar el documento de palabras:", error);
+            estadoArchivo.textContent = "❌ No se pudo procesar el documento. " + (error && error.message ? error.message : "");
+            estadoArchivo.style.color = "#c0392b";
+
+        }
+
+        campoArchivo.disabled = false;
+        campoArchivo.value = "";
+
+    });
+
+}
+
+// Lista editable con casilla de "incluir" por palabra — el admin
+// decide cuáles agregar de verdad, ajusta el texto si hace falta, y
+// solo entonces se escriben en bancoPalabras (nunca automático).
+function mostrarRevisionPalabrasDocumento(palabrasIniciales, alGuardarAlguna) {
+
+    const cajaRevision = document.getElementById("revisionDocumentoPalabras");
+    const palabras = palabrasIniciales.map(p => ({ ...p, incluir: true }));
+
+    function render() {
+
+        cajaRevision.innerHTML = palabras.map((p, i) => `
+            <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
+                <input type="checkbox" data-incluir="${i}" ${p.incluir ? "checked" : ""}>
+                <input type="text" data-campo="palabra" data-i="${i}" value="${(p.palabra || "").replace(/"/g, "&quot;")}"
+                       placeholder="Palabra" style="flex:1; padding:6px; border-radius:6px; border:1px solid var(--borde);">
+                <input type="text" data-campo="pista" data-i="${i}" value="${(p.pista || "").replace(/"/g, "&quot;")}"
+                       placeholder="Pista" style="flex:2; padding:6px; border-radius:6px; border:1px solid var(--borde);">
+            </div>
+        `).join("") + `<button type="button" id="btnAgregarPalabrasRevisadas" style="width:100%; margin-top:10px;">+ Agregar seleccionadas al banco</button>`;
+
+        cajaRevision.querySelectorAll("[data-incluir]").forEach(chk => {
+            chk.addEventListener("change", () => {
+                palabras[Number(chk.dataset.incluir)].incluir = chk.checked;
+            });
+        });
+
+        cajaRevision.querySelectorAll("[data-campo]").forEach(input => {
+            input.addEventListener("input", () => {
+                palabras[Number(input.dataset.i)][input.dataset.campo] = input.value;
+            });
+        });
+
+        document.getElementById("btnAgregarPalabrasRevisadas").addEventListener("click", async () => {
+
+            const seleccionadas = palabras
+                .filter(p => p.incluir && (p.palabra || "").trim())
+                .map(p => ({ palabra: p.palabra.trim(), pista: (p.pista || "").trim() }));
+
+            if (seleccionadas.length === 0) {
+                alert("Selecciona al menos una palabra para agregar.");
+                return;
+            }
+
+            const btn = document.getElementById("btnAgregarPalabrasRevisadas");
+            btn.disabled = true;
+            btn.textContent = "Agregando...";
+
+            try {
+
+                const lote = db.batch();
+                seleccionadas.forEach(p => {
+                    const ref = db.collection("bancoPalabras").doc(p.palabra.toLowerCase());
+                    lote.set(ref, { palabra: p.palabra, pista: p.pista || null });
+                });
+                await lote.commit();
+
+                cajaRevision.style.display = "none";
+                cajaRevision.innerHTML = "";
+                alert(`Se agregaron ${seleccionadas.length} palabra(s) al banco.`);
+                if (alGuardarAlguna) alGuardarAlguna();
+
+            } catch (error) {
+                console.error("No se pudieron guardar las palabras:", error);
+                alert("No se pudieron guardar las palabras.");
+                btn.disabled = false;
+                btn.textContent = "+ Agregar seleccionadas al banco";
+            }
+
+        });
+
+    }
+
+    cajaRevision.style.display = "block";
+    render();
 
 }
 
