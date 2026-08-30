@@ -116,8 +116,102 @@ function activarBotonGenerarPreguntasIA(overlay, { campoTexto, editorPreguntas, 
 
 
 // ==========================================================
+// BOTÓN "INVENTAR HISTORIA POR GÉNERO" (Etapa 29)
+// ==========================================================
+// El admin marca uno o varios géneros (reusa GENEROS_LECTURA/
+// renderizarCheckboxesGeneros de generos.js — la misma lista que ya usa
+// el resto del proyecto, ninguna paralela) y Claude INVENTA una
+// historia original que los combine, junto con su banco de preguntas —
+// llena el formulario igual que "Generar preguntas con IA", totalmente
+// editable antes de guardar. Mismo criterio de disponibilidad que el
+// resto de los botones de IA: si generarLecturaOriginalConIA
+// (admin-ia.js) no existe en esta página, la sección entera queda
+// oculta.
+async function activarBotonInventarHistoriaIA(overlay, { campoTitulo, campoTexto, editorPreguntas, preguntas, contexto }) {
+
+    const seccion = overlay.querySelector("#seccionInventarHistoriaIA");
+    if (!seccion || typeof generarLecturaOriginalConIA !== "function" || typeof renderizarCheckboxesGeneros !== "function") return;
+
+    seccion.style.display = "block";
+
+    const contenedorGeneros = overlay.querySelector("#checkboxesGenerosInventar");
+    await cargarGenerosLectura();
+    renderizarCheckboxesGeneros(contenedorGeneros, []);
+
+    const btn = overlay.querySelector("#btnInventarHistoriaIA");
+    const estado = overlay.querySelector("#estadoInventarHistoriaIA");
+
+    btn.addEventListener("click", async () => {
+
+        const generos = leerGenerosSeleccionados(contenedorGeneros);
+        if (generos.length === 0) {
+            alert("Marca al menos un género antes de inventar la historia.");
+            return;
+        }
+
+        const yaHayContenido = campoTitulo.value.trim() || campoTexto.value.trim() || preguntas.length > 0;
+        if (yaHayContenido && !confirm(
+            "Esto va a reemplazar el título, el texto y las preguntas que ya tengas en este formulario, con la historia que invente la IA. ¿Continuar?"
+        )) {
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "🤖 Inventando la historia... (puede tardar unos segundos)";
+        estado.style.display = "none";
+
+        try {
+
+            const resultado = await generarLecturaOriginalConIA({ generos, ...contexto() });
+
+            campoTitulo.value = resultado.titulo;
+            campoTexto.value = resultado.texto.join("\n\n");
+            // "Generar preguntas con IA" decide si mostrarse según el
+            // contenido de campoTexto — como se llenó a mano (sin pasar
+            // por el input real del usuario), hay que avisarle.
+            campoTexto.dispatchEvent(new Event("input"));
+
+            preguntas.length = 0;
+            preguntas.push(...resultado.preguntas);
+            editorPreguntas.refrescar();
+
+            estado.textContent = `✅ Se inventó "${resultado.titulo}" — revísala con calma antes de guardar.`;
+            estado.style.color = "#2e9e5b";
+            estado.style.display = "block";
+
+        } catch (error) {
+
+            console.error("No se pudo inventar la historia con IA:", error);
+            estado.textContent = "❌ No se pudo inventar la historia con IA. Puedes seguir llenando el formulario a mano. " +
+                (error && error.message ? `(${error.message})` : "");
+            estado.style.color = "#c0392b";
+            estado.style.display = "block";
+
+        }
+
+        btn.disabled = false;
+        btn.textContent = "🤖 Inventar historia con estos géneros";
+
+    });
+
+}
+
+
+// ==========================================================
 // SUBIR UN DOCUMENTO PARA LLENAR EL FORMULARIO (Etapa 22)
 // ==========================================================
+// DESCONECTADA desde la Etapa 28 — el admin pidió quitar por completo
+// la opción de crear lecturas subiendo un documento (ni una lectura ni
+// varias de golpe). Ya nadie llama a activarBotonSubirDocumento() ni a
+// abrirColaDeLecturasImportadas() (se quitó su HTML y su invocación de
+// abrirFormularioLectura/abrirFormularioMejora, más abajo) — se dejó el
+// código aquí, sin borrar, por si algún día se retoma (ej. para la
+// futura función de "varias lecturas en un solo documento"); mientras
+// tanto no hace nada porque nada lo invoca. La Cloud Function que
+// llamaban (extraerLecturaDeDocumentoIA) y su envoltorio en admin-ia.js
+// (extraerLecturaDeDocumentoConIA) están desconectados de la misma
+// forma — ver functions/index.js y admin-ia.js.
+//
 // Mismo criterio de disponibilidad que activarBotonGenerarPreguntasIA:
 // si extraerLecturaDeDocumentoConIA (admin-ia.js) no existe en esta
 // página, no hace nada.
@@ -289,10 +383,13 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
             <h2>${esNueva ? "➕ Nueva lectura" : "✏️ Editar lectura"}${(lecturaExistente && lecturaExistente._notaProgreso) ? " " + lecturaExistente._notaProgreso : ""}</h2>
             <form id="formLecturaAdmin">
 
-                <div style="padding:12px; border:1px dashed var(--borde); border-radius:10px; margin-bottom:15px;">
-                    <label style="font-weight:600;">📄 O sube un documento (PDF, Word o texto) para llenar esto automáticamente</label>
-                    <input type="file" id="campoSubirDocumento" accept=".pdf,.docx,.txt" style="display:block; margin-top:8px;">
-                    <p id="estadoSubirDocumento" style="display:none; font-size:13px; margin:8px 0 0;"></p>
+                <div id="seccionInventarHistoriaIA" style="display:none; padding:12px; border:1px dashed var(--borde); border-radius:10px; margin-bottom:15px;">
+                    <label style="font-weight:600;">🤖 O inventa una historia original con IA según el género</label>
+                    <div id="checkboxesGenerosInventar" style="margin:8px 0;"></div>
+                    <button type="button" id="btnInventarHistoriaIA" class="botonAdminContorno" style="width:100%;">
+                        🤖 Inventar historia con estos géneros
+                    </button>
+                    <p id="estadoInventarHistoriaIA" style="display:none; font-size:13px; margin:8px 0 0;"></p>
                 </div>
 
                 <label>ID de la lectura</label>
@@ -364,21 +461,12 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
         contexto: () => ({ tipo: "premio", nivel: overlay.querySelector("#campoNivel").value })
     });
 
-    activarBotonSubirDocumento(overlay, {
+    activarBotonInventarHistoriaIA(overlay, {
         campoTitulo: overlay.querySelector("#campoTitulo"),
         campoTexto: overlay.querySelector("#campoTexto"),
         editorPreguntas,
         preguntas,
-        contexto: () => ({ tipo: "premio", nivel: overlay.querySelector("#campoNivel").value }),
-        // El documento traía MÁS de una lectura: este formulario ya no
-        // aplica (no hay "una" lectura que llenar aquí) — se cierra y se
-        // abre una fila de formularios, uno por cada lectura detectada.
-        alDetectarVarias: (lecturasDetectadas) => {
-            overlay.remove();
-            abrirColaDeLecturasImportadas(lecturasDetectadas, (prellenado, siguiente) => {
-                abrirFormularioLectura(prellenado, siguiente, siguiente);
-            }, alGuardar);
-        }
+        contexto: () => ({ tipo: "premio", nivel: overlay.querySelector("#campoNivel").value })
     });
 
     function cerrarFormularioLectura() {
@@ -560,10 +648,13 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar, alCa
             <h2>${esNueva ? "➕ Nueva lectura de práctica" : "✏️ Editar lectura de práctica"}${(lecturaExistente && lecturaExistente._notaProgreso) ? " " + lecturaExistente._notaProgreso : ""}</h2>
             <form id="formMejoraAdmin">
 
-                <div style="padding:12px; border:1px dashed var(--borde); border-radius:10px; margin-bottom:15px;">
-                    <label style="font-weight:600;">📄 O sube un documento (PDF, Word o texto) para llenar esto automáticamente</label>
-                    <input type="file" id="campoSubirDocumento" accept=".pdf,.docx,.txt" style="display:block; margin-top:8px;">
-                    <p id="estadoSubirDocumento" style="display:none; font-size:13px; margin:8px 0 0;"></p>
+                <div id="seccionInventarHistoriaIA" style="display:none; padding:12px; border:1px dashed var(--borde); border-radius:10px; margin-bottom:15px;">
+                    <label style="font-weight:600;">🤖 O inventa una historia original con IA según el género</label>
+                    <div id="checkboxesGenerosInventar" style="margin:8px 0;"></div>
+                    <button type="button" id="btnInventarHistoriaIA" class="botonAdminContorno" style="width:100%;">
+                        🤖 Inventar historia con estos géneros
+                    </button>
+                    <p id="estadoInventarHistoriaIA" style="display:none; font-size:13px; margin:8px 0 0;"></p>
                 </div>
 
                 <label>ID de la lectura</label>
@@ -623,19 +714,12 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar, alCa
         contexto: () => ({ tipo: "mejora", edad: Number(overlay.querySelector("#campoEdad").value) })
     });
 
-    activarBotonSubirDocumento(overlay, {
+    activarBotonInventarHistoriaIA(overlay, {
         campoTitulo: overlay.querySelector("#campoTitulo"),
         campoTexto: overlay.querySelector("#campoTexto"),
         editorPreguntas,
         preguntas,
-        contexto: () => ({ tipo: "mejora", edad: Number(overlay.querySelector("#campoEdad").value) }),
-        // Ver la misma nota en abrirFormularioLectura.
-        alDetectarVarias: (lecturasDetectadas) => {
-            overlay.remove();
-            abrirColaDeLecturasImportadas(lecturasDetectadas, (prellenado, siguiente) => {
-                abrirFormularioMejora(prellenado, edadPorDefecto, siguiente, siguiente);
-            }, alGuardar);
-        }
+        contexto: () => ({ tipo: "mejora", edad: Number(overlay.querySelector("#campoEdad").value) })
     });
 
     function cerrarFormularioMejora() {
@@ -1955,6 +2039,16 @@ function inicializarAdminAhorcado() {
                 <button id="btnNuevaPalabra">+ Agregar palabra</button>
             </div>
 
+            <div id="seccionImportarExcelPalabras" style="text-align:left; padding:12px; border:1px dashed var(--borde); border-radius:10px; margin:15px 0;">
+                <label style="font-weight:600; font-size:14px;">📊 Importar palabras desde un archivo Excel (.xlsx)</label>
+                <p style="font-size:12px; color:var(--texto-suave); margin:4px 0 8px;">
+                    No usa inteligencia artificial — el archivo se lee directamente en tu navegador, nada se guarda hasta que confirmes.
+                </p>
+                <input type="file" id="campoImportarExcelPalabras" accept=".xlsx,.xls" style="display:block; margin:8px 0;">
+                <p id="estadoImportarExcelPalabras" style="display:none; font-size:13px; margin:0;"></p>
+                <div id="previaImportarExcelPalabras" style="display:none; margin-top:12px;"></div>
+            </div>
+
             <div id="seccionCargaPalabrasIA" style="display:none; text-align:left; padding:12px; border:1px dashed var(--borde); border-radius:10px; margin:15px 0;">
 
                 <label style="font-weight:600; font-size:14px;">🔗 Cargar una palabra desde un enlace de diccionario</label>
@@ -1984,6 +2078,244 @@ function inicializarAdminAhorcado() {
     });
 
     activarCargaPalabrasConIA(() => renderizarListaAdminPalabras(listaPalabras));
+    activarImportacionExcelPalabras(() => renderizarListaAdminPalabras(listaPalabras));
+
+}
+
+// ==========================================================
+// IMPORTAR BANCO DE PALABRAS DESDE EXCEL (Etapa 28) — SIN IA
+// ==========================================================
+// A diferencia de activarCargaPalabrasConIA (más abajo), esto NUNCA
+// llama a ninguna Cloud Function ni a Claude: el archivo se lee y se
+// procesa por completo en el navegador con SheetJS (biblioteca cargada
+// por CDN en admin-juegos.html — ver <script src=".../xlsx...">, mismo
+// patrón sin bundler que ya usa el resto del proyecto para Firebase).
+// El admin elige cuál columna es la palabra y cuál el significado,
+// revisa la vista previa con esas columnas ya identificadas, y solo al
+// hacer clic en "Confirmar e importar" se escribe algo en bancoPalabras
+// — nunca se guarda solo con seleccionar el archivo.
+function activarImportacionExcelPalabras(alGuardarAlguna) {
+
+    const campoArchivo = document.getElementById("campoImportarExcelPalabras");
+    if (!campoArchivo) return;
+
+    const estado = document.getElementById("estadoImportarExcelPalabras");
+    const previa = document.getElementById("previaImportarExcelPalabras");
+
+    if (typeof XLSX === "undefined") {
+        estado.textContent = "⚠️ No se pudo cargar el lector de Excel (revisa tu conexión y recarga la página).";
+        estado.style.color = "#c0392b";
+        estado.style.display = "block";
+        campoArchivo.disabled = true;
+        return;
+    }
+
+    campoArchivo.addEventListener("change", async () => {
+
+        const archivo = campoArchivo.files[0];
+        if (!archivo) return;
+
+        estado.textContent = "📊 Leyendo el archivo...";
+        estado.style.color = "var(--texto-suave)";
+        estado.style.display = "block";
+        previa.style.display = "none";
+        previa.innerHTML = "";
+
+        try {
+
+            const datosArchivo = await archivo.arrayBuffer();
+            const libro = XLSX.read(datosArchivo, { type: "array" });
+            const primeraHoja = libro.Sheets[libro.SheetNames[0]];
+
+            if (!primeraHoja) {
+                throw new Error("El archivo no tiene ninguna hoja legible.");
+            }
+
+            // header:1 → cada fila como arreglo de celdas (sin asumir
+            // todavía si la primera fila es encabezado o dato) — eso lo
+            // decide el admin con la casilla de la vista previa.
+            const filas = XLSX.utils
+                .sheet_to_json(primeraHoja, { header: 1, defval: "" })
+                .map(fila => fila.map(celda => String(celda ?? "").trim()))
+                .filter(fila => fila.some(celda => celda !== "")); // sin filas totalmente vacías
+
+            if (filas.length === 0) {
+                throw new Error("El archivo no tiene filas con datos.");
+            }
+
+            estado.style.display = "none";
+            mostrarPreviaImportarExcelPalabras(filas, alGuardarAlguna);
+
+        } catch (error) {
+
+            console.error("No se pudo leer el archivo de Excel:", error);
+            estado.textContent = "❌ No se pudo leer ese archivo. Asegúrate de que sea un .xlsx o .xls válido. " +
+                (error && error.message ? `(${error.message})` : "");
+            estado.style.color = "#c0392b";
+            estado.style.display = "block";
+
+        }
+
+        campoArchivo.value = "";
+
+    });
+
+}
+
+// Vista previa: tabla con las primeras filas + dos selectores (columna
+// de palabra / columna de significado) — todo se recalcula al vuelo si
+// el admin marca o desmarca "la primera fila tiene encabezados".
+function mostrarPreviaImportarExcelPalabras(filas, alGuardarAlguna) {
+
+    const previa = document.getElementById("previaImportarExcelPalabras");
+    const numColumnas = filas.reduce((max, fila) => Math.max(max, fila.length), 1);
+    const letraColumna = (i) => "Columna " + String.fromCharCode(65 + i);
+
+    let conEncabezados = true;
+    let colPalabra = 0;
+    let colSignificado = numColumnas > 1 ? 1 : 0;
+
+    const filasDatos = () => conEncabezados ? filas.slice(1) : filas;
+
+    const etiquetasColumnas = () => {
+        const encabezado = filas[0] || [];
+        return Array.from({ length: numColumnas }, (_, i) =>
+            (conEncabezados && encabezado[i]) ? encabezado[i] : letraColumna(i)
+        );
+    };
+
+    function render() {
+
+        const etiquetas = etiquetasColumnas();
+        const datos = filasDatos();
+        const filasVista = datos.slice(0, 8);
+
+        previa.innerHTML = `
+            <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin-bottom:10px;">
+                <input type="checkbox" id="chkExcelConEncabezados" ${conEncabezados ? "checked" : ""}>
+                La primera fila tiene encabezados de columna
+            </label>
+
+            <div style="overflow-x:auto; margin-bottom:12px;">
+                <table style="border-collapse:collapse; width:100%; font-size:13px;">
+                    <thead>
+                        <tr>${etiquetas.map(e => `<th style="text-align:left; padding:6px; border-bottom:2px solid var(--borde); white-space:nowrap;">${e}</th>`).join("")}</tr>
+                    </thead>
+                    <tbody>
+                        ${filasVista.map(fila => `
+                            <tr>${etiquetas.map((_, i) => `<td style="padding:6px; border-bottom:1px solid var(--borde);">${fila[i] || ""}</td>`).join("")}</tr>
+                        `).join("")}
+                    </tbody>
+                </table>
+                <p style="font-size:12px; color:var(--texto-suave); margin-top:4px;">
+                    Mostrando ${filasVista.length} de ${datos.length} fila(s) de datos.
+                </p>
+            </div>
+
+            <label style="display:block; font-size:13px; font-weight:600;">Columna con la PALABRA</label>
+            <select id="selectColPalabra" style="width:100%; padding:8px; margin:4px 0 10px; border-radius:8px; border:1px solid var(--borde);">
+                ${etiquetas.map((e, i) => `<option value="${i}" ${i === colPalabra ? "selected" : ""}>${e}</option>`).join("")}
+            </select>
+
+            <label style="display:block; font-size:13px; font-weight:600;">Columna con el SIGNIFICADO</label>
+            <select id="selectColSignificado" style="width:100%; padding:8px; margin:4px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+                ${etiquetas.map((e, i) => `<option value="${i}" ${i === colSignificado ? "selected" : ""}>${e}</option>`).join("")}
+            </select>
+
+            <button type="button" id="btnConfirmarImportarExcel" style="width:100%;">✅ Confirmar e importar</button>
+            <p id="estadoConfirmarImportarExcel" style="display:none; font-size:13px; margin-top:8px;"></p>
+        `;
+
+        previa.querySelector("#chkExcelConEncabezados").addEventListener("change", (e) => {
+            conEncabezados = e.target.checked;
+            render();
+        });
+
+        previa.querySelector("#selectColPalabra").addEventListener("change", (e) => {
+            colPalabra = Number(e.target.value);
+        });
+        previa.querySelector("#selectColSignificado").addEventListener("change", (e) => {
+            colSignificado = Number(e.target.value);
+        });
+
+        previa.querySelector("#btnConfirmarImportarExcel").addEventListener("click", () => {
+            confirmarImportarExcelPalabras(filasDatos(), colPalabra, colSignificado, alGuardarAlguna);
+        });
+
+    }
+
+    previa.style.display = "block";
+    render();
+
+}
+
+// Recorre fila por fila (SIN IA — solo lectura directa de datos) y
+// guarda palabra+significado de la MISMA fila como una entrada nueva
+// del banco. Salta filas con la palabra o el significado vacíos (o
+// repetidas dentro del mismo archivo) y lleva la cuenta para el
+// resumen final.
+async function confirmarImportarExcelPalabras(filasDatos, colPalabra, colSignificado, alGuardarAlguna) {
+
+    const estado = document.getElementById("estadoConfirmarImportarExcel");
+    const btn = document.getElementById("btnConfirmarImportarExcel");
+    btn.disabled = true;
+    btn.textContent = "Importando...";
+
+    const vistas = new Set();
+    const validas = [];
+    let omitidas = 0;
+
+    filasDatos.forEach(fila => {
+        const palabra = (fila[colPalabra] || "").trim();
+        const significado = (fila[colSignificado] || "").trim();
+        const id = palabra.toLowerCase();
+        if (!palabra || !significado || vistas.has(id)) {
+            omitidas++;
+            return;
+        }
+        vistas.add(id);
+        validas.push({ id, palabra, pista: significado });
+    });
+
+    if (validas.length === 0) {
+        estado.textContent = "❌ No se encontró ninguna fila completa para importar.";
+        estado.style.color = "#c0392b";
+        estado.style.display = "block";
+        btn.disabled = false;
+        btn.textContent = "✅ Confirmar e importar";
+        return;
+    }
+
+    try {
+
+        // Firestore permite máximo 500 operaciones por lote — se divide
+        // en trozos por si el archivo trae muchas palabras.
+        for (let i = 0; i < validas.length; i += 450) {
+            const lote = db.batch();
+            validas.slice(i, i + 450).forEach(p => {
+                lote.set(db.collection("bancoPalabras").doc(p.id), { palabra: p.palabra, pista: p.pista });
+            });
+            await lote.commit();
+        }
+
+        document.getElementById("previaImportarExcelPalabras").style.display = "none";
+        document.getElementById("previaImportarExcelPalabras").innerHTML = "";
+        document.getElementById("campoImportarExcelPalabras").value = "";
+
+        alert(`Se importaron ${validas.length} palabra(s). Se omitieron ${omitidas} fila(s) por estar incompletas o repetidas.`);
+
+        if (alGuardarAlguna) alGuardarAlguna();
+
+    } catch (error) {
+
+        console.error("No se pudieron importar las palabras:", error);
+        estado.textContent = "❌ No se pudieron guardar las palabras. Intenta de nuevo.";
+        estado.style.color = "#c0392b";
+        estado.style.display = "block";
+        btn.disabled = false;
+        btn.textContent = "✅ Confirmar e importar";
+
+    }
 
 }
 

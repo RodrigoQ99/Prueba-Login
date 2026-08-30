@@ -23,6 +23,14 @@ const BANDAS_PREGUNTAS_PREMIO = [
 
 const PREGUNTAS_MEJORA_POR_DEFECTO = 3;
 
+// Rango aproximado de palabras para "Mejorar la lectura" (ver nota más
+// arriba) — hasta ahora solo vivía en un comentario; se sube a
+// constante exportada porque generarLecturaOriginalIA.js también lo
+// necesita (para pedirle a Claude un texto del tamaño correcto al
+// INVENTAR una historia nueva, no solo al generar preguntas de una ya
+// existente).
+const RANGO_PALABRAS_MEJORA = { min: 100, max: 225 };
+
 function contarPalabras(texto) {
     return (texto || "").trim().split(/\s+/).filter(p => p.length > 0).length;
 }
@@ -63,4 +71,10 @@ function determinarCantidadPreguntas(tipo, cantidadPalabras) {
 
 }
 
-module.exports = { contarPalabras, determinarCantidadPreguntas };
+module.exports = {
+    contarPalabras,
+    determinarCantidadPreguntas,
+    BANDAS_PREGUNTAS_PREMIO,
+    PREGUNTAS_MEJORA_POR_DEFECTO,
+    RANGO_PALABRAS_MEJORA
+};

@@ -1,22 +1,16 @@
 // ==========================================================
 // GLOSARIO PERSONAL DE AHORCADO — LLAMADA A LA CLOUD FUNCTION
 // ==========================================================
-// A diferencia de admin-ia.js (exclusivo del panel de administrador),
-// este archivo vive en ahorcado.html — página de PARTICIPANTES — porque
-// cargarGlosarioPersonalIA es la ÚNICA función de IA de todo el
-// proyecto abierta a cualquier usuario autenticado, no solo al admin
-// (con límites de costo/abuso: 2 MB, 100 palabras por carga, 3 cargas
-// al día — impuestos del lado del servidor, ver
-// functions/lib/cargarGlosarioPersonalIA.js, no se puede evadir
-// llamando distinto desde aquí).
-//
-// El resultado se devuelve para que el usuario lo revise y confirme
-// antes de guardarlo — el guardado en usuarios/{uid}.glosarioPersonal
-// lo hace ahorcado.js directamente en Firestore (ya tiene permiso de
-// escribir su propio documento), esta función nunca guarda nada sola.
+// DESCONECTADO por completo desde la Etapa 29 — el admin pidió que los
+// usuarios ya NO puedan subir ningún documento ni usar IA (eso queda
+// exclusivo del panel de administrador). Este archivo ya NO se carga en
+// ahorcado.html, así que nada de lo de abajo se ejecuta nunca — se deja
+// sin borrar por si algún día se retoma. La Cloud Function que llamaba
+// (cargarGlosarioPersonalIA) también quedó desconectada, ver
+// functions/index.js.
 // ==========================================================
-
-const TAMANIO_MAXIMO_GLOSARIO = 2 * 1024 * 1024; // 2 MB — igual que storage.rules
+//
+// const TAMANIO_MAXIMO_GLOSARIO = 2 * 1024 * 1024; // 2 MB — igual que storage.rules
 
 /**
  * Sube un documento a la carpeta privada del usuario y le pide a la

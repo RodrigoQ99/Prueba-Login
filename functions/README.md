@@ -1,18 +1,22 @@
 # Cloud Functions — funciones de IA del panel de administrador
 
-Ocho funciones (`onCall`, Firebase Functions v2). **Siete son exclusivas para administradores:**
+Siete funciones activas (`onCall`, Firebase Functions v2), **TODAS exclusivas para administradores** (desde la Etapa 29 no queda ninguna abierta a usuarios normales — ver la nota sobre `cargarGlosarioPersonalIA` más abajo):
 
 - `generarPreguntasIA` — arma el banco de preguntas de una lectura a partir de su texto.
 - `moderarPropuestaIA` — da una opinión sobre si una propuesta de "Ser el protagonista de la historia" parece apropiada (nunca aprueba/rechaza nada por su cuenta).
-- `extraerLecturaDeDocumentoIA` — lee un documento (PDF/.docx/.txt) que el admin subió a Firebase Storage y arma título + texto + banco de preguntas para llenar el formulario de creación de lectura. El documento puede traer UNA o VARIAS lecturas (ej. 10 historias con sus propias preguntas cada una) — siempre devuelve un arreglo; si ya traían preguntas con la respuesta correcta marcada, las copia tal cual (no las parafrasea); a las que les falten, se las genera.
+- `generarLecturaOriginalIA` — INVENTA una historia 100% original (nunca copiada de una obra existente) que combina el o los géneros que el admin marca, junto con su banco de preguntas — mismas bandas de palabras/preguntas que ya usa el resto del proyecto (Etapa 29).
 - `extraerTextoDePdfGuardado` — devuelve el texto completo de un PDF guardado en Storage, SIN tocarlo con IA (no llama a Claude, es solo lectura) — el admin lo recorta a mano hasta dejar el fragmento exacto que quiere usar en "El Hilo del día". La IA nunca elige esa parte por su cuenta.
 - `dividirFragmentoEnHiloIA` — divide el fragmento YA ELEGIDO por el admin en exactamente 5 partes narrativamente coherentes y en orden (el juego las desordena solo al mostrarlas; la base de datos siempre guarda el orden real).
 - `extraerPalabraDeUrlIA` — lee una página de diccionario en línea (ej. RAE) y extrae SOLO la palabra y su definición, para el banco general de Ahorcado.
 - `extraerPalabrasDeDocumentoIA` — lee un documento con una lista de palabras (con o sin definiciones) para el banco general de Ahorcado.
 
-Todas las de arriba verifican `request.auth` + membresía en la colección `administradores` de Firestore (mismo criterio que `esAdmin()` en el frontend, ver `lib/verificarAdmin.js`) **antes** de llamar a la API de Claude (excepto `extraerTextoDePdfGuardado`, que nunca la llama) — así nadie gasta presupuesto llamándolas sin permiso.
+Todas verifican `request.auth` + membresía en la colección `administradores` de Firestore (mismo criterio que `esAdmin()` en el frontend, ver `lib/verificarAdmin.js`) **antes** de llamar a la API de Claude (excepto `extraerTextoDePdfGuardado`, que nunca la llama) — así nadie gasta presupuesto llamándolas sin permiso.
 
-**La octava, `cargarGlosarioPersonalIA`, es la ÚNICA excepción** — abierta a cualquier usuario autenticado (no solo admins), para que cada quien suba su propio glosario y juegue Ahorcado con sus palabras (privado, nunca mezclado con el banco general). Tiene límites de costo/abuso impuestos del lado del servidor (no se pueden evadir desde el navegador): máximo 2 MB por archivo, 100 palabras procesadas por carga, y 3 cargas por día por usuario (contador guardado en `usuarios/{uid}.usoGlosarioPersonalIA`, revisado con una transacción de Firestore).
+> **DESCONECTADA (Etapa 28): `extraerLecturaDeDocumentoIA`.** El admin pidió quitar por completo la opción de crear lecturas subiendo un documento (una sola o varias de golpe). El código sigue en `lib/extraerLecturaDeDocumentoIA.js` (y su esquema, `lib/esquemaLecturaExtraida.js` — este último SÍ sigue en uso, lo reusa `generarLecturaOriginalIA`) sin borrar, por si algún día se retoma, pero ya no está exportada en `index.js` — al desplegar, deja de existir como función en la nube (no se puede llamar, no consume nada). Su envoltorio del lado del navegador (`extraerLecturaDeDocumentoConIA`, en `../admin-ia.js`) y el botón "subir documento" del editor de lecturas también quedaron comentados/quitados. Para reactivarla: descomenta el `require`/`export` en `index.js`, el envoltorio en `admin-ia.js`, y vuelve a agregar el botón en el formulario de lectura (`admin.js`).
+>
+> El banco de palabras de Ahorcado tiene una alternativa SIN IA para cargas masivas: "Importar desde Excel" (ver más abajo) — lee un `.xlsx` directamente en el navegador con SheetJS, sin pasar por ninguna Cloud Function.
+
+> **DESCONECTADA (Etapa 29): `cargarGlosarioPersonalIA`.** Era la ÚNICA función abierta a cualquier usuario autenticado (no solo admins): le dejaba subir un documento y usar IA para armar su propio glosario personal de Ahorcado (privado, 2 MB / 100 palabras / 3 cargas al día). El admin pidió que los usuarios **ya no puedan subir ningún documento ni usar IA** — eso queda exclusivo del panel de administrador. El código sigue en `lib/cargarGlosarioPersonalIA.js` sin borrar, pero ya no está exportada. Su envoltorio del lado del navegador (`subirGlosarioPersonalConIA`, en `../ahorcado-ia.js`) ya no se carga en `ahorcado.html`, y todo el selector "banco general / glosario personal" se quitó de `ahorcado.js` — ahora Ahorcado juega SIEMPRE con el banco general (`bancoPalabras`), que el admin llena a mano, con IA (URL/documento) o importando un Excel. La carpeta de Storage que usaba (`fuentesGlosarioPersonal/{uid}/`) también quedó cerrada, ver `storage.rules`.
 
 ## Requisitos
 
@@ -43,7 +47,7 @@ firebase deploy --only functions,storage
 
 Si en el paso 3 ya existía un valor y quieres cambiarlo, corre el mismo comando otra vez — crea una nueva versión del secreto (Firebase la usa automáticamente en el próximo despliegue).
 
-> **Nota sobre `extraerLecturaDeDocumentoIA` — soporte de Word (.docx) pausado:** `mammoth` (la librería para leer .docx) falló repetidamente al descargarse desde `registry.npmjs.org` (mismo error en este entorno y en la computadora real) — por ahora lo quité de `package.json` para no bloquear la instalación de todo lo demás. **Mientras tanto, subir PDF o .txt funciona normal** — la función carga cada librería solo cuando hace falta (ver `extraerTextoDelArchivo` en `extraerLecturaDeDocumentoIA.js`), así que Word simplemente muestra "no disponible por ahora" en vez de romper nada. Para reactivarlo más adelante: agrega de nuevo `"mammoth": "^1.8.0"` a `dependencies` aquí abajo, corre `npm install` dentro de `functions/`, y vuelve a desplegar.
+> **Nota sobre `extraerLecturaDeDocumentoIA` — soporte de Word (.docx) pausado:** aplica solo si algún día se reactiva esta función (hoy está desconectada, ver arriba). `mammoth` (la librería para leer .docx) falló repetidamente al descargarse desde `registry.npmjs.org` — se quitó de `package.json`. Para reactivarlo: agrega de nuevo `"mammoth": "^1.8.0"` a `dependencies` aquí abajo, corre `npm install` dentro de `functions/`, y vuelve a desplegar.
 
 ## Después de la primera vez
 
@@ -65,38 +69,42 @@ o en la Consola de Firebase → Functions → selecciona la función → pestañ
 
 ```
 functions/
-  index.js                    — exporta las ocho funciones
+  index.js                    — exporta las siete funciones activas
   admin-init.js                — inicializa el Admin SDK (Firestore + Storage) una sola vez
   lib/
     verificarAdmin.js           — chequeo compartido: ¿quién llama es admin?
-    cantidadPreguntas.js        — cuántas preguntas pedirle a Claude (premios: por
-                                   cantidad de palabras, igual que protagonista.js;
-                                   mejora: 3 fijas)
+    cantidadPreguntas.js        — cuántas preguntas/palabras pedirle a Claude (premios: por
+                                   nivel, igual que protagonista.js; mejora: rango fijo de
+                                   palabras + 3 preguntas). También lo usa generarLecturaOriginalIA.
     extraerTextoStorage.js      — helper compartido: descarga+extrae texto de
-                                   Storage (PDF/.docx/.txt), usado por varias funciones
+                                   Storage (PDF/.docx/.txt) — solo lo usa ya la función
+                                   DESCONECTADA extraerLecturaDeDocumentoIA
     extraccionListaPalabras.js  — helper compartido: le pide a Claude una lista de
-                                   palabras+definiciones (admin y glosario personal)
+                                   palabras+definiciones (admin; antes también glosario personal)
     esquemaPreguntas.js         — esquema Zod del banco de preguntas
     esquemaModeracion.js        — esquema Zod del veredicto de moderación
-    esquemaLecturaExtraida.js   — esquema Zod de título+texto+preguntas extraídos
+    esquemaLecturaExtraida.js   — esquema Zod de título+texto+preguntas (lo usa
+                                   generarLecturaOriginalIA Y la función DESCONECTADA)
     esquemaHiloDia.js           — esquema Zod de los 5 fragmentos de El Hilo del día
     esquemaPalabra.js           — esquema Zod de palabra(s) + definición para Ahorcado
     generarPreguntasIA.js
     moderarPropuestaIA.js
-    extraerLecturaDeDocumentoIA.js
+    generarLecturaOriginalIA.js
+    extraerLecturaDeDocumentoIA.js   — DESCONECTADA, no exportada (ver nota arriba)
     extraerTextoDePdfGuardado.js
     dividirFragmentoEnHiloIA.js
     extraerPalabraDeUrlIA.js
     extraerPalabrasDeDocumentoIA.js
-    cargarGlosarioPersonalIA.js
+    cargarGlosarioPersonalIA.js      — DESCONECTADA, no exportada (ver nota arriba)
 ```
 
-Cuatro carpetas en Storage (ver `storage.rules`) — todas exclusivas de administradores EXCEPTO la última:
+Tres carpetas en Storage (ver `storage.rules`), TODAS exclusivas de administradores:
 
-- `fuentesLecturas/` — documento que el admin sube para crear una lectura (Etapa 22). TRANSITORIO. Máximo 15 MB, PDF/.docx/.txt.
+- `fuentesLecturas/` — SIN USO desde la Etapa 28 (nada la sube ni la lee ya que `extraerLecturaDeDocumentoIA` está desconectada) — la regla se dejó tal cual, sin borrar, por si se reactiva. Máximo 15 MB, PDF/.docx/.txt.
 - `pdfsHiloDelDia/` — PDFs que el admin guarda como fuente reusable para "El Hilo del día" (Etapa 23). PERMANENTES: se quedan hasta que el admin los borre a mano. Máximo 20 MB, solo PDF.
 - `fuentesPalabras/` — documento con una lista de palabras para el banco general de Ahorcado (Etapa 24, admin). TRANSITORIO. Máximo 10 MB, PDF/.docx/.txt.
-- `fuentesGlosarioPersonal/{uid}/` — documento con el glosario personal de UN usuario (Etapa 24, cualquiera). TRANSITORIO. Cada quien SOLO puede tocar su propia subcarpeta ({uid} = su propio uid). Máximo 2 MB, PDF/.docx/.txt.
+
+`fuentesGlosarioPersonal/{uid}/` — CERRADA desde la Etapa 29 (ver nota arriba). Su regla quedó comentada en `storage.rules`, sin borrar.
 
 Todos los archivos "TRANSITORIOS" los borra la Cloud Function correspondiente ella misma apenas termina de leerlos — nunca quedan guardados de forma permanente.
 
