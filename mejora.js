@@ -18,7 +18,7 @@ async function cargarPantallaMejora() {
         return;
     }
 
-    renderizarListaMejora(datos.edadActual, datos.mejoraCompletadas || []);
+    renderizarListaMejora(datos.edadActual, datos.mejoraCompletadas || [], datos.pais || null);
 
 }
 
@@ -88,14 +88,17 @@ async function mostrarModalEdad(esPrimeraVez) {
 // LISTA DE LECTURAS DE LA EDAD ACTUAL
 // ==========================================================
 
-function renderizarListaMejora(edadActual, completadas) {
+function renderizarListaMejora(edadActual, completadas, paisUsuario) {
 
     const contenedor = document.getElementById("listaMejora");
     const encabezado = document.getElementById("encabezadoEdad");
 
     encabezado.textContent = `Edad actual: ${etiquetaEdad(edadActual)}`;
 
-    const listaDeEstaEdad = CATALOGO_MEJORA[edadActual] || [];
+    // Solo lecturas globales o del mismo país del usuario (Etapa 30 —
+    // "bases de datos separadas" por país, ver filtrarPorPais en
+    // lecturas.js).
+    const listaDeEstaEdad = filtrarPorPais(CATALOGO_MEJORA[edadActual] || [], paisUsuario);
 
     if (listaDeEstaEdad.length === 0) {
         contenedor.innerHTML = `

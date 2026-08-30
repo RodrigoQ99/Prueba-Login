@@ -409,6 +409,9 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
                     <option value="dificil">Difícil</option>
                 </select>
 
+                <label>País (vacío = visible para todos los países)</label>
+                <select id="campoPaisLectura" style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);"></select>
+
                 <label>Tiempo de lectura en segundos</label>
                 <input type="number" id="campoTiempoLectura" min="10" required
                        value="${(lecturaExistente && lecturaExistente.tiempoLectura) || 60}"
@@ -451,6 +454,7 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
     document.body.appendChild(overlay);
 
     overlay.querySelector("#campoNivel").value = (lecturaExistente && lecturaExistente.nivel) || "facil";
+    renderizarSelectorPaisConGlobal(overlay.querySelector("#campoPaisLectura"), (lecturaExistente && lecturaExistente.pais) || "");
 
     const editorPreguntas = construirEditorPreguntas(overlay.querySelector("#editorPreguntas"), preguntas);
 
@@ -525,6 +529,9 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
         const datos = {
             titulo: overlay.querySelector("#campoTitulo").value.trim(),
             nivel: overlay.querySelector("#campoNivel").value,
+            // "" (opción "🌎 Todos los países") se guarda como null —
+            // visible para cualquier país (ver filtrarPorPais en lecturas.js).
+            pais: overlay.querySelector("#campoPaisLectura").value || null,
             tiempoLectura: Number(overlay.querySelector("#campoTiempoLectura").value),
             tiempoCuestionario: Number(overlay.querySelector("#campoTiempoCuestionario").value),
             texto: texto,
@@ -672,6 +679,9 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar, alCa
                     ${opcionesEdad.join("")}
                 </select>
 
+                <label>País (vacío = visible para todos los países)</label>
+                <select id="campoPaisMejora" style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);"></select>
+
                 <label>Texto</label>
                 <textarea id="campoTexto" rows="10" required
                           style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde); font-family:inherit;"
@@ -704,6 +714,7 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar, alCa
     document.body.appendChild(overlay);
 
     overlay.querySelector("#campoEdad").value = String((lecturaExistente && lecturaExistente.edad) || edadPorDefecto);
+    renderizarSelectorPaisConGlobal(overlay.querySelector("#campoPaisMejora"), (lecturaExistente && lecturaExistente.pais) || "");
 
     const editorPreguntas = construirEditorPreguntas(overlay.querySelector("#editorPreguntas"), preguntas);
 
@@ -776,6 +787,9 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar, alCa
         const datos = {
             edad: edad,
             titulo: overlay.querySelector("#campoTitulo").value.trim(),
+            // "" (opción "🌎 Todos los países") se guarda como null —
+            // visible para cualquier país (ver filtrarPorPais en lecturas.js).
+            pais: overlay.querySelector("#campoPaisMejora").value || null,
             texto: texto,
             bancoPreguntas: preguntas,
             preguntasAMostrar: Math.min(preguntasAMostrarInput, preguntas.length),
@@ -1896,12 +1910,17 @@ async function abrirFormularioPalabra(palabraExistente, alGuardar) {
                    value="${((palabraExistente && palabraExistente.pista) || "").replace(/"/g, "&quot;")}"
                    style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
+            <label style="display:block; text-align:left;">País (vacío = visible para todos los países)</label>
+            <select id="campoPaisPalabra" style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);"></select>
+
             <button id="btnGuardarPalabra">${esNueva ? "Agregar" : "Guardar cambios"}</button>
             <button class="modalCerrar" style="background:white; border:1px solid var(--borde); color:var(--texto-suave); margin-top:10px;">Cancelar</button>
         </div>
     `;
 
     document.body.appendChild(overlay);
+
+    renderizarSelectorPaisConGlobal(overlay.querySelector("#campoPaisPalabra"), (palabraExistente && palabraExistente.pais) || "");
 
     overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
 
@@ -1934,7 +1953,10 @@ async function abrirFormularioPalabra(palabraExistente, alGuardar) {
 
             await db.collection("bancoPalabras").doc(id).set({
                 palabra: palabra,
-                pista: pista || null
+                pista: pista || null,
+                // "" (opción "🌎 Todos los países") se guarda como null —
+                // visible para cualquier país (ver filtrarPorPais en lecturas.js).
+                pais: overlay.querySelector("#campoPaisPalabra").value || null
             });
 
             overlay.remove();
@@ -1988,7 +2010,7 @@ async function renderizarListaAdminPalabras(contenedor) {
     contenedor.innerHTML = palabras.map(p => `
         <div class="tarjetaLectura" style="cursor:default;">
             <div class="tarjetaInfo">
-                <p class="tarjetaTitulo">${p.palabra}</p>
+                <p class="tarjetaTitulo">${p.palabra} <span style="font-weight:400; font-size:12px; color:var(--texto-suave);">${p.pais ? "· " + p.pais : "· 🌎 Global"}</span></p>
                 <p class="tarjetaNivel">${p.pista || "Sin pista"}</p>
             </div>
             <div style="display:flex; gap:8px;">
@@ -2077,7 +2099,17 @@ function inicializarAdminAhorcado() {
         abrirFormularioPalabra(null, () => renderizarListaAdminPalabras(listaPalabras));
     });
 
-    activarCargaPalabrasConIA(() => renderizarListaAdminPalabras(listaPalabras));
+    // activarCargaPalabrasConIA (URL/documento con IA) DESCONECTADA
+    // desde la Etapa 30 — el admin pidió que el banco de palabras de
+    // Ahorcado ya no muestre esas opciones, solo "+ Agregar palabra" a
+    // mano e "Importar desde Excel" (sin IA, justo abajo). Como
+    // #seccionCargaPalabrasIA empieza en display:none y solo
+    // activarCargaPalabrasConIA la pone en "block", con no llamarla
+    // aquí la sección queda oculta por completo — no hizo falta tocar
+    // su HTML. Ver la función más abajo (se dejó sin borrar) y la nota
+    // en functions/index.js sobre extraerPalabraDeUrlIA/
+    // extraerPalabrasDeDocumentoIA, también desconectadas.
+    // activarCargaPalabrasConIA(() => renderizarListaAdminPalabras(listaPalabras));
     activarImportacionExcelPalabras(() => renderizarListaAdminPalabras(listaPalabras));
 
 }
@@ -2222,9 +2254,14 @@ function mostrarPreviaImportarExcelPalabras(filas, alGuardarAlguna) {
                 ${etiquetas.map((e, i) => `<option value="${i}" ${i === colSignificado ? "selected" : ""}>${e}</option>`).join("")}
             </select>
 
+            <label style="display:block; font-size:13px; font-weight:600;">País para TODAS las palabras de este archivo (vacío = todos los países)</label>
+            <select id="selectPaisExcel" style="width:100%; padding:8px; margin:4px 0 15px; border-radius:8px; border:1px solid var(--borde);"></select>
+
             <button type="button" id="btnConfirmarImportarExcel" style="width:100%;">✅ Confirmar e importar</button>
             <p id="estadoConfirmarImportarExcel" style="display:none; font-size:13px; margin-top:8px;"></p>
         `;
+
+        renderizarSelectorPaisConGlobal(previa.querySelector("#selectPaisExcel"), "");
 
         previa.querySelector("#chkExcelConEncabezados").addEventListener("change", (e) => {
             conEncabezados = e.target.checked;
@@ -2239,7 +2276,8 @@ function mostrarPreviaImportarExcelPalabras(filas, alGuardarAlguna) {
         });
 
         previa.querySelector("#btnConfirmarImportarExcel").addEventListener("click", () => {
-            confirmarImportarExcelPalabras(filasDatos(), colPalabra, colSignificado, alGuardarAlguna);
+            const pais = previa.querySelector("#selectPaisExcel").value || null;
+            confirmarImportarExcelPalabras(filasDatos(), colPalabra, colSignificado, pais, alGuardarAlguna);
         });
 
     }
@@ -2254,7 +2292,7 @@ function mostrarPreviaImportarExcelPalabras(filas, alGuardarAlguna) {
 // del banco. Salta filas con la palabra o el significado vacíos (o
 // repetidas dentro del mismo archivo) y lleva la cuenta para el
 // resumen final.
-async function confirmarImportarExcelPalabras(filasDatos, colPalabra, colSignificado, alGuardarAlguna) {
+async function confirmarImportarExcelPalabras(filasDatos, colPalabra, colSignificado, pais, alGuardarAlguna) {
 
     const estado = document.getElementById("estadoConfirmarImportarExcel");
     const btn = document.getElementById("btnConfirmarImportarExcel");
@@ -2293,7 +2331,7 @@ async function confirmarImportarExcelPalabras(filasDatos, colPalabra, colSignifi
         for (let i = 0; i < validas.length; i += 450) {
             const lote = db.batch();
             validas.slice(i, i + 450).forEach(p => {
-                lote.set(db.collection("bancoPalabras").doc(p.id), { palabra: p.palabra, pista: p.pista });
+                lote.set(db.collection("bancoPalabras").doc(p.id), { palabra: p.palabra, pista: p.pista, pais: pais || null });
             });
             await lote.commit();
         }
@@ -2738,7 +2776,7 @@ function renderizarListaAdminLecturas() {
     const tarjetaLectura = lectura => `
         <div class="tarjetaLectura" style="cursor:default;">
             <div class="tarjetaInfo">
-                <p class="tarjetaTitulo">${lectura.titulo}</p>
+                <p class="tarjetaTitulo">${lectura.titulo} <span style="font-weight:400; font-size:12px; color:var(--texto-suave);">${lectura.pais ? "· " + lectura.pais : "· 🌎 Global"}</span></p>
                 <p class="tarjetaNivel">${(lectura.bancoPreguntas || []).length} preguntas en el banco (muestra ${lectura.preguntasAMostrar})</p>
             </div>
             <div style="display:flex; gap:8px;">
@@ -3023,7 +3061,7 @@ function renderizarListaAdminMejora(edadActual) {
     cont.innerHTML = lista.map(lectura => `
         <div class="tarjetaLectura" style="cursor:default;">
             <div class="tarjetaInfo">
-                <p class="tarjetaTitulo">${lectura.titulo}</p>
+                <p class="tarjetaTitulo">${lectura.titulo} <span style="font-weight:400; font-size:12px; color:var(--texto-suave);">${lectura.pais ? "· " + lectura.pais : "· 🌎 Global"}</span></p>
                 <p class="tarjetaNivel">${(lectura.bancoPreguntas || []).length} preguntas en el banco (muestra ${lectura.preguntasAMostrar})</p>
             </div>
             <div style="display:flex; gap:8px;">

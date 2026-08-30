@@ -96,6 +96,15 @@ auth.onAuthStateChanged(async (user) => {
             await cargarGenerosLectura();
             renderizarCheckboxesGeneros(contenedorGeneros, []);
         }
+
+        // País: SIEMPRE uno de los 195 de LISTA_PAISES (ver paises.js) —
+        // nunca texto libre, para poder separar datos por país más
+        // adelante sin encontrarse "Mexico"/"México"/"mexico" como si
+        // fueran países distintos.
+        const selectPais = document.getElementById("inputPais");
+        if (selectPais && typeof renderizarSelectorPais === "function") {
+            renderizarSelectorPais(selectPais, "");
+        }
     }
 });
 
@@ -115,6 +124,12 @@ formRegistro.addEventListener("submit", async (e) => {
     // nacimiento, para no depender de que la escriban bien a mano.
     const fechaNacimientoInput = document.getElementById("inputFechaNacimiento").value;
     const contenedorGeneros = document.getElementById("contenedorGenerosRegistro");
+    const paisElegido = document.getElementById("inputPais").value;
+
+    if (!paisElegido) {
+        alert("Selecciona tu país.");
+        return;
+    }
 
     const datosUsuario = {
         nombre: user.displayName || "",
@@ -124,7 +139,7 @@ formRegistro.addEventListener("submit", async (e) => {
         fechaRegistro: firebase.firestore.FieldValue.serverTimestamp(),
         fechaNacimiento: fechaNacimientoInput || null,
         edadPerfil: fechaNacimientoInput ? calcularEdadDesdeFecha(fechaNacimientoInput) : null,
-        pais: document.getElementById("inputPais").value.trim(),
+        pais: paisElegido,
         lenguaMaterna: document.getElementById("inputLenguaMaterna").value.trim(),
         generosLectura: contenedorGeneros ? leerGenerosSeleccionados(contenedorGeneros) : []
     };

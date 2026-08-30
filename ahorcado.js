@@ -56,7 +56,13 @@ async function iniciarRondaAhorcado(user) {
 
     try {
         const snapshot = await db.collection("bancoPalabras").get();
-        banco = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Solo palabras globales o del mismo país del usuario (Etapa 30
+        // — "bases de datos separadas" por país, ver filtrarPorPais en
+        // lecturas.js).
+        banco = filtrarPorPais(
+            snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+            datosUsuario.pais || null
+        );
     } catch (error) {
         console.error("No se pudo cargar el banco de palabras:", error);
         cont.innerHTML = "<p style='text-align:center;'>Ocurrió un error al cargar el banco de palabras.</p>";

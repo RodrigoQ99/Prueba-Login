@@ -179,7 +179,12 @@ async function cargarEstadisticas() {
 
         // ---- Edades / países / lenguas / géneros ----
         renderizarBarras(document.getElementById("statsEdades"), agruparEdades(usuarios));
-        renderizarBarras(document.getElementById("statsPaises"), contarPorCampo(usuarios, "pais").slice(0, 10));
+        // Sin recortar a los primeros 10 (a diferencia de lenguas) — el
+        // país ahora es un <select> restringido a LISTA_PAISES (ver
+        // paises.js), así que cada barra es un país real y distinto; el
+        // objetivo es ver la cantidad de usuarios en CADA país, no solo
+        // los más comunes.
+        renderizarBarras(document.getElementById("statsPaises"), contarPorCampo(usuarios, "pais"));
         renderizarBarras(document.getElementById("statsLenguas"), contarPorCampo(usuarios, "lenguaMaterna").slice(0, 10));
         renderizarBarras(document.getElementById("statsGeneros"), contarGeneros(usuarios));
 

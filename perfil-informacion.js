@@ -34,7 +34,11 @@ async function cargarPerfil() {
 
     document.getElementById("campoEdadPerfilTexto").textContent =
         typeof datos.edadPerfil === "number" ? `${datos.edadPerfil} años` : "Sin dato";
-    document.getElementById("campoPaisPerfil").value = datos.pais || "";
+    // País: mismo <select> restringido a LISTA_PAISES que el registro
+    // (ver paises.js) — nunca texto libre.
+    if (typeof renderizarSelectorPais === "function") {
+        renderizarSelectorPais(document.getElementById("campoPaisPerfil"), datos.pais || "");
+    }
     document.getElementById("campoLenguaMaternaPerfil").value = datos.lenguaMaterna || "";
 
     await cargarGenerosLectura();

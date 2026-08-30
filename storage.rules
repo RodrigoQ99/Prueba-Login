@@ -19,8 +19,9 @@
 //   — se quedan guardados para usarlos en varios Hilos a lo largo del
 //   tiempo, hasta que el admin decida borrarlos a mano.
 //
-// - "fuentesPalabras/": documento con una lista de palabras (admin,
-//   banco general de Ahorcado). TRANSITORIO, igual que fuentesLecturas/.
+// - "fuentesPalabras/": SIN USO desde la Etapa 30 (ver la nota junto a
+//   su regla) — el admin ya no carga palabras con IA, solo a mano o con
+//   Excel (que no usa Storage).
 // ==========================================================
 
 rules_version = '2';
@@ -66,6 +67,10 @@ service firebase.storage {
       allow delete: if esAdmin();
     }
 
+    // SIN USO desde la Etapa 30 — se quitó del panel la opción de
+    // cargar palabras con IA (URL/documento); extraerPalabrasDeDocumentoIA
+    // ya no está desplegada (ver functions/index.js). Se deja la regla
+    // activa, sin borrar, por si algún día se reactiva esa función.
     match /fuentesPalabras/{archivo} {
       allow read: if esAdmin();
       allow create: if esAdmin()

@@ -110,14 +110,27 @@ function aTituloDeCaso(texto) {
  * Recalcula el RANKING PERSONAL (individual): todos los usuarios,
  * particulares Y estudiantes, ordenados por puntos. Así cualquiera
  * puede ver su propio puntaje comparado con los demás.
+ *
+ * Etapa 30 — "bases de datos separadas" por país: en vez de UN solo
+ * documento ("actual") con todo el mundo mezclado, se guarda UN
+ * documento POR PAÍS (usuarios/{uid}.pais como ID del documento —
+ * ranking.js escucha solo el de su propio país). Cuentas sin país
+ * asignado (de antes de que existiera este campo) se agrupan aparte,
+ * bajo "_sin_pais", para no perder su ranking en vez de descartarlas.
  */
 async function actualizarRankingPersonal() {
     const snapshot = await db.collection("usuarios").get();
 
-    const lista = [];
+    // Se agrupa por país ANTES de filtrar por puntos, y se reescribe el
+    // documento de TODO país que tenga al menos un usuario (aunque su
+    // lista final quede vacía) — así un país que se quedó en 0 puntos
+    // no se queda con un ranking viejo desactualizado en pantalla.
+    const porPais = {};
 
     snapshot.forEach(doc => {
         const data = doc.data();
+        const clavePais = data.pais || "_sin_pais";
+        if (!porPais[clavePais]) porPais[clavePais] = [];
 
         // Con 0 puntos no hay nada que rankear todavía — se deja afuera
         // en vez de mostrar a todo el mundo empatado en "0 pts" (ej. justo
@@ -125,7 +138,7 @@ async function actualizarRankingPersonal() {
         if (!data.puntosTotales) return;
 
         const nombreAMostrar = (data.mostrarAlias && data.alias) ? data.alias : (data.nombre || "Anónimo");
-        lista.push({
+        porPais[clavePais].push({
             uid: doc.id,
             nombre: nombreAMostrar,
             tipo: data.tipo || "particular",
@@ -133,55 +146,74 @@ async function actualizarRankingPersonal() {
         });
     });
 
-    lista.sort((a, b) => b.puntos - a.puntos);
-
-    await db.collection("rankingPersonal").doc("actual").set({
-        lista: lista,
-        actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    const lote = db.batch();
+    Object.keys(porPais).forEach(pais => {
+        const lista = porPais[pais].sort((a, b) => b.puntos - a.puntos);
+        lote.set(db.collection("rankingPersonal").doc(pais), {
+            lista: lista,
+            actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+        });
     });
+    await lote.commit();
 }
 
 /**
- * Recalcula el ranking de colegios/grados y lo guarda en un solo documento
- * que siempre representa el estado ACTUAL (no por día). Se llama automáticamente
- * cada vez que alguien completa un cuestionario, así que el ranking queda
- * al instante actualizado para quien esté viendo ranking.html.
+ * Recalcula el ranking de colegios/grados y lo guarda en un documento
+ * POR PAÍS (mismo criterio que actualizarRankingPersonal() — ver esa
+ * nota) que siempre representa el estado ACTUAL (no por día). Se llama
+ * automáticamente cada vez que alguien completa un cuestionario, así
+ * que el ranking queda al instante actualizado para quien esté viendo
+ * ranking.html.
+ *
+ * Límite conocido: si un país se queda sin NINGÚN estudiante (los
+ * últimos se borraron o cambiaron a "particular"), su documento no se
+ * vuelve a escribir en esta pasada — se queda con el último dato que
+ * tenía, en vez de vaciarse. Caso muy raro, y se corrige solo en cuanto
+ * ese país vuelva a tener aunque sea un estudiante.
  */
 async function actualizarRankingActual() {
     const snapshot = await db.collection("usuarios")
         .where("tipo", "==", "estudiante")
         .get();
 
-    const grupos = {};
+    const gruposPorPais = {};
 
     snapshot.forEach(doc => {
         const data = doc.data();
+        const clavePais = data.pais || "_sin_pais";
+        if (!gruposPorPais[clavePais]) gruposPorPais[clavePais] = {};
 
         const colegioNormalizado = normalizarTexto(data.colegio || "Sin colegio");
         const gradoNormalizado = normalizarTexto(data.grado || "Sin grado");
         const clave = `${colegioNormalizado}|||${gradoNormalizado}`;
 
-        if (!grupos[clave]) {
-            grupos[clave] = {
+        if (!gruposPorPais[clavePais][clave]) {
+            gruposPorPais[clavePais][clave] = {
                 colegio: aTituloDeCaso(colegioNormalizado),
                 grado: aTituloDeCaso(gradoNormalizado),
                 puntos: 0
             };
         }
 
-        grupos[clave].puntos += data.puntosTotales || 0;
+        gruposPorPais[clavePais][clave].puntos += data.puntosTotales || 0;
     });
 
-    // Mismo criterio que actualizarRankingPersonal(): un colegio/grado con
-    // 0 puntos todavía no tiene nada que mostrar en el ranking.
-    const listaOrdenada = Object.values(grupos)
-        .filter(grupo => grupo.puntos > 0)
-        .sort((a, b) => b.puntos - a.puntos);
+    const lote = db.batch();
+    Object.keys(gruposPorPais).forEach(pais => {
 
-    await db.collection("rankingActual").doc("actual").set({
-        lista: listaOrdenada,
-        actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+        // Mismo criterio que actualizarRankingPersonal(): un colegio/grado
+        // con 0 puntos todavía no tiene nada que mostrar en el ranking.
+        const listaOrdenada = Object.values(gruposPorPais[pais])
+            .filter(grupo => grupo.puntos > 0)
+            .sort((a, b) => b.puntos - a.puntos);
+
+        lote.set(db.collection("rankingActual").doc(pais), {
+            lista: listaOrdenada,
+            actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
     });
+    await lote.commit();
 }
 
 /**

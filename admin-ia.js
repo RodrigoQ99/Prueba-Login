@@ -222,60 +222,51 @@ async function dividirFragmentoConIA(fragmento) {
 // ==========================================================
 // BANCO DE PALABRAS DE AHORCADO — CARGA CON IA (Etapa 24, Parte A)
 // ==========================================================
-// Dos formas de alimentar el banco GENERAL (admin, revisado antes de
-// guardar como todo lo demás): desde una URL de diccionario, o subiendo
-// un documento con una lista de palabras. La Parte B (glosario
-// PERSONAL, abierto a cualquier usuario) vive en ahorcado-ia.js — un
-// archivo aparte que sí se carga en páginas de participantes.
-
-const TAMANIO_MAXIMO_DOCUMENTO_PALABRAS = 10 * 1024 * 1024; // 10 MB — igual que storage.rules
-
-/**
- * Le pide a la IA que extraiga la palabra y definición de una página
- * de diccionario en línea (ej. RAE) — ignora sugerencias/anuncios/
- * palabras relacionadas que puedan aparecer en la misma página.
- * @param {string} url
- * @returns {Promise<{palabra:string, pista:string}>}
- */
-async function extraerPalabraDeUrlConIA(url) {
-    const llamar = functionsIA.httpsCallable("extraerPalabraDeUrlIA");
-    const resultado = await llamar({ url });
-    return resultado.data;
-}
-
-/**
- * Sube un documento con una lista de palabras (con o sin definiciones)
- * y le pide a la IA que devuelva la lista lista para revisar.
- * @param {File} archivo
- * @returns {Promise<Array<{palabra:string, pista:string}>>}
- */
-async function subirDocumentoPalabrasConIA(archivo) {
-
-    if (typeof firebase.storage !== "function") {
-        throw new Error("Esta página no tiene Firebase Storage cargado.");
-    }
-
-    if (archivo.size > TAMANIO_MAXIMO_DOCUMENTO_PALABRAS) {
-        throw new Error("El archivo pesa demasiado (máximo 10 MB).");
-    }
-
-    if (!/\.(pdf|docx|txt)$/i.test(archivo.name)) {
-        throw new Error("Solo se aceptan archivos PDF, .docx o .txt.");
-    }
-
-    const nombreLimpio = archivo.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const ruta = `fuentesPalabras/${Date.now()}-${nombreLimpio}`;
-    const referencia = firebase.storage().ref(ruta);
-
-    await referencia.put(archivo);
-
-    try {
-        const llamar = functionsIA.httpsCallable("extraerPalabrasDeDocumentoIA", { timeout: 180000 });
-        const resultado = await llamar({ storagePath: ruta });
-        return resultado.data.palabras;
-    } catch (error) {
-        referencia.delete().catch(() => {});
-        throw error;
-    }
-
-}
+// DESCONECTADAS desde la Etapa 30 — el admin pidió quitar del panel de
+// Ahorcado las opciones de cargar palabras con IA (URL de diccionario o
+// documento). El banco general ahora solo se llena a mano
+// ("+ Agregar palabra") o importando un Excel (Etapa 28, sin IA, ver
+// admin.js) — nada llama ya a las funciones de abajo, se dejaron
+// comentadas sin borrar por si algún día se retoman. Las Cloud
+// Functions que llamaban (extraerPalabraDeUrlIA,
+// extraerPalabrasDeDocumentoIA) también quedaron desconectadas, ver
+// functions/index.js.
+//
+// const TAMANIO_MAXIMO_DOCUMENTO_PALABRAS = 10 * 1024 * 1024; // 10 MB — igual que storage.rules
+//
+// async function extraerPalabraDeUrlConIA(url) {
+//     const llamar = functionsIA.httpsCallable("extraerPalabraDeUrlIA");
+//     const resultado = await llamar({ url });
+//     return resultado.data;
+// }
+//
+// async function subirDocumentoPalabrasConIA(archivo) {
+//
+//     if (typeof firebase.storage !== "function") {
+//         throw new Error("Esta página no tiene Firebase Storage cargado.");
+//     }
+//
+//     if (archivo.size > TAMANIO_MAXIMO_DOCUMENTO_PALABRAS) {
+//         throw new Error("El archivo pesa demasiado (máximo 10 MB).");
+//     }
+//
+//     if (!/\.(pdf|docx|txt)$/i.test(archivo.name)) {
+//         throw new Error("Solo se aceptan archivos PDF, .docx o .txt.");
+//     }
+//
+//     const nombreLimpio = archivo.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+//     const ruta = `fuentesPalabras/${Date.now()}-${nombreLimpio}`;
+//     const referencia = firebase.storage().ref(ruta);
+//
+//     await referencia.put(archivo);
+//
+//     try {
+//         const llamar = functionsIA.httpsCallable("extraerPalabrasDeDocumentoIA", { timeout: 180000 });
+//         const resultado = await llamar({ storagePath: ruta });
+//         return resultado.data.palabras;
+//     } catch (error) {
+//         referencia.delete().catch(() => {});
+//         throw error;
+//     }
+//
+// }

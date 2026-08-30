@@ -63,6 +63,33 @@ function obtenerLecturaPorId(id) {
 
 
 // ==========================================================
+// FILTRO POR PAÍS (Etapa 30)
+// ==========================================================
+// "Bases de datos separadas" por país: cada lectura, lectura de
+// Mejorar la lectura o palabra de Ahorcado puede tener un campo "pais"
+// (uno de LISTA_PAISES, ver paises.js) que el admin elige al crearla.
+// Sin ese campo (o vacío), el contenido es GLOBAL — visible para
+// cualquier país (así todo el contenido creado ANTES de esta etapa
+// sigue viéndose exactamente igual, sin necesitar ninguna migración).
+//
+// Se filtra aquí, del lado del cliente, DESPUÉS de traer el catálogo
+// completo — el panel de administrador sigue viendo y administrando
+// TODO el contenido de TODOS los países (un solo admin para todos, ver
+// inicializarAdminLecturasPremios/inicializarAdminMejora/
+// inicializarAdminAhorcado en admin.js, que nunca llaman a esta
+// función); esta función solo la usan las pantallas de PARTICIPANTES
+// (lecturas-premiadas.js, mejora.js, ahorcado.js).
+/**
+ * @param {Array<{pais?:string}>} items
+ * @param {string} paisUsuario - usuarios/{uid}.pais del usuario actual.
+ * @returns {Array} solo los items globales (sin pais) o del mismo país.
+ */
+function filtrarPorPais(items, paisUsuario) {
+    return (items || []).filter(item => !item.pais || item.pais === paisUsuario);
+}
+
+
+// ==========================================================
 // CONFIGURACIÓN DEL AVANCE AUTOMÁTICO (lecturas de premios)
 // ==========================================================
 // Cuántos segundos espera el texto antes de empezar a desplazarse solo

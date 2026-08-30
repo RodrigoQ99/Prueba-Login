@@ -23,6 +23,7 @@ async function cargarListaLecturas() {
     let desbloqueadas = [];
     let lecturasIntentadas = [];
     let bonoActivo = null;
+    let paisUsuario = null;
 
     try {
         const usuarioDoc = await db.collection("usuarios").doc(user.uid).get();
@@ -30,9 +31,15 @@ async function cargarListaLecturas() {
         desbloqueadas = datosUsuario.lecturasDesbloqueadas || [];
         lecturasIntentadas = datosUsuario.lecturasIntentadas || [];
         bonoActivo = datosUsuario.bonoActivo || null;
+        paisUsuario = datosUsuario.pais || null;
     } catch (error) {
         console.error("Error al cargar las lecturas desbloqueadas:", error);
     }
+
+    // Solo lecturas globales o del mismo país del usuario (Etapa 30 —
+    // "bases de datos separadas" por país, ver filtrarPorPais en
+    // lecturas.js).
+    const catalogoDelPais = filtrarPorPais(CATALOGO_LECTURAS, paisUsuario);
 
     // Averiguar cuáles completó con éxito (y de paso, cuáles tiene
     // en su historial de progreso aunque sea de ANTES de que existiera
@@ -87,8 +94,9 @@ async function cargarListaLecturas() {
         return;
     }
 
-    // Solo las lecturas que YA escaneó (no todo el catálogo)
-    const lecturasDesbloqueadas = CATALOGO_LECTURAS.filter(
+    // Solo las lecturas que YA escaneó (no todo el catálogo), y del país
+    // del usuario (o globales).
+    const lecturasDesbloqueadas = catalogoDelPais.filter(
         lectura => desbloqueadasCompletas.includes(lectura.id)
     );
 
@@ -141,7 +149,7 @@ async function cargarListaLecturas() {
     // no debe aparecer justo al terminar su primera y única lectura.
     const tieneVariasDesbloqueadas = lecturasDesbloqueadas.length > 1;
 
-    const pendientesPorDescubrir = CATALOGO_LECTURAS.filter(
+    const pendientesPorDescubrir = catalogoDelPais.filter(
         lectura => !desbloqueadasCompletas.includes(lectura.id)
     );
 

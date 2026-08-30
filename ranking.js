@@ -109,9 +109,13 @@ function mostrarRankingPersonal(lista, uidActual) {
 
 let dejarDeEscucharPersonal = null;
 
-function iniciarEscuchaRankingPersonal(uidActual) {
+// Etapa 30 — "bases de datos separadas" por país: ya no existe un solo
+// documento "actual" con todo el mundo — hay uno POR PAÍS (ver
+// actualizarRankingPersonal en puntos.js). "_sin_pais" agrupa cuentas
+// de antes de que existiera este campo.
+function iniciarEscuchaRankingPersonal(uidActual, paisUsuario) {
 
-    dejarDeEscucharPersonal = db.collection("rankingPersonal").doc("actual")
+    dejarDeEscucharPersonal = db.collection("rankingPersonal").doc(paisUsuario || "_sin_pais")
         .onSnapshot(doc => {
 
             if (!doc.exists) {
@@ -188,9 +192,11 @@ function mostrarRankingColegios(lista, colegioActual, gradoActual) {
 
 let dejarDeEscucharColegios = null;
 
-function iniciarEscuchaRankingColegios(colegioActual, gradoActual) {
+// Mismo criterio de país que iniciarEscuchaRankingPersonal() (ver esa
+// nota) — ver actualizarRankingActual() en puntos.js.
+function iniciarEscuchaRankingColegios(colegioActual, gradoActual, paisUsuario) {
 
-    dejarDeEscucharColegios = db.collection("rankingActual").doc("actual")
+    dejarDeEscucharColegios = db.collection("rankingActual").doc(paisUsuario || "_sin_pais")
         .onSnapshot(doc => {
 
             if (!doc.exists) {
@@ -221,32 +227,37 @@ auth.onAuthStateChanged(async (user) => {
         return;
     }
 
+    // Se necesita el país ANTES de escuchar cualquiera de los dos
+    // rankings (Etapa 30 — cada uno ahora es un documento por país, ver
+    // la nota en iniciarEscuchaRankingPersonal).
+    let datos = null;
+    try {
+        const usuarioDoc = await db.collection("usuarios").doc(user.uid).get();
+        datos = usuarioDoc.exists ? usuarioDoc.data() : null;
+    } catch (error) {
+        console.error("Error al revisar el perfil del usuario:", error);
+    }
+
+    const paisUsuario = datos ? (datos.pais || null) : null;
+
     // El ranking personal es para TODOS
-    iniciarEscuchaRankingPersonal(user.uid);
+    iniciarEscuchaRankingPersonal(user.uid, paisUsuario);
 
     // El ranking de colegios (y todo lo relacionado) solo se muestra
     // si el usuario es de tipo "estudiante". Un particular no ve nada
     // de esta sección.
-    try {
+    const tipo = datos ? datos.tipo : null;
 
-        const usuarioDoc = await db.collection("usuarios").doc(user.uid).get();
-        const datos = usuarioDoc.exists ? usuarioDoc.data() : null;
-        const tipo = datos ? datos.tipo : null;
+    const seccionColegios = document.getElementById("seccionRankingColegios");
+    const seccionSoloEstudiantes = document.getElementById("seccionSoloEstudiantes");
 
-        const seccionColegios = document.getElementById("seccionRankingColegios");
-        const seccionSoloEstudiantes = document.getElementById("seccionSoloEstudiantes");
-
-        if (tipo === "estudiante") {
-            seccionColegios.style.display = "block";
-            seccionSoloEstudiantes.style.display = "none";
-            iniciarEscuchaRankingColegios(datos.colegio, datos.grado);
-        } else {
-            seccionColegios.style.display = "none";
-            seccionSoloEstudiantes.style.display = "block";
-        }
-
-    } catch (error) {
-        console.error("Error al revisar el tipo de usuario:", error);
+    if (tipo === "estudiante") {
+        seccionColegios.style.display = "block";
+        seccionSoloEstudiantes.style.display = "none";
+        iniciarEscuchaRankingColegios(datos.colegio, datos.grado, paisUsuario);
+    } else {
+        seccionColegios.style.display = "none";
+        seccionSoloEstudiantes.style.display = "block";
     }
 
 });

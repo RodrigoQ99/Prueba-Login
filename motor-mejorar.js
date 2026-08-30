@@ -29,6 +29,13 @@ const idLecturaMejora = parametrosMejora.get("id");
 // trajo de Firestore (ver cargarCatalogoMejora en mejora-lecturas.js).
 let ubicacion = null;
 
+// País del usuario actual (Etapa 30) — se guarda aquí, ya calculado una
+// sola vez en iniciarLectura(), para que calificarMejora() (más abajo)
+// pueda volver a filtrar CATALOGO_MEJORA[ubicacion.edad] por país al
+// decidir si esta era la ÚLTIMA lectura de su edad, sin tener que
+// volver a leer el documento del usuario.
+let paisUsuarioMejora = null;
+
 let segundosTranscurridos = 0;
 let cronometroInterval = null;
 let yaAvanzoAlCuestionario = false;
@@ -81,9 +88,23 @@ function normalizarPalabra(palabra) {
 
 async function iniciarLectura() {
 
+    const user = auth.currentUser;
+    if (!user) return;
+
     // Trae el catálogo y el rango de edades desde Firestore (cacheados).
     await Promise.all([cargarCatalogoMejora(), cargarRangoEdades()]);
-    ubicacion = ubicarLecturaMejora(idLecturaMejora);
+
+    // Se necesita el país ANTES de ubicar la lectura (Etapa 30): el
+    // desbloqueo secuencial y "de cuántas" solo cuentan lecturas
+    // GLOBALES o del mismo país (ver la nota en ubicarLecturaMejora,
+    // mejora-lecturas.js) — nunca lecturas de otro país que este
+    // usuario ni siquiera puede ver en mejora.html.
+    const usuarioDoc = await db.collection("usuarios").doc(user.uid).get();
+    const datos = usuarioDoc.exists ? usuarioDoc.data() : {};
+    const paisUsuario = datos.pais || null;
+    paisUsuarioMejora = paisUsuario;
+
+    ubicacion = ubicarLecturaMejora(idLecturaMejora, paisUsuario);
 
     if (!ubicacion) {
 
@@ -98,16 +119,11 @@ async function iniciarLectura() {
 
     }
 
-    const user = auth.currentUser;
-    if (!user) return;
-
     // Revisar que esta lectura esté desbloqueada (no se pueden saltar
     // lecturas dentro de una misma edad)
-    const usuarioDoc = await db.collection("usuarios").doc(user.uid).get();
-    const datos = usuarioDoc.exists ? usuarioDoc.data() : {};
     const completadas = datos.mejoraCompletadas || [];
 
-    const listaDeEstaEdad = CATALOGO_MEJORA[ubicacion.edad] || [];
+    const listaDeEstaEdad = filtrarPorPais(CATALOGO_MEJORA[ubicacion.edad] || [], paisUsuario);
     const completadasEnEstaEdad = listaDeEstaEdad.filter(l => completadas.includes(l.id)).length;
 
     if (ubicacion.indice > completadasEnEstaEdad) {
@@ -675,8 +691,11 @@ async function calificarMejora() {
         await registrarActividadRacha();
     }
 
-    // ¿Era la última lectura de su edad? Si es así, sube de edad
-    const listaDeEstaEdad = CATALOGO_MEJORA[ubicacion.edad] || [];
+    // ¿Era la última lectura de su edad? Si es así, sube de edad. Mismo
+    // filtro por país que en iniciarLectura() — "última" debe ser
+    // relativo a lo que este usuario puede ver, no a TODO el catálogo
+    // mundial de esa edad.
+    const listaDeEstaEdad = filtrarPorPais(CATALOGO_MEJORA[ubicacion.edad] || [], paisUsuarioMejora);
     const eraLaUltima = ubicacion.indice === listaDeEstaEdad.length - 1;
 
     if (eraLaUltima && !esGrupoMasDelTope(ubicacion.edad)) {

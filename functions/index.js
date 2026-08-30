@@ -8,7 +8,7 @@
 //
 // Todas exclusivas para administradores (ver lib/verificarAdmin.js) —
 // cualquier otra persona recibe un error sin que se llegue a llamar a
-// Claude, así no se gasta presupuesto en llamadas no autorizadas. Ya NO
+// Claude, así no se gasta presupuesto en llamadas no autorizadas. No
 // hay ninguna función de IA abierta a usuarios normales (ver nota sobre
 // cargarGlosarioPersonalIA más abajo) — subir documentos y usar IA
 // queda exclusivamente para el panel de administrador.
@@ -28,12 +28,6 @@
 // - dividirFragmentoEnHiloIA: divide el fragmento YA ELEGIDO por el
 //   admin en exactamente 5 partes narrativamente coherentes y en
 //   orden — nunca decide qué fragmento usar, solo cómo dividirlo.
-// - extraerPalabraDeUrlIA: lee una página de diccionario en línea (ej.
-//   RAE) y extrae SOLO la palabra y su definición, para el banco
-//   general de Ahorcado.
-// - extraerPalabrasDeDocumentoIA: lee un documento con una lista de
-//   palabras (con o sin definiciones) para el banco general de
-//   Ahorcado.
 //
 // DESCONECTADA (Etapa 28): extraerLecturaDeDocumentoIA — el admin pidió
 // quitar por completo la opción de crear lecturas subiendo un
@@ -53,9 +47,19 @@
 // borrar, pero ya no está exportada; su envoltorio en el frontend
 // (subirGlosarioPersonalConIA, ahorcado-ia.js) y todo el selector de
 // "banco general / glosario personal" en ahorcado.html/ahorcado.js
-// también se quitaron — ahora Ahorcado solo usa el banco general
-// (bancoPalabras), que el admin llena a mano, con IA (URL/documento) o
-// importando un Excel (Etapa 28, sin IA, ver admin.js).
+// también se quitaron.
+//
+// DESCONECTADAS (Etapa 30): extraerPalabraDeUrlIA y
+// extraerPalabrasDeDocumentoIA — el admin pidió quitar del panel de
+// Ahorcado las opciones de cargar palabras con IA (desde URL de
+// diccionario o documento); ahora el banco de palabras solo se llena a
+// mano ("+ Agregar palabra") o importando un Excel (Etapa 28, sin IA,
+// ver admin.js). Ambos archivos siguen en lib/ sin borrar, pero ya no
+// están exportados aquí abajo. Sus envoltorios en el frontend
+// (extraerPalabraDeUrlConIA, subirDocumentoPalabrasConIA, en
+// admin-ia.js) también quedaron comentados, y la sección de la interfaz
+// que los usaba (#seccionCargaPalabrasIA) ya no se activa (ver
+// inicializarAdminAhorcado en admin.js).
 // ==========================================================
 
 const { generarPreguntasIA } = require("./lib/generarPreguntasIA");
@@ -63,8 +67,8 @@ const { moderarPropuestaIA } = require("./lib/moderarPropuestaIA");
 const { generarLecturaOriginalIA } = require("./lib/generarLecturaOriginalIA");
 const { extraerTextoDePdfGuardado } = require("./lib/extraerTextoDePdfGuardado");
 const { dividirFragmentoEnHiloIA } = require("./lib/dividirFragmentoEnHiloIA");
-const { extraerPalabraDeUrlIA } = require("./lib/extraerPalabraDeUrlIA");
-const { extraerPalabrasDeDocumentoIA } = require("./lib/extraerPalabrasDeDocumentoIA");
+// const { extraerPalabraDeUrlIA } = require("./lib/extraerPalabraDeUrlIA"); // DESCONECTADA — ver nota arriba
+// const { extraerPalabrasDeDocumentoIA } = require("./lib/extraerPalabrasDeDocumentoIA"); // DESCONECTADA — ver nota arriba
 // const { extraerLecturaDeDocumentoIA } = require("./lib/extraerLecturaDeDocumentoIA"); // DESCONECTADA — ver nota arriba
 // const { cargarGlosarioPersonalIA } = require("./lib/cargarGlosarioPersonalIA"); // DESCONECTADA — ver nota arriba
 
@@ -73,7 +77,7 @@ exports.moderarPropuestaIA = moderarPropuestaIA;
 exports.generarLecturaOriginalIA = generarLecturaOriginalIA;
 exports.extraerTextoDePdfGuardado = extraerTextoDePdfGuardado;
 exports.dividirFragmentoEnHiloIA = dividirFragmentoEnHiloIA;
-exports.extraerPalabraDeUrlIA = extraerPalabraDeUrlIA;
-exports.extraerPalabrasDeDocumentoIA = extraerPalabrasDeDocumentoIA;
+// exports.extraerPalabraDeUrlIA = extraerPalabraDeUrlIA; // DESCONECTADA — ver nota arriba
+// exports.extraerPalabrasDeDocumentoIA = extraerPalabrasDeDocumentoIA; // DESCONECTADA — ver nota arriba
 // exports.extraerLecturaDeDocumentoIA = extraerLecturaDeDocumentoIA; // DESCONECTADA — ver nota arriba
 // exports.cargarGlosarioPersonalIA = cargarGlosarioPersonalIA; // DESCONECTADA — ver nota arriba

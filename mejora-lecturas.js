@@ -165,12 +165,24 @@ function metaPpmParaEdad(edad) {
 /**
  * Busca a qué edad y en qué posición pertenece una lectura, dado su ID.
  * Devuelve null si no existe en ningún grupo de edad.
+ *
+ * "paisUsuario" (Etapa 30) filtra la lista de esa edad al mismo
+ * subconjunto que ve el usuario en la pantalla de "Mejorar la lectura"
+ * (globales + las de su país, ver filtrarPorPais en lecturas.js) ANTES
+ * de calcular "indice"/"totalEnEdad" — así el desbloqueo secuencial
+ * (ver motor-mejorar.js) nunca lo hace esperar a completar una lectura
+ * de OTRO país que ni siquiera puede ver. Si no se pasa "paisUsuario"
+ * (undefined), no filtra — usa la lista completa tal cual (compatibilidad
+ * hacia atrás por si algún día se llama sin ese dato).
  */
-function ubicarLecturaMejora(id) {
+function ubicarLecturaMejora(id, paisUsuario) {
 
     for (const edad of Object.keys(CATALOGO_MEJORA)) {
 
-        const lista = CATALOGO_MEJORA[edad];
+        const listaCompleta = CATALOGO_MEJORA[edad];
+        const lista = (typeof paisUsuario === "undefined")
+            ? listaCompleta
+            : filtrarPorPais(listaCompleta, paisUsuario);
         const indice = lista.findIndex(l => l.id === id);
 
         if (indice !== -1) {
