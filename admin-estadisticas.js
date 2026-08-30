@@ -87,18 +87,21 @@ function contarPorCampo(usuarios, campo) {
 
 }
 
+// Compartidas por agruparEdades() y construirTablaEdadGenero() (más
+// abajo) — mismos rangos en los dos lados para que sea el mismo
+// desglose de siempre, ahora también cruzado con género.
+const BANDAS_EDAD_ESTADISTICAS = [
+    { etiqueta: "Menos de 10", min: -Infinity, max: 9 },
+    { etiqueta: "10 a 12", min: 10, max: 12 },
+    { etiqueta: "13 a 15", min: 13, max: 15 },
+    { etiqueta: "16 a 18", min: 16, max: 18 },
+    { etiqueta: "19 a 25", min: 19, max: 25 },
+    { etiqueta: "26 o más", min: 26, max: Infinity }
+];
+
 function agruparEdades(usuarios) {
 
-    const bandas = [
-        { etiqueta: "Menos de 10", min: -Infinity, max: 9 },
-        { etiqueta: "10 a 12", min: 10, max: 12 },
-        { etiqueta: "13 a 15", min: 13, max: 15 },
-        { etiqueta: "16 a 18", min: 16, max: 18 },
-        { etiqueta: "19 a 25", min: 19, max: 25 },
-        { etiqueta: "26 o más", min: 26, max: Infinity }
-    ];
-
-    const conteos = bandas.map(b => ({ etiqueta: b.etiqueta, valor: 0, banda: b }));
+    const conteos = BANDAS_EDAD_ESTADISTICAS.map(b => ({ etiqueta: b.etiqueta, valor: 0, banda: b }));
     let sinDato = 0;
 
     usuarios.forEach(u => {
@@ -137,6 +140,73 @@ function contarGeneros(usuarios) {
 
 }
 
+// Solo los géneros que la gente ESCRIBIÓ A MANO en el campo "Otro" (ver
+// generos.js) — es decir, cualquier valor de generosLectura que NO esté
+// en la lista oficial de checkboxes (GENEROS_LECTURA, cargada antes de
+// llamar esta función — ver cargarEstadisticas). Se agrupan sin
+// importar mayúsculas/espacios (mismo criterio que normalizarTexto en
+// puntos.js, reescrito aquí porque esta página no carga puntos.js) para
+// que "cine", "Cine" y "CINE " cuenten como el mismo género.
+function contarGenerosOtros(usuarios) {
+
+    const conteos = {}; // clave normalizada -> { etiqueta, valor }
+
+    usuarios.forEach(u => {
+        (u.generosLectura || []).forEach(genero => {
+
+            const texto = (genero || "").trim();
+            if (!texto) return;
+            if (GENEROS_LECTURA.includes(texto)) return; // ya está en la lista oficial
+
+            const clave = texto.toLowerCase();
+            if (!conteos[clave]) {
+                conteos[clave] = { etiqueta: texto.charAt(0).toUpperCase() + texto.slice(1).toLowerCase(), valor: 0 };
+            }
+            conteos[clave].valor++;
+
+        });
+    });
+
+    return Object.values(conteos).sort((a, b) => b.valor - a.valor);
+
+}
+
+// Cruce edad × género — SIN NOMBRES, solo en qué rango de edad (mismas
+// bandas que agruparEdades) cuánta gente eligió cada género (oficial O
+// "Otro", los dos cuentan aquí — el objetivo es ver preferencias por
+// edad, no separar por origen del dato como sí hace contarGenerosOtros).
+function construirTablaEdadGenero(usuarios) {
+
+    const porBanda = BANDAS_EDAD_ESTADISTICAS.map(b => ({ etiqueta: b.etiqueta, banda: b, generos: {} }));
+
+    usuarios.forEach(u => {
+
+        const edad = u.edadPerfil;
+        if (typeof edad !== "number" || !isFinite(edad)) return; // sin edad no se puede ubicar en ninguna banda
+
+        const fila = porBanda.find(f => edad >= f.banda.min && edad <= f.banda.max);
+        if (!fila) return;
+
+        (u.generosLectura || []).forEach(genero => {
+            const texto = (genero || "").trim();
+            if (!texto) return;
+            fila.generos[texto] = (fila.generos[texto] || 0) + 1;
+        });
+
+    });
+
+    return porBanda
+        .filter(f => Object.keys(f.generos).length > 0)
+        .map(f => ({
+            etiqueta: f.etiqueta,
+            listaGeneros: Object.entries(f.generos)
+                .sort((a, b) => b[1] - a[1])
+                .map(([genero, cantidad]) => `${genero} (${cantidad})`)
+                .join(", ")
+        }));
+
+}
+
 function formatoDuracion(segundos) {
     if (!segundos || !isFinite(segundos)) return "—";
     const mins = Math.floor(segundos / 60);
@@ -151,7 +221,11 @@ async function cargarEstadisticas() {
         const [usuariosSnap, progresoSnap] = await Promise.all([
             db.collection("usuarios").get(),
             db.collection("progreso").get(),
-            cargarCatalogoLecturas()
+            cargarCatalogoLecturas(),
+            // Necesaria ANTES de contarGenerosOtros() — decide qué
+            // valores de generosLectura son "oficiales" (checkbox) y
+            // cuáles son texto libre escrito en "Otro".
+            cargarGenerosLectura()
         ]);
 
         const usuarios = usuariosSnap.docs.map(doc => doc.data());
@@ -187,6 +261,15 @@ async function cargarEstadisticas() {
         renderizarBarras(document.getElementById("statsPaises"), contarPorCampo(usuarios, "pais"));
         renderizarBarras(document.getElementById("statsLenguas"), contarPorCampo(usuarios, "lenguaMaterna").slice(0, 10));
         renderizarBarras(document.getElementById("statsGeneros"), contarGeneros(usuarios));
+        renderizarBarras(document.getElementById("statsGenerosOtros"), contarGenerosOtros(usuarios));
+
+        const tablaEdadGenero = construirTablaEdadGenero(usuarios);
+        document.getElementById("statsEdadGenero").innerHTML = tablaEdadGenero.map(f => `
+            <tr>
+                <td style="white-space:nowrap;">${f.etiqueta}</td>
+                <td>${f.listaGeneros}</td>
+            </tr>
+        `).join("") || `<tr><td colspan="2" style="text-align:center; color:var(--texto-suave);">Todavía no hay datos suficientes.</td></tr>`;
 
         // ---- Lecturas de premios: vistas, intentos, aprobados, tiempo promedio ----
         const progresoPorLectura = {};

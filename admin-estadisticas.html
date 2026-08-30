@@ -78,6 +78,32 @@
     </div>
 
     <div class="seccionAdmin">
+        <h3 class="seccionAdminTitulo">✍️ Géneros escritos en "Otro"</h3>
+        <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
+            Géneros que la gente escribió a mano (no estaban en la lista de checkboxes) al registrarse o editar su perfil.
+        </p>
+        <div id="statsGenerosOtros"></div>
+    </div>
+
+    <div class="seccionAdmin">
+        <h3 class="seccionAdminTitulo">🎂📖 Géneros favoritos por edad</h3>
+        <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
+            Sin nombres — solo edad y qué géneros elige cada rango.
+        </p>
+        <div style="overflow-x:auto;">
+            <table class="tablaEstadisticas">
+                <thead>
+                    <tr>
+                        <th>Edad</th>
+                        <th>Géneros más elegidos</th>
+                    </tr>
+                </thead>
+                <tbody id="statsEdadGenero"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="seccionAdmin">
         <h3 class="seccionAdminTitulo">📚 Lecturas de premios</h3>
         <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
             Vistas, cuántos la intentaron, cuántos la aprobaron y el tiempo promedio del cuestionario.
@@ -105,6 +131,7 @@
 <script src="firebase-init.js"></script>
 <script src="admin-comun.js"></script>
 <script src="lecturas.js"></script>
+<script src="generos.js"></script>
 <script src="racha.js"></script>
 <script src="admin-estadisticas.js"></script>
 
