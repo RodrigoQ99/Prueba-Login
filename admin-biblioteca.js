@@ -127,7 +127,7 @@ function renderizarBiblioteca() {
 
     function tarjeta(lectura) {
         return `
-            <div class="tarjetaLectura" style="cursor:default;">
+            <div class="tarjetaLectura" data-catalogo="${lectura._catalogo}" data-id="${lectura.id}" style="cursor:pointer;">
                 <div class="tarjetaInfo">
                     <p class="tarjetaTitulo">${lectura.titulo} — escrita por ${etiquetaOrigenBiblioteca(lectura)}</p>
                     <p class="tarjetaNivel">
@@ -136,6 +136,7 @@ function renderizarBiblioteca() {
                             : etiquetaEdad(lectura.edad)}
                     </p>
                 </div>
+                <span class="tarjetaEstado">Leer →</span>
             </div>
         `;
     }
@@ -143,13 +144,57 @@ function renderizarBiblioteca() {
     const premios = _todasLasLecturasBiblioteca.filter(l => l._catalogo === "premios" && coincide(l));
     const mejora = _todasLasLecturasBiblioteca.filter(l => l._catalogo === "mejora" && coincide(l));
 
-    document.getElementById("listaBibliotecaPremios").innerHTML = premios.length > 0
+    const contPremios = document.getElementById("listaBibliotecaPremios");
+    const contMejora = document.getElementById("listaBibliotecaMejora");
+
+    contPremios.innerHTML = premios.length > 0
         ? premios.map(tarjeta).join("")
         : "<p style='text-align:center; color:var(--texto-suave);'>Ninguna lectura coincide.</p>";
 
-    document.getElementById("listaBibliotecaMejora").innerHTML = mejora.length > 0
+    contMejora.innerHTML = mejora.length > 0
         ? mejora.map(tarjeta).join("")
         : "<p style='text-align:center; color:var(--texto-suave);'>Ninguna lectura coincide.</p>";
+
+    [contPremios, contMejora].forEach(cont => {
+        cont.querySelectorAll("[data-id]").forEach(tarjetaEl => {
+            tarjetaEl.addEventListener("click", () => {
+                const lectura = _todasLasLecturasBiblioteca.find(
+                    l => l.id === tarjetaEl.dataset.id && l._catalogo === tarjetaEl.dataset.catalogo
+                );
+                if (lectura) abrirLecturaBiblioteca(lectura);
+            });
+        });
+    });
+
+}
+
+// Al hacer clic en una tarjeta: SOLO el texto de la lectura (nunca el
+// banco de preguntas — a diferencia de "vista previa" en admin.js, que
+// sí las muestra) — es solo para que puedas leerla, no para probarla.
+function abrirLecturaBiblioteca(lectura) {
+
+    const overlay = document.createElement("div");
+    overlay.className = "modalOverlay";
+    overlay.innerHTML = `
+        <div class="modalCaja modalCajaInfo modalCajaAdmin">
+            <h2>${lectura.titulo}</h2>
+            <p style="font-size:13px; color:var(--texto-suave); margin-bottom:15px;">
+                Escrita por ${etiquetaOrigenBiblioteca(lectura)}
+                — ${lectura._catalogo === "premios" ? (NOMBRE_NIVEL[lectura.nivel] || lectura.nivel) : etiquetaEdad(lectura.edad)}
+                ${lectura.pais ? ` — ${lectura.pais}` : " — 🌎 Global"}
+            </p>
+            <div style="text-align:left;">
+                ${(lectura.texto || []).map(p => `<p style="margin-bottom:12px;">${p}</p>`).join("") || "<p style='color:var(--texto-suave);'>Esta lectura no tiene texto guardado.</p>"}
+            </div>
+            <button type="button" class="modalCerrar" style="width:100%; margin-top:15px; background:white; border:1px solid var(--borde); color:var(--texto-suave);">Cerrar</button>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
 
 }
 

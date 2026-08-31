@@ -104,6 +104,12 @@ auth.onAuthStateChanged(async (user) => {
         const selectPais = document.getElementById("inputPais");
         if (selectPais && typeof renderizarSelectorPais === "function") {
             renderizarSelectorPais(selectPais, "");
+            // Al elegir país, pre-llena "Lengua materna" con su idioma
+            // más asociado (ver IDIOMA_POR_PAIS en paises.js) — el
+            // usuario lo puede cambiar o escribir el suyo si no aparece.
+            if (typeof activarAutocompletadoIdioma === "function") {
+                activarAutocompletadoIdioma(selectPais, document.getElementById("inputLenguaMaterna"));
+            }
         }
     }
 });

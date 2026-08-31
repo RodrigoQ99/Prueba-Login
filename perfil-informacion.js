@@ -41,6 +41,17 @@ async function cargarPerfil() {
     }
     document.getElementById("campoLenguaMaternaPerfil").value = datos.lenguaMaterna || "";
 
+    // Si cambia de país aquí, pre-llena el idioma asociado (ver
+    // IDIOMA_POR_PAIS en paises.js) — mismo comportamiento que el
+    // registro. No toca lo que ya tenía guardado a menos que en efecto
+    // cambie de país.
+    if (typeof activarAutocompletadoIdioma === "function") {
+        activarAutocompletadoIdioma(
+            document.getElementById("campoPaisPerfil"),
+            document.getElementById("campoLenguaMaternaPerfil")
+        );
+    }
+
     await cargarGenerosLectura();
     renderizarCheckboxesGeneros(document.getElementById("contenedorGenerosPerfil"), datos.generosLectura || []);
 

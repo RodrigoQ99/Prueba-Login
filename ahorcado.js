@@ -38,8 +38,18 @@ const ERRORES_MAX_POR_OPORTUNIDAD = 6;
 let palabraActual = null;
 let letrasAcertadas = [];
 let letrasFalladas = [];
+// Orden en que se fueron intentando (aciertos Y fallos, mezclados) —
+// SOLO para mostrarlas en pantalla (Etapa 33: ya no hay botones de
+// letras, se juega con el teclado físico — aquí solo se ve un registro
+// de lo ya intentado, no se puede hacer clic en nada de esto).
+let letrasIntentadas = [];
 let erroresActuales = 0;
 let oportunidadesRestantes = OPORTUNIDADES_MAX_AHORCADO;
+// Evita que taches del teclado sigan mutando el estado después de que
+// la ronda ya terminó (antes lo evitaban los botones deshabilitados;
+// ahora que el teclado físico no se puede "deshabilitar", hace falta
+// este candado explícito).
+let rondaTerminada = false;
 
 // "jugar" | "diccionario" — qué pantalla se muestra ahora mismo.
 let vistaActualAhorcado = "jugar";
@@ -107,8 +117,10 @@ async function iniciarRondaAhorcado(user) {
     palabraActual = paraElegir[Math.floor(Math.random() * paraElegir.length)];
     letrasAcertadas = [];
     letrasFalladas = [];
+    letrasIntentadas = [];
     erroresActuales = 0;
     oportunidadesRestantes = OPORTUNIDADES_MAX_AHORCADO;
+    rondaTerminada = false;
 
     renderAhorcado();
 
@@ -179,21 +191,12 @@ function renderAhorcado() {
     const rondaRecienPerdida = !terminado && erroresActuales === 0 && letrasFalladas.length > 0
         && oportunidadesRestantes < OPORTUNIDADES_MAX_AHORCADO;
 
-    const alfabeto = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ";
-
-    const botonesLetras = alfabeto.split("").map(letra => {
-
+    // Ya NO son botones — solo un registro de lo que ya se intentó (con
+    // el teclado físico), en el orden en que se fue escribiendo.
+    const chipsLetras = letrasIntentadas.map(letra => {
         const acertada = letrasAcertadas.includes(letra);
-        const fallada = letrasFalladas.includes(letra);
-        const clase = acertada ? "botonExito" : fallada ? "botonPeligro" : "";
-
-        return `
-            <button type="button" class="botonAdminChico ${clase}" data-letra="${letra}"
-                    ${acertada || fallada || terminado ? "disabled" : ""} style="min-width:38px;">
-                ${letra}
-            </button>
-        `;
-
+        const clase = acertada ? "botonExito" : "botonPeligro";
+        return `<span class="botonAdminChico ${clase}" style="min-width:38px; display:inline-block; text-align:center;">${letra}</span>`;
     }).join("");
 
     cont.innerHTML = `
@@ -216,8 +219,14 @@ function renderAhorcado() {
         <p style="text-align:center; margin-bottom:2px;">Oportunidades: ${oportunidadesRestantes}/${OPORTUNIDADES_MAX_AHORCADO}</p>
         <p style="text-align:center; margin-bottom:10px; color:var(--texto-suave); font-size:14px;">Errores en esta oportunidad: ${erroresActuales}/${ERRORES_MAX_POR_OPORTUNIDAD}</p>
 
+        ${!terminado ? `
+            <p style="text-align:center; color:var(--texto-suave); font-size:13px; margin-bottom:10px;">
+                ⌨️ Escribe una letra con tu teclado para intentarla.
+            </p>
+        ` : ""}
+
         <div style="display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:20px;">
-            ${botonesLetras}
+            ${chipsLetras || `<span style="color:var(--texto-suave); font-size:13px;">Todavía no has intentado ninguna letra.</span>`}
         </div>
 
         ${terminado ? `
@@ -228,11 +237,7 @@ function renderAhorcado() {
         ` : ""}
     `;
 
-    if (!terminado) {
-        cont.querySelectorAll("[data-letra]").forEach(btn => {
-            btn.addEventListener("click", () => manejarLetraAhorcado(btn.dataset.letra));
-        });
-    } else {
+    if (terminado) {
         document.getElementById("btnJugarOtraAhorcado").addEventListener("click", () => {
             iniciarRondaAhorcado(auth.currentUser);
         });
@@ -247,7 +252,10 @@ function renderAhorcado() {
 
 function manejarLetraAhorcado(letra) {
 
+    if (rondaTerminada) return;
     if (letrasAcertadas.includes(letra) || letrasFalladas.includes(letra)) return;
+
+    letrasIntentadas.push(letra);
 
     const letrasPalabra = [...palabraActual.palabra.toUpperCase()].map(normalizarLetraAhorcado);
 
@@ -277,12 +285,38 @@ function manejarLetraAhorcado(letra) {
     const perdio = oportunidadesRestantes <= 0;
 
     if (gano || perdio) {
+        rondaTerminada = true;
         guardarPalabraJugadaAhorcado(gano);
     }
 
     renderAhorcado();
 
 }
+
+
+// ==========================
+// TECLADO FÍSICO (Etapa 33 — ya no hay botones en pantalla)
+// ==========================
+// Un solo listener global (no uno por ronda) — revisa el estado actual
+// cada vez que se presiona una tecla, así funciona sin importar cuántas
+// veces se haya vuelto a renderizar el juego.
+document.addEventListener("keydown", (e) => {
+
+    if (vistaActualAhorcado !== "jugar") return;
+    if (!palabraActual || rondaTerminada) return;
+
+    // No interceptar si el foco está en un campo de texto real (por si
+    // algún día esta pantalla agrega uno) — nunca debería pasar aquí,
+    // pero es una salvaguarda barata.
+    const activo = document.activeElement;
+    if (activo && (activo.tagName === "INPUT" || activo.tagName === "TEXTAREA")) return;
+
+    const letra = normalizarLetraAhorcado(e.key);
+    if (!/^[A-ZÑ]$/.test(letra)) return;
+
+    manejarLetraAhorcado(letra);
+
+});
 
 async function guardarPalabraJugadaAhorcado(gano) {
 

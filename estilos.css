@@ -386,7 +386,8 @@ button:active{
     font-size:15px;
 }
 
-#datosPerfilRegistro input{
+#datosPerfilRegistro input,
+#datosPerfilRegistro select{
     display:block;
     width:100%;
     padding:10px;
@@ -394,6 +395,22 @@ button:active{
     border:1px solid #ccc;
     border-radius:8px;
     font-size:15px;
+}
+
+/* <select> del país (registro y "Editar perfil") — mismo look que los
+   demás campos, más una flechita propia (el triángulo nativo del
+   navegador se ve distinto en cada sistema, esto lo deja consistente). */
+#datosPerfilRegistro select,
+.cajaCheckpoint select{
+    appearance:none;
+    -webkit-appearance:none;
+    background-color:white;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23888'%3E%3Cpath d='M5.5 7.5l4.5 5 4.5-5z'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-position:right 12px center;
+    background-size:18px;
+    padding-right:36px;
+    cursor:pointer;
 }
 
 #formRegistro button{
@@ -1015,7 +1032,8 @@ button.menuLink{
 }
 
 .cajaCheckpoint input[type="text"],
-.cajaCheckpoint input[type="number"]{
+.cajaCheckpoint input[type="number"],
+.cajaCheckpoint select{
     display:block;
     width:100%;
     padding:10px;

@@ -61,6 +61,105 @@ const LISTA_PAISES = [
     "Zambia", "Zimbabue"
 ];
 
+// ==========================================================
+// IDIOMA PRINCIPAL POR PAÍS (Etapa 34)
+// ==========================================================
+// Solo para PRE-LLENAR "Lengua materna" al elegir país (ver
+// activarAutocompletadoIdioma más abajo) — el campo sigue siendo texto
+// libre, el usuario puede cambiarlo o borrarlo y escribir el suyo si no
+// coincide (países multilingües, el criterio es una simplificación:
+// "idioma más asociado internacionalmente con el país").
+const IDIOMA_POR_PAIS = {
+    "Afganistán": "pastún", "Albania": "albanés", "Alemania": "alemán", "Andorra": "catalán",
+    "Angola": "portugués", "Antigua y Barbuda": "inglés", "Arabia Saudita": "árabe",
+    "Argelia": "árabe", "Argentina": "español", "Armenia": "armenio", "Australia": "inglés",
+    "Austria": "alemán", "Azerbaiyán": "azerí",
+    "Bahamas": "inglés", "Bangladés": "bengalí", "Barbados": "inglés", "Baréin": "árabe",
+    "Bélgica": "neerlandés", "Belice": "inglés", "Benín": "francés", "Bielorrusia": "bielorruso",
+    "Birmania (Myanmar)": "birmano", "Bolivia": "español", "Bosnia y Herzegovina": "bosnio",
+    "Botsuana": "inglés", "Brasil": "portugués", "Brunéi": "malayo", "Bulgaria": "búlgaro",
+    "Burkina Faso": "francés", "Burundi": "kirundi", "Bután": "dzongkha",
+    "Cabo Verde": "portugués", "Camboya": "jemer", "Camerún": "francés", "Canadá": "inglés",
+    "Catar": "árabe", "Chad": "árabe", "Chile": "español", "China": "chino mandarín",
+    "Chipre": "griego", "Ciudad del Vaticano": "italiano", "Colombia": "español",
+    "Comoras": "francés", "Corea del Norte": "coreano", "Corea del Sur": "coreano",
+    "Costa de Marfil": "francés", "Costa Rica": "español", "Croacia": "croata", "Cuba": "español",
+    "Dinamarca": "danés", "Dominica": "inglés",
+    "Ecuador": "español", "Egipto": "árabe", "El Salvador": "español",
+    "Emiratos Árabes Unidos": "árabe", "Eritrea": "tigriña", "Eslovaquia": "eslovaco",
+    "Eslovenia": "esloveno", "España": "español", "Estados Unidos": "inglés", "Estonia": "estonio",
+    "Esuatini": "suazi", "Etiopía": "amhárico",
+    "Filipinas": "filipino", "Finlandia": "finés", "Fiyi": "inglés", "Francia": "francés",
+    "Gabón": "francés", "Gambia": "inglés", "Georgia": "georgiano", "Ghana": "inglés",
+    "Granada": "inglés", "Grecia": "griego", "Guatemala": "español", "Guinea": "francés",
+    "Guinea-Bisáu": "portugués", "Guinea Ecuatorial": "español", "Guyana": "inglés",
+    "Haití": "criollo haitiano", "Honduras": "español", "Hungría": "húngaro",
+    "India": "hindi", "Indonesia": "indonesio", "Irak": "árabe", "Irán": "persa",
+    "Irlanda": "inglés", "Islandia": "islandés", "Islas Marshall": "marshalés",
+    "Islas Salomón": "inglés", "Israel": "hebreo", "Italia": "italiano",
+    "Jamaica": "inglés", "Japón": "japonés", "Jordania": "árabe",
+    "Kazajistán": "kazajo", "Kenia": "inglés", "Kirguistán": "kirguís", "Kiribati": "inglés",
+    "Kuwait": "árabe",
+    "Laos": "lao", "Lesoto": "sesoto", "Letonia": "letón", "Líbano": "árabe",
+    "Liberia": "inglés", "Libia": "árabe", "Liechtenstein": "alemán", "Lituania": "lituano",
+    "Luxemburgo": "luxemburgués",
+    "Macedonia del Norte": "macedonio", "Madagascar": "malgache", "Malasia": "malayo",
+    "Malaui": "inglés", "Maldivas": "dhivehi", "Malí": "bambara", "Malta": "maltés",
+    "Marruecos": "árabe", "Mauricio": "inglés", "Mauritania": "árabe", "México": "español",
+    "Micronesia": "inglés", "Moldavia": "rumano", "Mónaco": "francés", "Mongolia": "mongol",
+    "Montenegro": "montenegrino", "Mozambique": "portugués",
+    "Namibia": "inglés", "Nauru": "nauruano", "Nepal": "nepalí", "Nicaragua": "español",
+    "Níger": "francés", "Nigeria": "inglés", "Noruega": "noruego", "Nueva Zelanda": "inglés",
+    "Omán": "árabe",
+    "Países Bajos": "neerlandés", "Pakistán": "urdu", "Palaos": "inglés", "Palestina": "árabe",
+    "Panamá": "español", "Papúa Nueva Guinea": "inglés", "Paraguay": "español", "Perú": "español",
+    "Polonia": "polaco", "Portugal": "portugués",
+    "Reino Unido": "inglés", "República Centroafricana": "francés", "República Checa": "checo",
+    "República del Congo": "francés", "República Democrática del Congo": "francés",
+    "República Dominicana": "español", "Ruanda": "kinyarwanda", "Rumania": "rumano",
+    "Rusia": "ruso",
+    "Samoa": "samoano", "San Cristóbal y Nieves": "inglés", "San Marino": "italiano",
+    "San Vicente y las Granadinas": "inglés", "Santa Lucía": "inglés",
+    "Santo Tomé y Príncipe": "portugués", "Senegal": "francés", "Serbia": "serbio",
+    "Seychelles": "criollo seychelense", "Sierra Leona": "inglés", "Singapur": "inglés",
+    "Siria": "árabe", "Somalia": "somalí", "Sri Lanka": "cingalés", "Sudáfrica": "inglés",
+    "Sudán": "árabe", "Sudán del Sur": "inglés", "Suecia": "sueco", "Suiza": "alemán",
+    "Surinam": "neerlandés",
+    "Tailandia": "tailandés", "Tanzania": "suajili", "Tayikistán": "tayiko",
+    "Timor Oriental (Timor-Leste)": "tetum", "Togo": "francés", "Tonga": "tongano",
+    "Trinidad y Tobago": "inglés", "Túnez": "árabe", "Turkmenistán": "turcomano",
+    "Turquía": "turco", "Tuvalu": "tuvaluano",
+    "Ucrania": "ucraniano", "Uganda": "inglés", "Uruguay": "español", "Uzbekistán": "uzbeko",
+    "Vanuatu": "bislama", "Venezuela": "español", "Vietnam": "vietnamita",
+    "Yemen": "árabe", "Yibuti": "francés",
+    "Zambia": "inglés", "Zimbabue": "inglés"
+};
+
+/**
+ * Conecta un <select> de país con un <input> de lengua materna: al
+ * elegir país, PRE-LLENA el idioma asociado (IDIOMA_POR_PAIS) — el
+ * usuario lo puede cambiar o borrar libremente, y en cuanto lo edita a
+ * mano deja de sobreescribirse en cambios de país posteriores (para no
+ * pisarle encima algo que ya corrigió). Si el país no tiene un idioma
+ * mapeado, no toca el campo.
+ * @param {HTMLSelectElement} selectPais
+ * @param {HTMLInputElement} inputLengua
+ */
+function activarAutocompletadoIdioma(selectPais, inputLengua) {
+
+    if (!selectPais || !inputLengua) return;
+
+    let editadoAMano = false;
+    inputLengua.addEventListener("input", () => { editadoAMano = true; });
+
+    selectPais.addEventListener("change", () => {
+        if (editadoAMano) return;
+        const idioma = IDIOMA_POR_PAIS[selectPais.value];
+        if (idioma) inputLengua.value = idioma;
+    });
+
+}
+
 /**
  * Pinta las 195 <option> dentro de un <select> ya existente en el HTML
  * (ver #inputPais en index.html / #campoPaisPerfil en
