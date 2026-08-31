@@ -1,17 +1,21 @@
 // ==========================================================
 // SUGERENCIAS (dentro de "Lecturas" — ver lecturas.html)
 // ==========================================================
-// Lecturas de otros usuarios ("Ser el protagonista de la historia",
-// ver protagonista.js) que coinciden con los géneros de interés
-// marcados en el perfil. A diferencia de "Lecturas premiadas", NO
-// importa si el usuario tiene o no el código: se muestran TODAS las
-// que coincidan con sus géneros favoritos (aunque también tenga
-// código para alguna — en ese caso aparece en ambos apartados, cada
-// uno con su propio comportamiento). Se abren en lectura-libre.html:
-// sin cronómetro, sin puntos, a su propio ritmo.
+// Lecturas de OTROS USUARIOS ("Ser el protagonista de la historia", ver
+// protagonista.js) publicadas por el admin, que coinciden con los
+// géneros de interés marcados en el perfil.
 //
-// Se movió aquí desde inicio.js cuando index.html pasó a ser Inicio
-// (ver Etapa 18) — mismo comportamiento de siempre (Etapa 15).
+// Etapa 32 — dos filtros que antes NO existían y causaban duplicados:
+// 1. Solo lecturas con "autorUid" (vinieron de una propuesta de
+//    usuario) — una lectura escrita por el admin o generada con IA
+//    puede tener género pero NUNCA debe aparecer aquí como "sugerida".
+// 2. Nunca una lectura que el usuario YA tiene desbloqueada por código
+//    (usuarios/{uid}.lecturasDesbloqueadas, ver lecturas-premiadas.js)
+//    — si ya le llegó por código, vive solo en "Lecturas premiadas",
+//    compitiendo contra el tiempo; no debe duplicarse aquí también.
+//
+// Se abren en lectura-libre.html: sin cronómetro, sin puntos, a su
+// propio ritmo.
 // ==========================================================
 
 async function cargarSugerenciasGenero(user) {
@@ -20,10 +24,13 @@ async function cargarSugerenciasGenero(user) {
     if (!contenedor) return;
 
     let generosUsuario = [];
+    let lecturasDesbloqueadas = [];
 
     try {
         const usuarioDoc = await db.collection("usuarios").doc(user.uid).get();
-        generosUsuario = (usuarioDoc.exists && usuarioDoc.data().generosLectura) || [];
+        const datosUsuario = usuarioDoc.exists ? usuarioDoc.data() : {};
+        generosUsuario = datosUsuario.generosLectura || [];
+        lecturasDesbloqueadas = datosUsuario.lecturasDesbloqueadas || [];
     } catch (error) {
         console.error("No se pudieron cargar tus géneros de interés:", error);
     }
@@ -45,7 +52,13 @@ async function cargarSugerenciasGenero(user) {
         const snapshot = await db.collection("lecturas")
             .where("genero", "in", generosConsulta)
             .get();
-        lecturasSugeridas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        lecturasSugeridas = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            // Filtro 1: solo propuestas de otros usuarios, nunca lo
+            // escrito por el admin o generado con IA.
+            .filter(lectura => !!lectura.autorUid)
+            // Filtro 2: nunca una que ya tenga desbloqueada por código.
+            .filter(lectura => !lecturasDesbloqueadas.includes(lectura.id));
     } catch (error) {
         console.error("No se pudieron cargar las sugerencias:", error);
         contenedor.innerHTML = "<p style='text-align:center; color:var(--texto-suave);'>No se pudieron cargar las sugerencias.</p>";
@@ -72,7 +85,7 @@ async function cargarSugerenciasGenero(user) {
                     <a href="lectura-libre.html?id=${encodeURIComponent(lectura.id)}" class="tarjetaLectura">
                         <div class="tarjetaInfo">
                             <p class="tarjetaTitulo">${lectura.titulo}</p>
-                            <p class="tarjetaNivel">Por ${lectura.autorNombre || "un usuario"}</p>
+                            <p class="tarjetaNivel">Sugerida por: ${lectura.autorNombre || "un usuario"}</p>
                         </div>
                         <span class="tarjetaEstado">Leer →</span>
                     </a>

@@ -5,20 +5,12 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lecturas — Panel de administrador</title>
+    <title>Biblioteca — Panel de administrador</title>
     <link rel="stylesheet" href="estilos.css">
 
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
-    <!-- Solo para las funciones de IA (ver admin-ia.js) — nunca se cargan
-         en páginas de participantes. Storage: subir un documento para
-         llenar el formulario de lectura (Etapa 22). -->
-    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-functions-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js"></script>
-    <!-- Generador de código QR (Etapa 32) — solo para el botón 📱 junto a
-         "🔑 Generar código" (ver abrirModalCodigoQR en admin.js). -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 </head>
 
@@ -55,31 +47,49 @@
 <!-- ==========================
      PANEL (solo administradores)
 =========================== -->
-<div id="contenedorAdminPanel" style="display:none; max-width:640px; margin:0 auto; padding:20px;">
+<div id="contenedorAdminPanel" style="display:none; max-width:700px; margin:0 auto; padding:20px;">
 
     <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:20px;">
         <a href="admin-panel.html" style="text-decoration:none; color:var(--texto-suave); font-weight:600;">← Inicio</a>
-        <h1 style="margin:0;">📚 Lecturas</h1>
+        <h1 style="margin:0;">🗂️ Biblioteca</h1>
         <span style="width:50px;"></span>
     </div>
 
-    <!-- Lecturas de premios (inicializarAdminLecturasPremios) y
-         Encuesta de géneros (inicializarAdminGenerosLectura) -->
-    <div id="contenedor"></div>
+    <p style="text-align:center; color:var(--texto-suave); font-size:14px; margin-bottom:20px;">
+        Todas las lecturas de la aplicación, con quién (o qué) las escribió.
+    </p>
+
+    <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:20px;">
+        <input type="text" id="campoBuscarBiblioteca" placeholder="🔎 Buscar por título..."
+               style="flex:1; min-width:200px; max-width:320px; padding:10px; border-radius:8px; border:1px solid var(--borde);">
+        <select id="filtroOrigenBiblioteca" style="padding:10px; border-radius:8px; border:1px solid var(--borde);">
+            <option value="">Todos los orígenes</option>
+            <option value="admin">Escritas por administrador</option>
+            <option value="ia">Generadas con IA</option>
+            <option value="usuario">Sugeridas por usuarios</option>
+        </select>
+    </div>
+
+    <div id="resumenBiblioteca" class="tarjetasResumen"></div>
+
+    <div class="seccionAdmin">
+        <h3 class="seccionAdminTitulo">📚 Lecturas de premios</h3>
+        <div id="listaBibliotecaPremios"></div>
+    </div>
+
+    <div class="seccionAdmin">
+        <h3 class="seccionAdminTitulo">📈 Mejorar la lectura</h3>
+        <div id="listaBibliotecaMejora"></div>
+    </div>
 
 </div>
 
 
 <script src="firebase-init.js"></script>
 <script src="admin-comun.js"></script>
-<script src="admin-ia.js"></script>
 <script src="lecturas.js"></script>
-<script src="puntos.js"></script>
-<script src="generos.js"></script>
-<script src="paises.js"></script>
-<script src="editor-preguntas.js"></script>
-<script src="admin.js"></script>
-<script src="admin-lecturas.js"></script>
+<script src="mejora-lecturas.js"></script>
+<script src="admin-biblioteca.js"></script>
 
 
 </body>

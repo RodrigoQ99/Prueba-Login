@@ -127,7 +127,7 @@ function activarBotonGenerarPreguntasIA(overlay, { campoTexto, editorPreguntas, 
 // resto de los botones de IA: si generarLecturaOriginalConIA
 // (admin-ia.js) no existe en esta página, la sección entera queda
 // oculta.
-async function activarBotonInventarHistoriaIA(overlay, { campoTitulo, campoTexto, editorPreguntas, preguntas, contexto }) {
+async function activarBotonInventarHistoriaIA(overlay, { campoTitulo, campoTexto, editorPreguntas, preguntas, contexto, alGenerar }) {
 
     const seccion = overlay.querySelector("#seccionInventarHistoriaIA");
     if (!seccion || typeof generarLecturaOriginalConIA !== "function" || typeof renderizarCheckboxesGeneros !== "function") return;
@@ -174,6 +174,11 @@ async function activarBotonInventarHistoriaIA(overlay, { campoTitulo, campoTexto
             preguntas.length = 0;
             preguntas.push(...resultado.preguntas);
             editorPreguntas.refrescar();
+
+            // Marca el ORIGEN de esta lectura como "ia" (Etapa 32, ver
+            // Biblioteca) — se guarda al hacer clic en "Crear lectura",
+            // no aquí, por si el admin cancela sin llegar a guardar.
+            if (alGenerar) alGenerar();
 
             estado.textContent = `✅ Se inventó "${resultado.titulo}" — revísala con calma antes de guardar.`;
             estado.style.color = "#2e9e5b";
@@ -376,6 +381,14 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
         ? JSON.parse(JSON.stringify(lecturaExistente.bancoPreguntas))
         : [];
 
+    // ORIGEN de la lectura (Etapa 32, ver Biblioteca en admin-biblioteca.js):
+    // "admin" (escrita a mano, por defecto), "usuario" (viene de una
+    // propuesta — ya trae autorUid) o "ia" (se marca sola si el admin usa
+    // "Inventar historia con IA", ver activarBotonInventarHistoriaIA). Al
+    // EDITAR una lectura que ya existía, su origen NUNCA cambia — se
+    // conserva tal cual quedó al crearla (mismo criterio que "orden").
+    let origenLectura = (lecturaExistente && lecturaExistente.autorUid) ? "usuario" : "admin";
+
     const overlay = document.createElement("div");
     overlay.className = "modalOverlay";
     overlay.innerHTML = `
@@ -470,7 +483,8 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
         campoTexto: overlay.querySelector("#campoTexto"),
         editorPreguntas,
         preguntas,
-        contexto: () => ({ tipo: "premio", nivel: overlay.querySelector("#campoNivel").value })
+        contexto: () => ({ tipo: "premio", nivel: overlay.querySelector("#campoNivel").value }),
+        alGenerar: () => { origenLectura = "ia"; }
     });
 
     function cerrarFormularioLectura() {
@@ -540,7 +554,10 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
             // Ya no lo escribe el admin a mano: una nueva se agrega al final
             // (conteo automático); una que ya existía conserva el suyo — se
             // vuelve a numerar sin huecos solo al eliminar (ver eliminarLectura).
-            orden: esNueva ? CATALOGO_LECTURAS.length : lecturaExistente.orden
+            orden: esNueva ? CATALOGO_LECTURAS.length : lecturaExistente.orden,
+            // Origen (Etapa 32, ver Biblioteca) — NUNCA cambia al editar
+            // una lectura ya existente, mismo criterio que "orden".
+            origen: esNueva ? origenLectura : (lecturaExistente.origen || "admin")
         };
 
         // Si esta lectura viene de una propuesta de "Ser el protagonista de
@@ -642,6 +659,9 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar, alCa
         ? JSON.parse(JSON.stringify(lecturaExistente.bancoPreguntas))
         : [];
 
+    // ORIGEN de la lectura — ver la misma nota en abrirFormularioLectura.
+    let origenLectura = (lecturaExistente && lecturaExistente.autorUid) ? "usuario" : "admin";
+
     const opcionesEdad = [];
     for (let e = RANGO_EDADES.min; e <= RANGO_EDADES.max; e++) {
         opcionesEdad.push(`<option value="${e}">${e} años</option>`);
@@ -730,7 +750,8 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar, alCa
         campoTexto: overlay.querySelector("#campoTexto"),
         editorPreguntas,
         preguntas,
-        contexto: () => ({ tipo: "mejora", edad: Number(overlay.querySelector("#campoEdad").value) })
+        contexto: () => ({ tipo: "mejora", edad: Number(overlay.querySelector("#campoEdad").value) }),
+        alGenerar: () => { origenLectura = "ia"; }
     });
 
     function cerrarFormularioMejora() {
@@ -797,7 +818,10 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar, alCa
             // Si además cambió de edad al editarla, también se va al final
             // de la lista de la edad NUEVA (su "orden" viejo era relativo a
             // la edad anterior, ya no tiene sentido ahí).
-            orden: (esNueva || lecturaExistente.edad !== edad) ? listaDeEsaEdad.length : lecturaExistente.orden
+            orden: (esNueva || lecturaExistente.edad !== edad) ? listaDeEsaEdad.length : lecturaExistente.orden,
+            // Origen (Etapa 32, ver Biblioteca) — NUNCA cambia al editar
+            // una lectura ya existente, mismo criterio que "orden".
+            origen: esNueva ? origenLectura : (lecturaExistente.origen || "admin")
         };
 
         // Ver la misma nota en abrirFormularioLectura: conserva la autoría
@@ -2782,6 +2806,7 @@ function renderizarListaAdminLecturas() {
             <div style="display:flex; gap:8px;">
                 <button type="button" class="botonAdminChico" data-preview="${lectura.id}" title="Vista previa (sin puntos ni racha)">👁️</button>
                 <button type="button" class="botonAdminChico" data-codigos="${lectura.id}" title="Generar código">🔑</button>
+                <button type="button" class="botonAdminChico" data-qr="${lectura.id}" title="Código QR único">📱</button>
                 <button type="button" class="botonAdminChico" data-editar="${lectura.id}">✏️</button>
                 <button type="button" class="botonAdminChico botonPeligro" data-eliminar="${lectura.id}">🗑️</button>
             </div>
@@ -2821,6 +2846,13 @@ function renderizarListaAdminLecturas() {
         btn.addEventListener("click", () => {
             const lectura = CATALOGO_LECTURAS.find(l => l.id === btn.dataset.codigos);
             abrirModalCodigosLectura(lectura);
+        });
+    });
+
+    cont.querySelectorAll("[data-qr]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const lectura = CATALOGO_LECTURAS.find(l => l.id === btn.dataset.qr);
+            abrirModalCodigoQR(lectura);
         });
     });
 
@@ -2994,6 +3026,62 @@ function abrirModalCodigosLectura(lectura) {
     render();
 
 }
+
+// ==========================================================
+// CÓDIGO QR ÚNICO DE UNA LECTURA (Etapa 32)
+// ==========================================================
+// A diferencia de las llaves de 8 caracteres (muchas por lectura, una
+// por golosina, ver abrirModalCodigosLectura arriba), cada lectura
+// tiene UN SOLO código QR — no lo reemplaza, lo complementa. Al
+// escanearlo, la persona llega directo a esa lectura: qr.html toma
+// automáticamente uno de los códigos de 8 caracteres TODAVÍA
+// disponibles de esa lectura y lo canjea por ella (ver
+// canjearCodigoLecturaPorQR en desbloqueo.js) — nadie tiene que
+// escribir nada a mano. El QR en sí no "se gasta": sigue sirviendo
+// mientras la lectura tenga códigos de 8 caracteres sin usar.
+//
+// Se genera del lado del navegador con QRCode.js (CDN, ver
+// admin-lecturas.html) — nunca se guarda como imagen en Firestore/
+// Storage, se recalcula cada vez a partir de la URL (siempre la misma
+// para una lectura dada, así que el QR impreso nunca cambia).
+function abrirModalCodigoQR(lectura) {
+
+    const overlay = document.createElement("div");
+    overlay.className = "modalOverlay";
+    overlay.innerHTML = `
+        <div class="modalCaja modalCajaInfo" style="text-align:center;">
+            <h2>📱 Código QR</h2>
+            <p style="font-weight:600; margin-bottom:5px;">${lectura.titulo}</p>
+            <p style="font-size:13px; color:var(--texto-suave); margin-bottom:15px;">
+                UN solo código QR para esta lectura (las llaves de 8 caracteres siguen aparte, una por golosina).
+                Al escanearlo, la persona llega directo aquí — se le asigna automáticamente uno de los códigos
+                de 8 caracteres disponibles, sin escribir nada.
+            </p>
+            <div id="contenedorQrLectura" style="display:flex; justify-content:center; margin:15px 0; min-height:200px; align-items:center;"></div>
+            <p style="font-size:12px; word-break:break-all; color:var(--texto-suave); margin-bottom:15px;" id="urlQrLectura"></p>
+            <button class="modalCerrar" style="background:white; border:1px solid var(--borde); color:var(--texto-suave);">Cerrar</button>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+
+    const url = `${window.location.origin}/qr.html?lectura=${encodeURIComponent(lectura.id)}`;
+    overlay.querySelector("#urlQrLectura").textContent = url;
+
+    const contenedorQr = overlay.querySelector("#contenedorQrLectura");
+
+    if (typeof QRCode === "function") {
+        new QRCode(contenedorQr, { text: url, width: 200, height: 200 });
+    } else {
+        contenedorQr.innerHTML = "<p style='color:#c0392b;'>No se pudo cargar el generador de QR (revisa tu conexión y recarga la página).</p>";
+    }
+
+}
+
 
 /**
  * Copia el código de canje (data-copiar del botón) al portapapeles y le

@@ -146,6 +146,79 @@ async function canjearCodigoLectura(codigo) {
 }
 
 /**
+ * Variante de canjearCodigoLectura() para el código QR único de una
+ * lectura (Etapa 32, ver qr.js/qr.html) — en vez de recibir un código
+ * ya escrito, ELIGE uno de los códigos de 8 caracteres TODAVÍA
+ * disponibles de esa lectura y lo canjea, en una transacción (mismo
+ * criterio de "una sola vez, nunca dos personas al mismo tiempo" que
+ * canjearCodigoLectura). Si por mala suerte otro escaneo se gana el
+ * candidato elegido justo antes, reintenta con otro disponible antes de
+ * rendirse — así dos escaneos casi simultáneos no se estorban entre sí.
+ *
+ * Un solo "where" de igualdad (lecturaId) + filtro de "usado" EN
+ * MEMORIA, no en la consulta — mismo patrón que contarAprobadosLectura
+ * en perfil-publicaciones.js, para no necesitar un índice compuesto en
+ * Firestore.
+ */
+async function canjearCodigoLecturaPorQR(lecturaId) {
+
+    const user = auth.currentUser;
+    if (!user) throw new Error("Debes iniciar sesión primero.");
+
+    const snapshot = await db.collection("codigosLectura")
+        .where("lecturaId", "==", lecturaId)
+        .get();
+
+    const disponibles = snapshot.docs.filter(doc => !doc.data().usado);
+
+    if (disponibles.length === 0) {
+        throw new Error("Ya no quedan códigos disponibles para esta lectura. Pídele uno nuevo al administrador.");
+    }
+
+    // Al azar (no siempre el primero) para repartir mejor la carrera si
+    // varios escanean casi al mismo tiempo.
+    const candidatos = [...disponibles].sort(() => Math.random() - 0.5);
+
+    for (const candidato of candidatos) {
+
+        const ref = candidato.ref;
+
+        try {
+
+            await db.runTransaction(async (transaccion) => {
+
+                const doc = await transaccion.get(ref);
+
+                if (!doc.exists || doc.data().usado) {
+                    throw new Error("ocupado");
+                }
+
+                transaccion.update(ref, {
+                    usado: true,
+                    usadoPor: user.uid,
+                    usadoEn: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+            });
+
+            await db.collection("usuarios").doc(user.uid).update({
+                lecturasDesbloqueadas: firebase.firestore.FieldValue.arrayUnion(lecturaId)
+            });
+
+            return lecturaId;
+
+        } catch (error) {
+            // Otro escaneo se lo ganó justo ahora — prueba el siguiente
+            // candidato en vez de rendirse de una vez.
+        }
+
+    }
+
+    throw new Error("Ya no quedan códigos disponibles para esta lectura ahora mismo. Intenta de nuevo en un momento.");
+
+}
+
+/**
  * Si "lecturaId" (lo que acaba de desbloquear el código) ya está
  * APROBADA por este usuario, y todavía hay lecturas del catálogo sin
  * descubrir, elige una de esas al azar, la desbloquea de una vez (sin
