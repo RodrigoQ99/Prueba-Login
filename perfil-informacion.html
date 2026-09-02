@@ -117,10 +117,26 @@
         </div>
 
         <label style="display:block; font-weight:600; margin:15px 0 6px;">País</label>
-        <select id="campoPaisPerfil"></select>
+        <p id="campoPaisPerfilTexto" style="display:none; padding:10px 0; color:var(--texto-suave);">—</p>
+
+        <!-- Mismo criterio que edad y género: si ya lo tienes guardado se
+             muestra fijo; solo se puede completar UNA vez. -->
+        <div id="cajaCompletarPais" style="display:none;">
+            <select id="campoPaisPerfil"></select>
+            <small style="display:block; color:#888; margin:8px 0 10px;">
+                Una vez que lo guardes, ya no se podrá editar.
+            </small>
+        </div>
 
         <label style="display:block; font-weight:600; margin:15px 0 6px;">Lengua materna</label>
-        <input type="text" id="campoLenguaMaternaPerfil" placeholder="Tu lengua materna">
+        <p id="campoLenguaMaternaPerfilTexto" style="display:none; padding:10px 0; color:var(--texto-suave);">—</p>
+
+        <div id="cajaCompletarLengua" style="display:none;">
+            <input type="text" id="campoLenguaMaternaPerfil" placeholder="Tu lengua materna">
+            <small style="display:block; color:#888; margin:8px 0 10px;">
+                Una vez que lo guardes, ya no se podrá editar.
+            </small>
+        </div>
 
         <p style="font-weight:600; margin:20px 0 10px;">¿Qué géneros de lectura te gustan?</p>
         <div id="contenedorGenerosPerfil"></div>

@@ -2732,8 +2732,9 @@ function inicializarAdminPremiosConfig() {
 //
 //   Ganados     = todos los premios de ese nivel.
 //   Canjeados   = los que un premiador ya marcó como entregados.
-//   Pendientes  = ganados - canjeados - donados (los donados ya no se
-//                 pueden canjear, así que no cuentan como pendientes).
+//   Donados     = los que el dueño decidió donar en vez de canjear.
+//   Pendientes  = ganados - canjeados - donados (los canjeados y los
+//                 donados ya están resueltos, no siguen pendientes).
 async function cargarResumenPremios() {
 
     const cont = document.getElementById("resumenPremios");
@@ -2790,6 +2791,7 @@ async function cargarResumenPremios() {
                 <td>${esc(nombre)}${premio ? ` · <span style="color:var(--texto-suave);">${esc(premio)}</span>` : ""}</td>
                 <td style="text-align:center;">${d.ganados}</td>
                 <td style="text-align:center;">${d.canjeados}</td>
+                <td style="text-align:center;">${d.donados}</td>
                 <td style="text-align:center;">${pendientes}</td>
             </tr>
         `;
@@ -2806,6 +2808,7 @@ async function cargarResumenPremios() {
                         <th>Premio</th>
                         <th style="text-align:center;">Ganados</th>
                         <th style="text-align:center;">Canjeados</th>
+                        <th style="text-align:center;">Donados</th>
                         <th style="text-align:center;">Pendientes</th>
                     </tr>
                 </thead>
@@ -2815,17 +2818,12 @@ async function cargarResumenPremios() {
                         <td>Total</td>
                         <td style="text-align:center;">${total.ganados}</td>
                         <td style="text-align:center;">${total.canjeados}</td>
+                        <td style="text-align:center;">${total.donados}</td>
                         <td style="text-align:center;">${totalPendientes}</td>
                     </tr>
                 </tbody>
             </table>
         </div>
-        ${total.donados > 0 ? `
-            <p style="font-size:12px; color:var(--texto-suave); margin-top:8px;">
-                Además, ${total.donados} premio(s) fueron donados por sus dueños: ya no se pueden canjear,
-                por eso no se cuentan como pendientes.
-            </p>
-        ` : ""}
     `;
 
 }

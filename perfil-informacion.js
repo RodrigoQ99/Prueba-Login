@@ -10,15 +10,16 @@
 // auth.js) — solo se muestra. "edadPerfil" es un dato informativo, sin
 // relación con "edadActual" (la edad que navega Mejorar la lectura).
 //
-// Etapa 36 — "completar una sola vez": cuentas de ANTES de la Etapa 11
-// (edad) o de antes de esta misma etapa (género) no tienen esos campos
-// guardados. Si falta alguno, esta pantalla deja completarlo — pero
-// SOLO mientras falte: en cuanto se guarda, la caja de "completar" se
-// esconde para siempre y pasa a mostrarse como texto fijo, igual que
-// cualquier cuenta que ya lo tenía desde el registro. La protección es
-// del mismo tipo que ya existía para la edad (solo en el frontend: no
-// se ofrece la opción de editarlo, no hay una regla de Firestore que lo
-// bloquee — mismo criterio ya aceptado para ese campo).
+// "Completar una sola vez" (edad, género, país y lengua materna):
+// cuentas viejas pueden no tener alguno de esos campos guardado. Si
+// falta, esta pantalla deja completarlo — pero SOLO mientras falte: en
+// cuanto se guarda, la caja de "completar" se esconde para siempre y
+// pasa a mostrarse como texto fijo, igual que cualquier cuenta que ya
+// lo tenía desde el registro. Las cuentas nuevas traen país y lengua
+// materna desde el registro, así que para ellas ya salen fijos. La
+// protección es solo en el frontend (no se ofrece editarlo; no hay una
+// regla de Firestore que lo bloquee) — mismo criterio ya aceptado para
+// la edad.
 
 // auth.js no se carga en esta página — se copia esta única función
 // (ya existe igual en auth.js) porque aquí también hace falta calcular
@@ -101,18 +102,42 @@ async function cargarPerfil() {
         cajaCompletarGenero.style.display = "block";
     }
 
-    // País: mismo <select> restringido a LISTA_PAISES que el registro
-    // (ver paises.js) — nunca texto libre.
-    if (typeof renderizarSelectorPais === "function") {
-        renderizarSelectorPais(document.getElementById("campoPaisPerfil"), datos.pais || "");
-    }
-    document.getElementById("campoLenguaMaternaPerfil").value = datos.lenguaMaterna || "";
+    // País y Lengua materna: mismo criterio que edad/género. Si ya
+    // están guardados (todas las cuentas nuevas los tienen desde el
+    // registro), se muestran fijos y no se pueden editar. Solo las
+    // cuentas viejas a las que les falte pueden completarlos UNA vez.
+    const campoPaisTexto = document.getElementById("campoPaisPerfilTexto");
+    const cajaCompletarPais = document.getElementById("cajaCompletarPais");
 
-    // Si cambia de país aquí, pre-llena el idioma asociado (ver
-    // IDIOMA_POR_PAIS en paises.js) — mismo comportamiento que el
-    // registro. No toca lo que ya tenía guardado a menos que en efecto
-    // cambie de país.
-    if (typeof activarAutocompletadoIdioma === "function") {
+    if (datos.pais) {
+        campoPaisTexto.textContent = datos.pais;
+        campoPaisTexto.style.display = "block";
+        cajaCompletarPais.style.display = "none";
+    } else {
+        campoPaisTexto.style.display = "none";
+        cajaCompletarPais.style.display = "block";
+        // <select> restringido a LISTA_PAISES (ver paises.js) — nunca texto libre.
+        if (typeof renderizarSelectorPais === "function") {
+            renderizarSelectorPais(document.getElementById("campoPaisPerfil"), "");
+        }
+    }
+
+    const campoLenguaTexto = document.getElementById("campoLenguaMaternaPerfilTexto");
+    const cajaCompletarLengua = document.getElementById("cajaCompletarLengua");
+
+    if (datos.lenguaMaterna) {
+        campoLenguaTexto.textContent = datos.lenguaMaterna;
+        campoLenguaTexto.style.display = "block";
+        cajaCompletarLengua.style.display = "none";
+    } else {
+        campoLenguaTexto.style.display = "none";
+        cajaCompletarLengua.style.display = "block";
+        document.getElementById("campoLenguaMaternaPerfil").value = "";
+    }
+
+    // Autocompletar el idioma al elegir país solo tiene sentido cuando
+    // los dos todavía se pueden completar (cuenta vieja sin ninguno).
+    if (!datos.pais && !datos.lenguaMaterna && typeof activarAutocompletadoIdioma === "function") {
         activarAutocompletadoIdioma(
             document.getElementById("campoPaisPerfil"),
             document.getElementById("campoLenguaMaternaPerfil")
@@ -175,17 +200,26 @@ document.getElementById("btnGuardarPerfil").addEventListener("click", async () =
 
         }
 
-        // La edad y el género NO se reenvían si YA estaban guardados —
-        // esta pantalla no los deja editar una vez que existen (ver la
-        // nota al inicio del archivo). Solo se incluyen en "cambios" si
-        // de verdad faltaban Y el usuario los completó ahora.
+        // La edad, el género, el país y la lengua materna NO se reenvían
+        // si YA estaban guardados — esta pantalla no los deja editar una
+        // vez que existen (ver la nota al inicio del archivo). Solo se
+        // incluyen en "cambios" si de verdad faltaban Y el usuario los
+        // completó ahora.
         const cambios = {
             nombre: nombre,
             mostrarAlias: mostrarAlias,
-            pais: document.getElementById("campoPaisPerfil").value.trim(),
-            lenguaMaterna: document.getElementById("campoLenguaMaternaPerfil").value.trim(),
             generosLectura: leerGenerosSeleccionados(document.getElementById("contenedorGenerosPerfil"))
         };
+
+        if (!_datosPerfilActual.pais) {
+            const paisElegido = document.getElementById("campoPaisPerfil").value.trim();
+            if (paisElegido) cambios.pais = paisElegido;
+        }
+
+        if (!_datosPerfilActual.lenguaMaterna) {
+            const lengua = document.getElementById("campoLenguaMaternaPerfil").value.trim();
+            if (lengua) cambios.lenguaMaterna = lengua;
+        }
 
         if (typeof _datosPerfilActual.edadPerfil !== "number") {
             const fechaNacimiento = document.getElementById("campoFechaNacimientoPerfil").value;
