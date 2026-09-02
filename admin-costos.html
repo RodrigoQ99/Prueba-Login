@@ -11,6 +11,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+    <!-- Solo para llamar a obtenerCostoRealIA (puente hacia la API
+         oficial de costos de Anthropic) — nunca en páginas de participantes. -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-functions-compat.js"></script>
 
 </head>
 
@@ -61,6 +64,18 @@
     </p>
 
     <div id="resumenCostos" class="tarjetasResumen"></div>
+
+    <div class="seccionAdmin">
+        <h3 class="seccionAdminTitulo">✅ Gasto real (oficial de Anthropic)</h3>
+        <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
+            Últimos 30 días, directo desde la API de costos de Anthropic — el número que de verdad te van a cobrar
+            (no un estimado). Necesita la Admin API Key configurada (ver README.md en functions/).
+        </p>
+        <button type="button" id="btnCargarCostoReal" class="botonAdminContorno" style="width:100%;">
+            🔄 Consultar gasto real en Anthropic
+        </button>
+        <div id="resultadoCostoReal" style="display:none; margin-top:15px;"></div>
+    </div>
 
     <div class="seccionAdmin">
         <h3 class="seccionAdminTitulo">📊 Gasto por tipo de tarea</h3>
