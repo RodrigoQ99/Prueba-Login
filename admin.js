@@ -2814,15 +2814,16 @@ function renderizarListaAdminLecturas() {
         </div>
     `;
 
-    // Grupo aparte, arriba de todo, con las lecturas que vinieron de una
-    // propuesta de usuario ("Ser el protagonista de la historia" — tienen
-    // autorUid). Son LAS MISMAS que también aparecen en su grupo de nivel
-    // más abajo; se listan también aquí para que el admin pueda verlas
-    // juntas y borrarlas si hace falta (el 🗑️ ya llama a eliminarLectura,
-    // que revierte puntos y limpia "progreso").
+    // Grupo aparte, AL FINAL de la lista y CERRADO por defecto, con las
+    // lecturas que vinieron de una propuesta de usuario ("Ser el
+    // protagonista de la historia" — tienen autorUid). Son LAS MISMAS que
+    // también aparecen en su grupo de nivel más arriba; se listan también
+    // aquí para que el admin pueda verlas juntas y borrarlas si hace falta
+    // (el 🗑️ ya llama a eliminarLectura, que revierte puntos y limpia
+    // "progreso").
     const lecturasSugeridas = CATALOGO_LECTURAS.filter(l => l.autorUid);
     const bloqueSugeridas = lecturasSugeridas.length === 0 ? "" : `
-        <details class="grupoNivelAdmin" open>
+        <details class="grupoNivelAdmin">
             <summary>✍️ Sugeridas por usuarios (${lecturasSugeridas.length})</summary>
             <div class="listaAdminLecturasNivel">
                 ${lecturasSugeridas.map(tarjetaLectura).join("")}
@@ -2830,7 +2831,7 @@ function renderizarListaAdminLecturas() {
         </details>
     `;
 
-    cont.innerHTML = bloqueSugeridas + ORDEN_NIVELES_ADMIN.map(nivel => {
+    cont.innerHTML = ORDEN_NIVELES_ADMIN.map(nivel => {
 
         const lecturasDelNivel = CATALOGO_LECTURAS.filter(l => l.nivel === nivel);
         if (lecturasDelNivel.length === 0) return "";
@@ -2844,7 +2845,7 @@ function renderizarListaAdminLecturas() {
             </details>
         `;
 
-    }).join("");
+    }).join("") + bloqueSugeridas;
 
     cont.querySelectorAll("[data-editar]").forEach(btn => {
         btn.addEventListener("click", () => {
