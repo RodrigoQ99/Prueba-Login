@@ -2687,6 +2687,17 @@ function inicializarAdminPremiosConfig() {
         </div>
 
         <div class="seccionAdmin">
+            <h3 class="seccionAdminTitulo">📊 Premios ganados</h3>
+            <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
+                Cuántos premios ha ganado la gente por nivel de lectura, cuántos ya se canjearon y
+                cuántos siguen pendientes.
+            </p>
+            <div id="resumenPremios">
+                <p style="text-align:center; color:var(--texto-suave);">Cargando…</p>
+            </div>
+        </div>
+
+        <div class="seccionAdmin">
             <h3 class="seccionAdminTitulo">🏆 El premio gordo</h3>
             <div class="seccionAdminBotones">
                 <button id="btnEditarMetaPremioGordo" class="botonAdminContorno">Editar meta del premio gordo</button>
@@ -2706,6 +2717,116 @@ function inicializarAdminPremiosConfig() {
     document.getElementById("btnEditarMetaPremioGordo").addEventListener("click", () => {
         abrirFormularioMetaPremioGordo(() => inicializarAdminPremiosConfig());
     });
+
+    cargarResumenPremios();
+
+}
+
+// ==========================================================
+// RESUMEN DE PREMIOS GANADOS (tabla por nivel, ver admin-premios.html)
+// ==========================================================
+// Cada premio ganado es un documento en la colección "premios" (ver
+// crearPremioCanjeable en puntos.js) con su "nivel" (facil/intermedio/
+// dificil), su "descripcionPremio" y las banderas "canjeado"/"donado".
+// Aquí solo se LEE y se cuenta — nunca se escribe nada.
+//
+//   Ganados     = todos los premios de ese nivel.
+//   Canjeados   = los que un premiador ya marcó como entregados.
+//   Pendientes  = ganados - canjeados - donados (los donados ya no se
+//                 pueden canjear, así que no cuentan como pendientes).
+async function cargarResumenPremios() {
+
+    const cont = document.getElementById("resumenPremios");
+    if (!cont) return;
+
+    const NOMBRES_NIVEL = { facil: "Fácil", intermedio: "Intermedio", dificil: "Difícil" };
+    const ORDEN_NIVEL = ["facil", "intermedio", "dificil"];
+
+    const esc = (s) => String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+    let premios = [];
+    try {
+        const [snap] = await Promise.all([
+            db.collection("premios").get(),
+            (typeof cargarPremioPorNivel === "function") ? cargarPremioPorNivel() : Promise.resolve()
+        ]);
+        premios = snap.docs.map(d => d.data());
+    } catch (error) {
+        console.error("No se pudo cargar el resumen de premios:", error);
+        cont.innerHTML = "<p style='text-align:center; color:var(--texto-suave);'>No se pudo cargar el resumen.</p>";
+        return;
+    }
+
+    const porNivel = {};
+    let hayOtro = false;
+
+    premios.forEach(p => {
+        const nivel = ORDEN_NIVEL.includes(p.nivel) ? p.nivel : "otro";
+        if (nivel === "otro") hayOtro = true;
+        if (!porNivel[nivel]) porNivel[nivel] = { ganados: 0, canjeados: 0, donados: 0 };
+        porNivel[nivel].ganados++;
+        if (p.canjeado === true) porNivel[nivel].canjeados++;
+        if (p.donado === true) porNivel[nivel].donados++;
+    });
+
+    const filasNiveles = ORDEN_NIVEL.concat(hayOtro ? ["otro"] : []);
+    const total = { ganados: 0, canjeados: 0, donados: 0 };
+
+    const filasHtml = filasNiveles.map(nivel => {
+
+        const d = porNivel[nivel] || { ganados: 0, canjeados: 0, donados: 0 };
+        const pendientes = d.ganados - d.canjeados - d.donados;
+
+        total.ganados += d.ganados;
+        total.canjeados += d.canjeados;
+        total.donados += d.donados;
+
+        const nombre = nivel === "otro" ? "Otro / sin nivel" : NOMBRES_NIVEL[nivel];
+        const premio = nivel === "otro" ? "" : (PREMIO_POR_NIVEL[nivel] || "");
+
+        return `
+            <tr>
+                <td>${esc(nombre)}${premio ? ` · <span style="color:var(--texto-suave);">${esc(premio)}</span>` : ""}</td>
+                <td style="text-align:center;">${d.ganados}</td>
+                <td style="text-align:center;">${d.canjeados}</td>
+                <td style="text-align:center;">${pendientes}</td>
+            </tr>
+        `;
+
+    }).join("");
+
+    const totalPendientes = total.ganados - total.canjeados - total.donados;
+
+    cont.innerHTML = `
+        <div style="overflow-x:auto;">
+            <table class="tablaEstadisticas">
+                <thead>
+                    <tr>
+                        <th>Premio</th>
+                        <th style="text-align:center;">Ganados</th>
+                        <th style="text-align:center;">Canjeados</th>
+                        <th style="text-align:center;">Pendientes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filasHtml}
+                    <tr style="font-weight:700;">
+                        <td>Total</td>
+                        <td style="text-align:center;">${total.ganados}</td>
+                        <td style="text-align:center;">${total.canjeados}</td>
+                        <td style="text-align:center;">${totalPendientes}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        ${total.donados > 0 ? `
+            <p style="font-size:12px; color:var(--texto-suave); margin-top:8px;">
+                Además, ${total.donados} premio(s) fueron donados por sus dueños: ya no se pueden canjear,
+                por eso no se cuentan como pendientes.
+            </p>
+        ` : ""}
+    `;
 
 }
 
