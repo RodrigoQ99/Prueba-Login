@@ -1,6 +1,6 @@
 # Cloud Functions — funciones de IA del panel de administrador
 
-Nueve funciones activas (`onCall`, Firebase Functions v2), **TODAS exclusivas para administradores** (desde la Etapa 29 no queda ninguna abierta a usuarios normales — ver la nota sobre `cargarGlosarioPersonalIA` más abajo). De esas nueve, **7 llaman a Claude** (funciones de IA) y **2 no** (son puentes de solo lectura hacia datos ya existentes):
+Ocho funciones activas (`onCall`, Firebase Functions v2), **TODAS exclusivas para administradores** (desde la Etapa 29 no queda ninguna abierta a usuarios normales — ver la nota sobre `cargarGlosarioPersonalIA` más abajo). De esas ocho, **7 llaman a Claude** (funciones de IA) y **1 no** (es solo lectura de datos ya existentes):
 
 - `generarPreguntasIA` — arma el banco de preguntas de una lectura a partir de su texto.
 - `moderarPropuestaIA` — da una opinión sobre si una propuesta de "Ser el protagonista de la historia" parece apropiada (nunca aprueba/rechaza nada por su cuenta).
@@ -10,11 +10,12 @@ Nueve funciones activas (`onCall`, Firebase Functions v2), **TODAS exclusivas pa
 - `dividirFragmentoEnHiloIA` — divide el fragmento YA ELEGIDO por el admin en exactamente 5 partes narrativamente coherentes y en orden (el juego las desordena solo al mostrarlas; la base de datos siempre guarda el orden real).
 - `extraerPalabraDeUrlIA` — lee una página de diccionario en línea (ej. RAE) y extrae SOLO la palabra y su definición, para el banco general de Ahorcado.
 - `extraerPalabrasDeDocumentoIA` — lee un documento con una lista de palabras (con o sin definiciones) para el banco general de Ahorcado.
-- `obtenerCostoRealIA` — **NO es una función de IA** (nunca llama a Claude). Puente de solo lectura hacia la Usage & Cost Admin API oficial de Anthropic (Etapa 38), para mostrar en el panel "💰 Costos de IA" el gasto REAL ya facturado — necesita su propio secreto aparte, `ANTHROPIC_ADMIN_API_KEY` (ver más abajo).
 
-Todas verifican `request.auth` + membresía en la colección `administradores` de Firestore (mismo criterio que `esAdmin()` en el frontend, ver `lib/verificarAdmin.js`) **antes** de llamar a la API de Claude (excepto `extraerTextoDePdfGuardado` y `obtenerCostoRealIA`, que nunca la llaman) — así nadie gasta presupuesto llamándolas sin permiso.
+Todas verifican `request.auth` + membresía en la colección `administradores` de Firestore (mismo criterio que `esAdmin()` en el frontend, ver `lib/verificarAdmin.js`) **antes** de llamar a la API de Claude (excepto `extraerTextoDePdfGuardado`, que nunca la llama) — así nadie gasta presupuesto llamándolas sin permiso.
 
-> **Registro de uso/costo (Etapa 37):** las 7 funciones que sí llaman a Claude registran automáticamente, después de cada llamada, cuántos tokens consumieron y su costo aproximado (ver `lib/registrarUsoIA.js`) en la colección `usoIA` — es el número que se ve por defecto en "💰 Costos de IA". `obtenerCostoRealIA` es aparte: consulta el número OFICIAL de Anthropic bajo demanda (con un botón), no algo que esta app calcule.
+> **Registro de uso/costo (Etapa 37):** las 7 funciones que sí llaman a Claude registran automáticamente, después de cada llamada, cuántos tokens consumió ESA llamada (leyendo `response.usage.input_tokens`/`output_tokens`, que la API de Messages siempre devuelve) y calculan su costo aproximado con el precio de `claude-opus-5` (ver `lib/registrarUsoIA.js`), guardándolo en la colección `usoIA` — eso es lo que muestra "💰 Costos de IA". Es un CÁLCULO de esta app, no el número oficial y exacto de facturación de Anthropic — para ese, revisa directamente la Consola de Anthropic.
+
+> **DESCONECTADA (Etapa 39): `obtenerCostoRealIA`.** Se intentó traer el gasto OFICIAL directo desde la Usage & Cost Admin API de Anthropic (necesitaba una Admin API Key aparte, `sk-ant-admin01-...`) pero no se pudo aprovisionar bien esa clave desde la Consola de Anthropic en ese momento — el admin decidió descartar esa vía por completo y quedarse solo con el cálculo propio de arriba. El código sigue en `lib/obtenerCostoRealIA.js` sin borrar, por si algún día se retoma, pero ya no está exportada. El botón "🔄 Consultar gasto real en Anthropic" y su lógica en `admin-costos.html`/`.js` también se quitaron, y el secreto `ANTHROPIC_ADMIN_API_KEY` (si ya lo configuraste) queda sin usar — no hace daño dejarlo, pero se puede borrar con `firebase functions:secrets:destroy ANTHROPIC_ADMIN_API_KEY` si prefieres no dejarlo suelto.
 
 > **DESCONECTADA (Etapa 28): `extraerLecturaDeDocumentoIA`.** El admin pidió quitar por completo la opción de crear lecturas subiendo un documento (una sola o varias de golpe). El código sigue en `lib/extraerLecturaDeDocumentoIA.js` (y su esquema, `lib/esquemaLecturaExtraida.js` — este último SÍ sigue en uso, lo reusa `generarLecturaOriginalIA`) sin borrar, por si algún día se retoma, pero ya no está exportada en `index.js` — al desplegar, deja de existir como función en la nube (no se puede llamar, no consume nada). Su envoltorio del lado del navegador (`extraerLecturaDeDocumentoConIA`, en `../admin-ia.js`) y el botón "subir documento" del editor de lecturas también quedaron comentados/quitados. Para reactivarla: descomenta el `require`/`export` en `index.js`, el envoltorio en `admin-ia.js`, y vuelve a agregar el botón en el formulario de lectura (`admin.js`).
 >
@@ -51,12 +52,6 @@ firebase deploy --only functions,storage
 
 Si en el paso 3 ya existía un valor y quieres cambiarlo, corre el mismo comando otra vez — crea una nueva versión del secreto (Firebase la usa automáticamente en el próximo despliegue).
 
-> **Secreto aparte para "Gasto real" (Etapa 38, opcional):** `obtenerCostoRealIA` necesita una credencial DISTINTA a `ANTHROPIC_API_KEY` — una **Admin API Key** (empieza con `sk-ant-admin01-...`, no una API key normal). Se crea en la Consola de Anthropic → Settings → API Keys → pestaña "Admin keys" → "Create Key". Luego:
-> ```bash
-> firebase functions:secrets:set ANTHROPIC_ADMIN_API_KEY
-> ```
-> Sin este secreto, el resto del panel de Costos sigue funcionando normal (el estimado que calcula la app) — solo el botón "🔄 Consultar gasto real en Anthropic" fallaría hasta que se configure.
-
 > **Nota sobre `extraerLecturaDeDocumentoIA` — soporte de Word (.docx) pausado:** aplica solo si algún día se reactiva esta función (hoy está desconectada, ver arriba). `mammoth` (la librería para leer .docx) falló repetidamente al descargarse desde `registry.npmjs.org` — se quitó de `package.json`. Para reactivarlo: agrega de nuevo `"mammoth": "^1.8.0"` a `dependencies` aquí abajo, corre `npm install` dentro de `functions/`, y vuelve a desplegar.
 
 ## Después de la primera vez
@@ -79,7 +74,7 @@ o en la Consola de Firebase → Functions → selecciona la función → pestañ
 
 ```
 functions/
-  index.js                    — exporta las nueve funciones activas
+  index.js                    — exporta las ocho funciones activas
   admin-init.js                — inicializa el Admin SDK (Firestore + Storage) una sola vez
   lib/
     verificarAdmin.js           — chequeo compartido: ¿quién llama es admin?
@@ -104,7 +99,7 @@ functions/
     moderarPropuestaIA.js
     generarLecturaOriginalIA.js
     analizarDatosUsuariosIA.js  — 4ta función de IA (Etapa 37)
-    obtenerCostoRealIA.js       — NO es IA (Etapa 38) — puente hacia la API de costos de Anthropic
+    obtenerCostoRealIA.js       — DESCONECTADA, no exportada (Etapa 39, ver nota arriba)
     extraerLecturaDeDocumentoIA.js   — DESCONECTADA, no exportada (ver nota arriba)
     extraerTextoDePdfGuardado.js
     dividirFragmentoEnHiloIA.js

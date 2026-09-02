@@ -8,17 +8,15 @@
 // de tarea, y las llamadas más recientes. Esta pantalla NO es una
 // función de IA — es un panel de monitoreo del uso que ya se hizo.
 //
-// No hay forma de traer el saldo REAL de la cuenta de Anthropic desde
-// aquí: la API de Anthropic no expone el saldo/crédito restante de una
-// organización (eso es una vista de facturación, solo en la Consola de
-// Anthropic) — el "Admin API" de Anthropic sí puede dar REPORTES de uso
-// agregados, pero es una API separada en beta que necesita su propia
-// credencial de administrador (una API key "sk-ant-admin...", distinta
-// de la que ya usan las Cloud Functions) y solo repetiría, con más
-// pasos, lo mismo que este panel ya calcula con sus propios registros.
-// Por eso (y como el admin mismo dejó como salida válida): se muestra
-// el total registrado por la app, para comparar a mano contra la
-// Consola de Anthropic.
+// Etapa 39 — se descartó a propósito la vía de la Admin API / Usage &
+// Cost API de Anthropic (necesitaba una Admin API Key aparte, y esa
+// vía no se pudo aprovisionar bien desde la Consola) — el admin decidió
+// quedarse SOLO con este cálculo propio, hecho a partir del campo
+// "usage" (input_tokens/output_tokens) que la propia API de Messages ya
+// devuelve en cada respuesta, sin necesitar ningún permiso especial.
+// Por eso el texto de la pantalla deja bien claro que es un CÁLCULO
+// APROXIMADO, no el número oficial de facturación de Anthropic — para
+// ese, el admin revisa directamente su Consola de Anthropic.
 // ==========================================================
 
 const pantallaLoginAdmin = document.getElementById("pantallaLoginAdmin");
@@ -55,72 +53,8 @@ auth.onAuthStateChanged(async (user) => {
 
     contenedorAdminPanel.style.display = "block";
     cargarCostosIA();
-    document.getElementById("btnCargarCostoReal").addEventListener("click", cargarCostoReal);
 
 });
-
-
-// ==========================================================
-// GASTO REAL (oficial de Anthropic — Etapa 38)
-// ==========================================================
-// A diferencia del resto de esta página (que lee "usoIA", un registro
-// que la propia app calcula), esto llama a una Cloud Function
-// (obtenerCostoRealIA) que a su vez consulta la API oficial de costos
-// de Anthropic — el número que de verdad se factura. Es una llamada a
-// una API externa de pago del lado de Anthropic (no cuesta nada
-// consultarla, pero sí depende de tener la Admin API Key configurada),
-// así que se pide a demanda con un botón — no se dispara sola al
-// cargar la página.
-async function cargarCostoReal() {
-
-    const btn = document.getElementById("btnCargarCostoReal");
-    const cont = document.getElementById("resultadoCostoReal");
-
-    btn.disabled = true;
-    btn.textContent = "Consultando...";
-    cont.style.display = "none";
-
-    try {
-
-        const llamar = firebase.functions().httpsCallable("obtenerCostoRealIA", { timeout: 30000 });
-        const resultado = await llamar();
-        const { totalUsd, porDia, dias } = resultado.data;
-
-        const filasPorDia = (porDia || [])
-            .filter(d => d.costoUsd > 0)
-            .sort((a, b) => b.fecha.localeCompare(a.fecha))
-            .map(d => `
-                <tr>
-                    <td>${d.fecha}</td>
-                    <td>${formatoUsd(d.costoUsd)}</td>
-                </tr>
-            `).join("");
-
-        cont.innerHTML = `
-            <div class="tarjetasResumen" style="margin-bottom:15px;">
-                <div class="tarjetaResumen"><strong>${formatoUsd(totalUsd)}</strong><span>Gasto real, últimos ${dias} días</span></div>
-            </div>
-            <div style="overflow-x:auto;">
-                <table class="tablaEstadisticas">
-                    <thead><tr><th>Día</th><th>Costo</th></tr></thead>
-                    <tbody>${filasPorDia || `<tr><td colspan="2" style="text-align:center; color:var(--texto-suave);">Sin gasto en este periodo.</td></tr>`}</tbody>
-                </table>
-            </div>
-        `;
-        cont.style.display = "block";
-
-    } catch (error) {
-
-        console.error("No se pudo consultar el gasto real en Anthropic:", error);
-        cont.innerHTML = `<p style="color:#c0392b;">❌ ${(error && error.message) ? error.message : "No se pudo consultar el gasto real."}</p>`;
-        cont.style.display = "block";
-
-    }
-
-    btn.disabled = false;
-    btn.textContent = "🔄 Consultar gasto real en Anthropic";
-
-}
 
 
 const ETIQUETA_TIPO_IA = {

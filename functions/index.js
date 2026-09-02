@@ -28,12 +28,6 @@
 // - dividirFragmentoEnHiloIA: divide el fragmento YA ELEGIDO por el
 //   admin en exactamente 5 partes narrativamente coherentes y en
 //   orden — nunca decide qué fragmento usar, solo cómo dividirlo.
-// - obtenerCostoRealIA: NO es una función de IA (nunca llama a Claude) —
-//   es un puente de solo lectura hacia la Usage & Cost Admin API oficial
-//   de Anthropic (Etapa 38), para mostrar el gasto REAL ya facturado
-//   (no el estimado que calcula esta misma app con registrarUsoIA.js).
-//   Necesita su propio secreto, ANTHROPIC_ADMIN_API_KEY — una Admin API
-//   Key de Anthropic, distinta de la que usan las funciones de IA.
 // - analizarDatosUsuariosIA: la 4ta función de IA (Etapa 37, autorizada
 //   explícitamente por el admin — amplía el límite de 3 de la Etapa
 //   29). El admin le hace una pregunta en lenguaje natural sobre los
@@ -42,6 +36,17 @@
 //   resumen ya compacto — nunca la lista de usuarios uno por uno — para
 //   que lo redacte en una respuesta clara. Cada consulta se guarda en
 //   la colección "analisisIA" (la "librería de respuestas").
+//
+// DESCONECTADA (Etapa 39): obtenerCostoRealIA — el admin decidió no usar
+// la Admin API / Usage & Cost API de Anthropic (necesitaba una Admin
+// API Key aparte, que no se pudo aprovisionar bien desde la Consola en
+// ese momento) — se quedó SOLO con el cálculo propio que ya hace
+// registrarUsoIA.js a partir del "usage" que devuelve cada respuesta de
+// Claude, sin necesitar ningún permiso especial. El código de
+// lib/obtenerCostoRealIA.js se dejó sin borrar por si algún día se
+// retoma (ej. si se resuelve el problema con la Admin API Key), pero ya
+// no está exportada. El botón "🔄 Consultar gasto real en Anthropic" y
+// su lógica en admin-costos.html/.js también se quitaron.
 //
 // DESCONECTADA (Etapa 28): extraerLecturaDeDocumentoIA — el admin pidió
 // quitar por completo la opción de crear lecturas subiendo un
@@ -82,7 +87,7 @@ const { generarLecturaOriginalIA } = require("./lib/generarLecturaOriginalIA");
 const { extraerTextoDePdfGuardado } = require("./lib/extraerTextoDePdfGuardado");
 const { dividirFragmentoEnHiloIA } = require("./lib/dividirFragmentoEnHiloIA");
 const { analizarDatosUsuariosIA } = require("./lib/analizarDatosUsuariosIA");
-const { obtenerCostoRealIA } = require("./lib/obtenerCostoRealIA");
+// const { obtenerCostoRealIA } = require("./lib/obtenerCostoRealIA"); // DESCONECTADA — ver nota arriba
 // const { extraerPalabraDeUrlIA } = require("./lib/extraerPalabraDeUrlIA"); // DESCONECTADA — ver nota arriba
 // const { extraerPalabrasDeDocumentoIA } = require("./lib/extraerPalabrasDeDocumentoIA"); // DESCONECTADA — ver nota arriba
 // const { extraerLecturaDeDocumentoIA } = require("./lib/extraerLecturaDeDocumentoIA"); // DESCONECTADA — ver nota arriba
@@ -94,7 +99,7 @@ exports.generarLecturaOriginalIA = generarLecturaOriginalIA;
 exports.extraerTextoDePdfGuardado = extraerTextoDePdfGuardado;
 exports.dividirFragmentoEnHiloIA = dividirFragmentoEnHiloIA;
 exports.analizarDatosUsuariosIA = analizarDatosUsuariosIA;
-exports.obtenerCostoRealIA = obtenerCostoRealIA;
+// exports.obtenerCostoRealIA = obtenerCostoRealIA; // DESCONECTADA — ver nota arriba
 // exports.extraerPalabraDeUrlIA = extraerPalabraDeUrlIA; // DESCONECTADA — ver nota arriba
 // exports.extraerPalabrasDeDocumentoIA = extraerPalabrasDeDocumentoIA; // DESCONECTADA — ver nota arriba
 // exports.extraerLecturaDeDocumentoIA = extraerLecturaDeDocumentoIA; // DESCONECTADA — ver nota arriba
