@@ -144,6 +144,14 @@ async function cargarPerfil() {
         );
     }
 
+    // "Datos de perfil" viene colapsado; si a esta cuenta le falta
+    // algún dato por completar, se abre solo para que lo vea.
+    const detallesDatos = document.getElementById("detallesDatosPerfil");
+    if (detallesDatos) {
+        const faltaAlgo = typeof datos.edadPerfil !== "number" || !datos.genero || !datos.pais || !datos.lenguaMaterna;
+        detallesDatos.open = faltaAlgo;
+    }
+
     await cargarGenerosLectura();
     renderizarCheckboxesGeneros(document.getElementById("contenedorGenerosPerfil"), datos.generosLectura || []);
 

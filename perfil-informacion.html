@@ -81,7 +81,11 @@
             Mi alias
         </label>
 
-        <p style="font-weight:600; margin:20px 0 10px;">Datos de perfil</p>
+        <details id="detallesDatosPerfil" style="margin:20px 0 10px;">
+        <summary style="font-weight:600; cursor:pointer;">
+            Datos de perfil <span style="color:var(--texto-suave); font-weight:400; font-size:13px;">(clic para ver)</span>
+        </summary>
+        <div style="margin-top:12px;">
 
         <label style="display:block; font-weight:600; margin-bottom:6px;">Edad</label>
         <p id="campoEdadPerfilTexto" style="display:none; padding:10px 0; color:var(--texto-suave);">—</p>
@@ -137,6 +141,9 @@
                 Una vez que lo guardes, ya no se podrá editar.
             </small>
         </div>
+
+        </div>
+        </details>
 
         <p style="font-weight:600; margin:20px 0 10px;">¿Qué géneros de lectura te gustan?</p>
         <div id="contenedorGenerosPerfil"></div>
