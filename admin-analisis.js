@@ -105,6 +105,120 @@ function etiquetaFiltros(filtros) {
 
 
 // ==========================================================
+// FORMATO DE LA RESPUESTA DE LA IA
+// ==========================================================
+// La IA responde en texto tipo Markdown ligero. Antes se pintaba tal
+// cual (white-space:pre-wrap), así que se veía "artificial": los
+// **asteriscos** a la vista y las tablas como | texto | suelto.
+//
+// Esto lo convierte a HTML seguro: primero escapa TODO el texto (nada
+// de lo que diga la IA se interpreta como etiqueta), y luego reconoce
+// solo tres cosas: **negrita**, encabezados (# ...) y tablas Markdown
+// (| col | col | + fila |---|---|). El resto queda como párrafos con
+// saltos de línea normales.
+
+function escaparHtmlIA(s) {
+    return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+}
+
+// Negrita: **texto** o __texto__ (el texto ya viene escapado).
+function inlineMarkdownIA(s) {
+    return s
+        .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
+        .replace(/__([^_\n]+)__/g, "<strong>$1</strong>");
+}
+
+// Una línea suelta: encabezado Markdown -> negrita en su propio renglón;
+// cualquier otra -> con su negrita en línea.
+function transformarLineaIA(linea) {
+    const encabezado = linea.match(/^\s*#{1,6}\s+(.+?)\s*$/);
+    if (encabezado) return `<strong>${inlineMarkdownIA(encabezado[1])}</strong>`;
+    return inlineMarkdownIA(linea);
+}
+
+function celdasDeFilaIA(linea) {
+    let l = linea.trim();
+    if (l.startsWith("|")) l = l.slice(1);
+    if (l.endsWith("|")) l = l.slice(0, -1);
+    return l.split("|").map(c => c.trim());
+}
+
+function esFilaTablaIA(linea) {
+    return typeof linea === "string" && linea.indexOf("|") !== -1 && linea.trim() !== "";
+}
+
+// Fila separadora del encabezado: |---|:--:|---| (solo guiones, dos
+// puntos y espacios en cada celda).
+function esSeparadorTablaIA(linea) {
+    if (!esFilaTablaIA(linea) || linea.indexOf("-") === -1) return false;
+    const celdas = celdasDeFilaIA(linea);
+    return celdas.length > 0 && celdas.every(c => /^:?-+:?$/.test(c));
+}
+
+function empiezaTablaIA(lineas, i) {
+    return esFilaTablaIA(lineas[i])
+        && i + 1 < lineas.length
+        && esSeparadorTablaIA(lineas[i + 1]);
+}
+
+function formatearRespuestaIA(textoCrudo) {
+
+    const lineas = escaparHtmlIA(textoCrudo).split("\n");
+    const bloques = [];
+    let i = 0;
+
+    while (i < lineas.length) {
+
+        // ---- Tabla Markdown ----
+        if (empiezaTablaIA(lineas, i)) {
+
+            const encabezado = celdasDeFilaIA(lineas[i]);
+            i += 2; // saltar encabezado + separador
+
+            const filas = [];
+            while (i < lineas.length && esFilaTablaIA(lineas[i]) && !esSeparadorTablaIA(lineas[i])) {
+                filas.push(celdasDeFilaIA(lineas[i]));
+                i++;
+            }
+
+            const thead = "<thead><tr>" +
+                encabezado.map(c => `<th>${inlineMarkdownIA(c)}</th>`).join("") +
+                "</tr></thead>";
+            const tbody = "<tbody>" +
+                filas.map(f => "<tr>" + f.map(c => `<td>${inlineMarkdownIA(c)}</td>`).join("") + "</tr>").join("") +
+                "</tbody>";
+
+            bloques.push(
+                `<div style="overflow-x:auto; margin:12px 0;"><table>${thead}${tbody}</table></div>`
+            );
+            continue;
+        }
+
+        // ---- Línea en blanco ----
+        if (lineas[i].trim() === "") {
+            i++;
+            continue;
+        }
+
+        // ---- Párrafo (hasta línea en blanco o inicio de tabla) ----
+        const parrafo = [];
+        while (i < lineas.length && lineas[i].trim() !== "" && !empiezaTablaIA(lineas, i)) {
+            parrafo.push(transformarLineaIA(lineas[i]));
+            i++;
+        }
+        bloques.push(`<p style="margin:0 0 10px;">${parrafo.join("<br>")}</p>`);
+
+    }
+
+    return bloques.join("") || "<p style='margin:0;'></p>";
+
+}
+
+
+// ==========================================================
 // PREGUNTAR
 // ==========================================================
 
@@ -131,8 +245,8 @@ async function preguntarConIA() {
         const { respuesta } = await analizarDatosUsuariosConIA({ pregunta, filtros });
 
         cajaRespuesta.innerHTML = `
-            <p style="font-weight:600; margin-bottom:8px;">${pregunta}</p>
-            <p style="white-space:pre-wrap;">${respuesta}</p>
+            <p style="font-weight:600; margin-bottom:8px;">${escaparHtmlIA(pregunta)}</p>
+            <div class="respuestaIA">${formatearRespuestaIA(respuesta)}</div>
             <p style="font-size:12px; color:var(--texto-suave); margin-top:10px;">Filtros usados: ${etiquetaFiltros(filtros)}</p>
         `;
         cajaRespuesta.style.display = "block";
@@ -202,8 +316,8 @@ async function cargarLibreria(filtros) {
 
     cont.innerHTML = filtradas.map(e => `
         <div class="tarjetaLectura" style="cursor:default; display:block;">
-            <p class="tarjetaTitulo">${e.pregunta}</p>
-            <p style="margin:8px 0; white-space:pre-wrap;">${e.respuesta}</p>
+            <p class="tarjetaTitulo">${escaparHtmlIA(e.pregunta)}</p>
+            <div class="respuestaIA" style="margin:8px 0;">${formatearRespuestaIA(e.respuesta)}</div>
             <p class="tarjetaNivel">
                 ${e.fecha && e.fecha.toDate ? e.fecha.toDate().toLocaleString("es") : "—"}
                 · ${etiquetaFiltros(e.filtros)}

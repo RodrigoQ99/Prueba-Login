@@ -1397,3 +1397,52 @@ button.menuLink{
 .chipEdad strong{
     color:var(--texto);
 }
+
+/* Respuesta de la IA ya formateada (admin-analisis.js) */
+.respuestaIA{
+    font-size:14px;
+    line-height:1.55;
+    color:var(--texto);
+}
+
+.respuestaIA p{
+    margin:0 0 10px;
+}
+
+.respuestaIA p:last-child{
+    margin-bottom:0;
+}
+
+.respuestaIA table{
+    width:auto;
+    min-width:min(100%, 320px);
+    border-collapse:collapse;
+    font-size:13px;
+    background:var(--blanco, #fff);
+    border:1px solid var(--borde);
+    border-radius:8px;
+    overflow:hidden;
+}
+
+.respuestaIA th,
+.respuestaIA td{
+    text-align:left;
+    padding:7px 12px;
+    border-bottom:1px solid var(--borde);
+}
+
+.respuestaIA thead th{
+    background:var(--fondo);
+    font-weight:700;
+    color:var(--texto);
+}
+
+.respuestaIA tbody tr:last-child td{
+    border-bottom:none;
+}
+
+.respuestaIA td:not(:first-child),
+.respuestaIA th:not(:first-child){
+    text-align:right;
+    font-variant-numeric:tabular-nums;
+}
