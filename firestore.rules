@@ -97,6 +97,16 @@ service cloud.firestore {
       allow write: if esAdmin() ||
                    (request.auth != null &&
                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(["vistas"]));
+      // El AUTOR de una lectura que vino de "Ser el protagonista de la
+      // historia" (tiene autorUid) puede BORRAR LA SUYA — desde
+      // "Sugerencias" (ver sugerencias.js). El admin puede borrar
+      // cualquiera; la borra desde el panel con eliminarLectura(), que
+      // además revierte puntos y limpia "progreso" (ver admin.js /
+      // puntos.js). El borrado del autor NO hace esa limpieza, por eso
+      // sugerencias.js solo ofrece el botón mientras nadie tenga
+      // "progreso" en esa lectura.
+      allow delete: if esAdmin() ||
+                    (request.auth != null && resource.data.autorUid == request.auth.uid);
     }
 
     // Contenido de "Mejorar la lectura". Mismo criterio que /lecturas.

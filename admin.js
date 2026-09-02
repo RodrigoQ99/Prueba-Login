@@ -2802,6 +2802,7 @@ function renderizarListaAdminLecturas() {
             <div class="tarjetaInfo">
                 <p class="tarjetaTitulo">${lectura.titulo} <span style="font-weight:400; font-size:12px; color:var(--texto-suave);">${lectura.pais ? "· " + lectura.pais : "· 🌎 Global"}</span></p>
                 <p class="tarjetaNivel">${(lectura.bancoPreguntas || []).length} preguntas en el banco (muestra ${lectura.preguntasAMostrar})</p>
+                ${lectura.autorUid ? `<p class="tarjetaNivel" style="color:var(--azul);">✍️ Sugerida por ${lectura.autorNombre || "un usuario"}</p>` : ""}
             </div>
             <div style="display:flex; gap:8px;">
                 <button type="button" class="botonAdminChico" data-preview="${lectura.id}" title="Vista previa (sin puntos ni racha)">👁️</button>
@@ -2813,7 +2814,23 @@ function renderizarListaAdminLecturas() {
         </div>
     `;
 
-    cont.innerHTML = ORDEN_NIVELES_ADMIN.map(nivel => {
+    // Grupo aparte, arriba de todo, con las lecturas que vinieron de una
+    // propuesta de usuario ("Ser el protagonista de la historia" — tienen
+    // autorUid). Son LAS MISMAS que también aparecen en su grupo de nivel
+    // más abajo; se listan también aquí para que el admin pueda verlas
+    // juntas y borrarlas si hace falta (el 🗑️ ya llama a eliminarLectura,
+    // que revierte puntos y limpia "progreso").
+    const lecturasSugeridas = CATALOGO_LECTURAS.filter(l => l.autorUid);
+    const bloqueSugeridas = lecturasSugeridas.length === 0 ? "" : `
+        <details class="grupoNivelAdmin" open>
+            <summary>✍️ Sugeridas por usuarios (${lecturasSugeridas.length})</summary>
+            <div class="listaAdminLecturasNivel">
+                ${lecturasSugeridas.map(tarjetaLectura).join("")}
+            </div>
+        </details>
+    `;
+
+    cont.innerHTML = bloqueSugeridas + ORDEN_NIVELES_ADMIN.map(nivel => {
 
         const lecturasDelNivel = CATALOGO_LECTURAS.filter(l => l.nivel === nivel);
         if (lecturasDelNivel.length === 0) return "";
