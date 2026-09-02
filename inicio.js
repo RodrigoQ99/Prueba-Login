@@ -13,33 +13,36 @@ if (btnQueEsEsto) {
     btnQueEsEsto.addEventListener("click", () => mostrarModalInfo());
 }
 
-// Racha 🔥 en la esquina del cuadro "Perfil" — el único otro lugar
-// donde se muestra la racha además de la propia pantalla de Perfil
-// (ver racha.js, calcularRachaVigente, y Etapa 19).
-async function cargarBadgeRachaInicio(user) {
+// auth.js llama a esta función (con este mismo nombre) apenas el
+// usuario inició sesión o terminó de registrarse.
+async function iniciarLectura() {
 
-    const badge = document.getElementById("badgeRachaInicio");
-    if (!badge) return;
+    const user = auth.currentUser;
+    if (btnQueEsEsto) btnQueEsEsto.style.display = "flex";
 
+    if (!user) return;
+
+    // Cargar datos del usuario una sola vez para la racha y el ajolote.
+    let datos = {};
     try {
         const doc = await db.collection("usuarios").doc(user.uid).get();
-        const datos = doc.exists ? doc.data() : {};
+        datos = doc.exists ? doc.data() : {};
+    } catch (error) {
+        console.error("No se pudieron cargar los datos del usuario:", error);
+    }
+
+    // Badge de racha 🔥
+    const badge = document.getElementById("badgeRachaInicio");
+    if (badge) {
         const racha = typeof calcularRachaVigente === "function"
             ? calcularRachaVigente(datos)
             : (datos.rachaActual || 0);
         badge.textContent = `🔥 ${racha}`;
-    } catch (error) {
-        console.error("No se pudo cargar la racha:", error);
     }
 
-}
-
-// auth.js llama a esta función (con este mismo nombre) apenas el
-// usuario inició sesión o terminó de registrarse.
-function iniciarLectura() {
-
-    const user = auth.currentUser;
-    if (btnQueEsEsto) btnQueEsEsto.style.display = "flex";
-    if (user) cargarBadgeRachaInicio(user);
+    // Saludo del ajolote: con nombre y datos contextuales.
+    if (typeof mostrarSaludoAjoloteConSesion === "function") {
+        mostrarSaludoAjoloteConSesion(datos);
+    }
 
 }
