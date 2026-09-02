@@ -3069,7 +3069,10 @@ function abrirModalCodigoQR(lectura) {
         if (e.target === overlay) overlay.remove();
     });
 
-    const url = `${window.location.origin}/qr.html?lectura=${encodeURIComponent(lectura.id)}`;
+    // Se resuelve RELATIVO a la página actual (no con window.location.origin):
+    // en GitHub Pages el sitio vive en https://usuario.github.io/repositorio/,
+    // así que "origin + /qr.html" apuntaría a la raíz del dominio y daría 404.
+    const url = new URL(`qr.html?lectura=${encodeURIComponent(lectura.id)}`, window.location.href).href;
     overlay.querySelector("#urlQrLectura").textContent = url;
 
     const contenedorQr = overlay.querySelector("#contenedorQrLectura");
