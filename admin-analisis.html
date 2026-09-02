@@ -105,12 +105,17 @@
     <div class="seccionAdmin">
         <h3 class="seccionAdminTitulo">📖 Librería de respuestas</h3>
         <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
-            Consultas ya hechas antes — fíltralas con los mismos criterios de arriba en vez de volver a preguntarle a la IA.
+            Consultas ya hechas antes — búscalas por texto o fíltralas con los criterios de 🔎 Filtros de arriba,
+            en vez de volver a preguntarle a la IA. Los dos se pueden combinar.
         </p>
-        <div style="display:flex; gap:8px; margin-bottom:15px;">
-            <button type="button" id="btnFiltrarLibreria" class="botonAdminContorno" style="flex:1;">Filtrar librería</button>
+        <input type="text" id="buscadorLibreria" autocomplete="off"
+               placeholder="Buscar palabras en las preguntas y respuestas guardadas…"
+               style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid var(--borde); margin-bottom:10px;">
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+            <button type="button" id="btnFiltrarLibreria" class="botonAdminContorno" style="flex:1;">Filtrar por criterios de arriba</button>
             <button type="button" id="btnLimpiarFiltroLibreria" class="botonAdminContorno" style="flex:1;">Ver todas</button>
         </div>
+        <p id="contadorLibreria" style="font-size:13px; color:var(--texto-suave); margin:0 0 10px;"></p>
         <div id="listaLibreriaAnalisis"></div>
     </div>
 

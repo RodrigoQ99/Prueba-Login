@@ -63,10 +63,27 @@ async function inicializarAnalisis() {
     renderizarCheckboxesGeneros(document.getElementById("filtroGenerosLectura"), []);
 
     document.getElementById("btnPreguntarAnalisis").addEventListener("click", preguntarConIA);
-    document.getElementById("btnFiltrarLibreria").addEventListener("click", () => cargarLibreria(leerFiltrosActuales()));
-    document.getElementById("btnLimpiarFiltroLibreria").addEventListener("click", () => cargarLibreria(null));
 
-    cargarLibreria(null);
+    // "Filtrar por criterios de arriba" — usa el recuadro de 🔎 Filtros;
+    // el buscador de texto y este filtro se combinan (AND).
+    document.getElementById("btnFiltrarLibreria").addEventListener("click", () => {
+        filtroCriteriosLibreria = leerFiltrosActuales();
+        renderLibreria();
+    });
+
+    // "Ver todas" — limpia TANTO el buscador de texto como el filtro por
+    // criterios, y muestra el historial completo.
+    document.getElementById("btnLimpiarFiltroLibreria").addEventListener("click", () => {
+        filtroCriteriosLibreria = null;
+        document.getElementById("buscadorLibreria").value = "";
+        renderLibreria();
+    });
+
+    // Buscador de texto — filtra en vivo mientras se escribe, sin volver
+    // a leer de Firestore (la lista ya está en memoria).
+    document.getElementById("buscadorLibreria").addEventListener("input", renderLibreria);
+
+    cargarLibreria();
 
 }
 
@@ -252,7 +269,13 @@ async function preguntarConIA() {
         cajaRespuesta.style.display = "block";
 
         campoPregunta.value = "";
-        cargarLibreria(null); // la consulta que se acaba de guardar ya aparece
+
+        // Limpiar los filtros de la librería y recargarla, para que la
+        // consulta que se acaba de guardar aparezca arriba sin que quede
+        // escondida por una búsqueda o filtro previo.
+        filtroCriteriosLibreria = null;
+        document.getElementById("buscadorLibreria").value = "";
+        cargarLibreria();
 
     } catch (error) {
 
@@ -271,6 +294,18 @@ async function preguntarConIA() {
 // ==========================================================
 // LIBRERÍA DE RESPUESTAS
 // ==========================================================
+// Dos filtros que se COMBINAN (AND):
+//  - buscador de texto (#buscadorLibreria): busca palabras en la
+//    pregunta y en la respuesta guardadas.
+//  - "Filtrar por criterios de arriba" (filtroCriteriosLibreria): las
+//    respuestas cuyos filtros guardados coinciden con el recuadro de
+//    🔎 Filtros.
+// La lista se lee de Firestore UNA vez (cargarLibreria) y se guarda en
+// ENTRADAS_LIBRERIA; los filtros solo repintan (renderLibreria), sin
+// volver a consultar.
+
+let ENTRADAS_LIBRERIA = [];
+let filtroCriteriosLibreria = null;
 
 function entradaCoincideFiltros(entrada, filtros) {
 
@@ -292,25 +327,73 @@ function entradaCoincideFiltros(entrada, filtros) {
 
 }
 
-async function cargarLibreria(filtros) {
+// minúsculas y sin acentos, para que "analisis" encuentre "análisis".
+function normalizarTextoLibreria(s) {
+    return String(s == null ? "" : s)
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "");
+}
+
+// La entrada coincide si TODAS las palabras del buscador aparecen en la
+// pregunta o en la respuesta.
+function entradaCoincideTexto(entrada, consulta) {
+
+    const palabras = normalizarTextoLibreria(consulta).split(/\s+/).filter(Boolean);
+    if (palabras.length === 0) return true;
+
+    const heno = normalizarTextoLibreria(`${entrada.pregunta || ""} ${entrada.respuesta || ""}`);
+    return palabras.every(p => heno.includes(p));
+
+}
+
+async function cargarLibreria() {
 
     const cont = document.getElementById("listaLibreriaAnalisis");
     cont.innerHTML = "<p style='text-align:center;'>Cargando...</p>";
 
-    let entradas = [];
     try {
         const snapshot = await db.collection("analisisIA").orderBy("fecha", "desc").limit(100).get();
-        entradas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        ENTRADAS_LIBRERIA = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } catch (error) {
         console.error("No se pudo cargar la librería de respuestas:", error);
+        ENTRADAS_LIBRERIA = [];
+        document.getElementById("contadorLibreria").textContent = "";
         cont.innerHTML = "<p style='text-align:center;'>No se pudo cargar la librería de respuestas.</p>";
         return;
     }
 
-    const filtradas = entradas.filter(e => entradaCoincideFiltros(e, filtros));
+    renderLibreria();
 
+}
+
+function renderLibreria() {
+
+    const cont = document.getElementById("listaLibreriaAnalisis");
+    const contador = document.getElementById("contadorLibreria");
+    const consultaTexto = document.getElementById("buscadorLibreria").value.trim();
+
+    const total = ENTRADAS_LIBRERIA.length;
+    const hayFiltro = consultaTexto !== "" || filtroCriteriosLibreria !== null;
+
+    const filtradas = ENTRADAS_LIBRERIA.filter(e =>
+        entradaCoincideFiltros(e, filtroCriteriosLibreria) && entradaCoincideTexto(e, consultaTexto)
+    );
+
+    // ---- Contador ----
+    if (total === 0) {
+        contador.textContent = "Todavía no hay respuestas guardadas.";
+    } else if (hayFiltro) {
+        contador.textContent = `${filtradas.length} de ${total} ${total === 1 ? "respuesta" : "respuestas"} coinciden`;
+    } else {
+        contador.textContent = `${total} ${total === 1 ? "respuesta guardada" : "respuestas guardadas"}`;
+    }
+
+    // ---- Lista ----
     if (filtradas.length === 0) {
-        cont.innerHTML = "<p style='text-align:center; color:var(--texto-suave);'>Ninguna respuesta guardada coincide con estos filtros.</p>";
+        cont.innerHTML = total === 0
+            ? "<p style='text-align:center; color:var(--texto-suave);'>Todavía no hay respuestas guardadas.</p>"
+            : "<p style='text-align:center; color:var(--texto-suave);'>Ninguna respuesta guardada coincide con la búsqueda o el filtro.</p>";
         return;
     }
 
