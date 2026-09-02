@@ -10,16 +10,20 @@
 // auth.js) — solo se muestra. "edadPerfil" es un dato informativo, sin
 // relación con "edadActual" (la edad que navega Mejorar la lectura).
 //
-// "Completar una sola vez" (edad, género, país y lengua materna):
-// cuentas viejas pueden no tener alguno de esos campos guardado. Si
-// falta, esta pantalla deja completarlo — pero SOLO mientras falte: en
-// cuanto se guarda, la caja de "completar" se esconde para siempre y
-// pasa a mostrarse como texto fijo, igual que cualquier cuenta que ya
-// lo tenía desde el registro. Las cuentas nuevas traen país y lengua
-// materna desde el registro, así que para ellas ya salen fijos. La
-// protección es solo en el frontend (no se ofrece editarlo; no hay una
-// regla de Firestore que lo bloquee) — mismo criterio ya aceptado para
-// la edad.
+// "Completar una sola vez" (edad, género y país): cuentas viejas pueden
+// no tener alguno de esos campos guardado. Si falta, esta pantalla deja
+// completarlo — pero SOLO mientras falte: en cuanto se guarda, la caja
+// de "completar" se esconde para siempre y pasa a mostrarse como texto
+// fijo, igual que cualquier cuenta que ya lo tenía desde el registro.
+// La protección es solo en el frontend (no se ofrece editarlo; no hay
+// una regla de Firestore que lo bloquee) — mismo criterio ya aceptado
+// para la edad.
+//
+// La LENGUA MATERNA es la excepción: siempre se puede editar (alguien
+// puede hablar un dialecto que el autocompletado por país no acierta).
+// Solo aparece una vez que hay país, y se guarda con la primera letra
+// en mayúscula (ver capitalizarLengua en paises.js) para que "español"
+// y "Español" no cuenten como idiomas distintos en Estadísticas.
 
 // auth.js no se carga en esta página — se copia esta única función
 // (ya existe igual en auth.js) porque aquí también hace falta calcular
@@ -102,10 +106,11 @@ async function cargarPerfil() {
         cajaCompletarGenero.style.display = "block";
     }
 
-    // País y Lengua materna: mismo criterio que edad/género. Si ya
-    // están guardados (todas las cuentas nuevas los tienen desde el
-    // registro), se muestran fijos y no se pueden editar. Solo las
-    // cuentas viejas a las que les falte pueden completarlos UNA vez.
+    // País: mismo criterio que edad/género. Si ya está guardado (todas
+    // las cuentas nuevas lo tienen desde el registro), se muestra fijo y
+    // no se puede editar. Solo las cuentas viejas a las que les falte
+    // pueden completarlo UNA vez. (La lengua materna, más abajo, SÍ es
+    // siempre editable.)
     const campoPaisTexto = document.getElementById("campoPaisPerfilTexto");
     const cajaCompletarPais = document.getElementById("cajaCompletarPais");
 
@@ -122,33 +127,29 @@ async function cargarPerfil() {
         }
     }
 
-    const campoLenguaTexto = document.getElementById("campoLenguaMaternaPerfilTexto");
-    const cajaCompletarLengua = document.getElementById("cajaCompletarLengua");
+    // Lengua materna: SIEMPRE editable (por si alguien habla un
+    // dialecto). Solo se muestra cuando ya hay país (guardado o recién
+    // elegido); si el país todavía falta, aparece al elegirlo.
+    const grupoLengua = document.getElementById("grupoLenguaMaternaPerfil");
+    document.getElementById("campoLenguaMaternaPerfil").value = datos.lenguaMaterna || "";
+    grupoLengua.style.display = datos.pais ? "" : "none";
 
-    if (datos.lenguaMaterna) {
-        campoLenguaTexto.textContent = datos.lenguaMaterna;
-        campoLenguaTexto.style.display = "block";
-        cajaCompletarLengua.style.display = "none";
-    } else {
-        campoLenguaTexto.style.display = "none";
-        cajaCompletarLengua.style.display = "block";
-        document.getElementById("campoLenguaMaternaPerfil").value = "";
-    }
-
-    // Autocompletar el idioma al elegir país solo tiene sentido cuando
-    // los dos todavía se pueden completar (cuenta vieja sin ninguno).
-    if (!datos.pais && !datos.lenguaMaterna && typeof activarAutocompletadoIdioma === "function") {
+    // Si todavía falta elegir país, al elegirlo aparece la lengua
+    // materna y se pre-llena con el idioma de ese país (capitalizado).
+    if (!datos.pais && typeof activarAutocompletadoIdioma === "function") {
         activarAutocompletadoIdioma(
             document.getElementById("campoPaisPerfil"),
-            document.getElementById("campoLenguaMaternaPerfil")
+            document.getElementById("campoLenguaMaternaPerfil"),
+            grupoLengua
         );
     }
 
     // "Datos de perfil" viene colapsado; si a esta cuenta le falta
-    // algún dato por completar, se abre solo para que lo vea.
+    // algún dato de una sola vez por completar (edad/género/país), se
+    // abre solo para que lo vea.
     const detallesDatos = document.getElementById("detallesDatosPerfil");
     if (detallesDatos) {
-        const faltaAlgo = typeof datos.edadPerfil !== "number" || !datos.genero || !datos.pais || !datos.lenguaMaterna;
+        const faltaAlgo = typeof datos.edadPerfil !== "number" || !datos.genero || !datos.pais;
         detallesDatos.open = faltaAlgo;
     }
 
@@ -208,11 +209,12 @@ document.getElementById("btnGuardarPerfil").addEventListener("click", async () =
 
         }
 
-        // La edad, el género, el país y la lengua materna NO se reenvían
-        // si YA estaban guardados — esta pantalla no los deja editar una
-        // vez que existen (ver la nota al inicio del archivo). Solo se
-        // incluyen en "cambios" si de verdad faltaban Y el usuario los
-        // completó ahora.
+        // La edad, el género y el país NO se reenvían si YA estaban
+        // guardados — esta pantalla no los deja editar una vez que
+        // existen (ver la nota al inicio del archivo). La lengua materna
+        // SÍ se puede editar siempre (dialectos). Solo se incluyen en
+        // "cambios" los datos de una sola vez si de verdad faltaban Y el
+        // usuario los completó ahora.
         const cambios = {
             nombre: nombre,
             mostrarAlias: mostrarAlias,
@@ -224,10 +226,12 @@ document.getElementById("btnGuardarPerfil").addEventListener("click", async () =
             if (paisElegido) cambios.pais = paisElegido;
         }
 
-        if (!_datosPerfilActual.lenguaMaterna) {
-            const lengua = document.getElementById("campoLenguaMaternaPerfil").value.trim();
-            if (lengua) cambios.lenguaMaterna = lengua;
-        }
+        // Lengua materna: siempre editable, se guarda con la primera
+        // letra en mayúscula ("español" -> "Español").
+        const lengua = (typeof capitalizarLengua === "function")
+            ? capitalizarLengua(document.getElementById("campoLenguaMaternaPerfil").value)
+            : document.getElementById("campoLenguaMaternaPerfil").value.trim();
+        if (lengua) cambios.lenguaMaterna = lengua;
 
         if (typeof _datosPerfilActual.edadPerfil !== "number") {
             const fechaNacimiento = document.getElementById("campoFechaNacimientoPerfil").value;

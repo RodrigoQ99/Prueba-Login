@@ -171,6 +171,34 @@ function contarGenerosOtros(usuarios) {
 
 }
 
+// Lenguas maternas: "español" y "Español" son EL MISMO idioma. Se
+// agrupan sin importar mayúsculas, acentos ni espacios de sobra, y se
+// muestran con la primera letra en mayúscula, usando la forma escrita
+// más frecuente ("chino mandarín" -> "Chino mandarín"). Mismo espíritu
+// que contarGenerosOtros, pero además plegando acentos.
+function contarLenguasMaternas(usuarios) {
+
+    const grupos = {}; // clave normalizada -> { formas: {texto: n}, total: n }
+
+    usuarios.forEach(u => {
+        const texto = (u.lenguaMaterna || "").trim().replace(/\s+/g, " ");
+        if (!texto) return;
+        const clave = texto.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+        if (!grupos[clave]) grupos[clave] = { formas: {}, total: 0 };
+        grupos[clave].formas[texto] = (grupos[clave].formas[texto] || 0) + 1;
+        grupos[clave].total++;
+    });
+
+    return Object.values(grupos).map(g => {
+        const formaComun = Object.entries(g.formas).sort((a, b) => b[1] - a[1])[0][0];
+        return {
+            etiqueta: formaComun.charAt(0).toUpperCase() + formaComun.slice(1),
+            valor: g.total
+        };
+    }).sort((a, b) => b.valor - a.valor);
+
+}
+
 // Cruce edad × género — SIN NOMBRES, solo en qué rango de edad (mismas
 // bandas que agruparEdades) cuánta gente eligió cada género (oficial O
 // "Otro", los dos cuentan aquí — el objetivo es ver preferencias por
@@ -259,7 +287,7 @@ async function cargarEstadisticas() {
         // objetivo es ver la cantidad de usuarios en CADA país, no solo
         // los más comunes.
         renderizarBarras(document.getElementById("statsPaises"), contarPorCampo(usuarios, "pais"));
-        renderizarBarras(document.getElementById("statsLenguas"), contarPorCampo(usuarios, "lenguaMaterna").slice(0, 10));
+        renderizarBarras(document.getElementById("statsLenguas"), contarLenguasMaternas(usuarios).slice(0, 10));
         renderizarBarras(document.getElementById("statsGeneros"), contarGeneros(usuarios));
         renderizarBarras(document.getElementById("statsGenerosOtros"), contarGenerosOtros(usuarios));
 

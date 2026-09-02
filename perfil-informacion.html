@@ -132,13 +132,13 @@
             </small>
         </div>
 
-        <label style="display:block; font-weight:600; margin:15px 0 6px;">Lengua materna</label>
-        <p id="campoLenguaMaternaPerfilTexto" style="display:none; padding:10px 0; color:var(--texto-suave);">—</p>
-
-        <div id="cajaCompletarLengua" style="display:none;">
+        <!-- Lengua materna: SIEMPRE editable (por si alguien habla un
+             dialecto). Solo se muestra cuando ya hay país. -->
+        <div id="grupoLenguaMaternaPerfil" style="display:none;">
+            <label style="display:block; font-weight:600; margin:15px 0 6px;">Lengua materna</label>
             <input type="text" id="campoLenguaMaternaPerfil" placeholder="Tu lengua materna">
             <small style="display:block; color:#888; margin:8px 0 10px;">
-                Una vez que lo guardes, ya no se podrá editar.
+                Cámbiala si hablas otro idioma o un dialecto.
             </small>
         </div>
 

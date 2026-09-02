@@ -82,7 +82,11 @@
                 <input type="date" id="inputFechaNacimiento">
                 <label style="display:block; text-align:left; color:#555; font-size:13px; margin:10px 0 4px;">País</label>
                 <select id="inputPais" required></select>
-                <input type="text" id="inputLenguaMaterna" placeholder="Lengua materna">
+                <div id="grupoLenguaMaterna" style="display:none;">
+                    <label style="display:block; text-align:left; color:#555; font-size:13px; margin:10px 0 4px;">Lengua materna</label>
+                    <input type="text" id="inputLenguaMaterna" placeholder="Lengua materna">
+                    <small style="display:block; color:#888; margin:4px 0 0;">Se llena sola con el idioma del país — cámbiala si hablas otro idioma o un dialecto.</small>
+                </div>
                 <label style="display:block; text-align:left; color:#555; font-size:13px; margin:10px 0 4px;">Género</label>
                 <label class="opcionTipo" style="display:inline-flex; align-items:center; gap:6px; width:auto; margin-right:15px;">
                     <input type="radio" name="generoRegistro" value="hombre"> Hombre

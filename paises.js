@@ -136,27 +136,49 @@ const IDIOMA_POR_PAIS = {
 };
 
 /**
- * Conecta un <select> de país con un <input> de lengua materna: al
- * elegir país, PRE-LLENA el idioma asociado (IDIOMA_POR_PAIS) — el
- * usuario lo puede cambiar o borrar libremente, y en cuanto lo edita a
- * mano deja de sobreescribirse en cambios de país posteriores (para no
- * pisarle encima algo que ya corrigió). Si el país no tiene un idioma
- * mapeado, no toca el campo.
+ * Deja un texto de idioma con la primera letra en mayúscula y el resto
+ * igual ("español" -> "Español", "chino mandarín" -> "Chino mandarín"),
+ * sin espacios de sobra. Se usa al pre-llenar/guardar la lengua materna
+ * y al mostrar el conteo de lenguas en Estadísticas, para que "español"
+ * y "Español" no cuenten como dos idiomas distintos.
+ */
+function capitalizarLengua(texto) {
+    const limpio = String(texto == null ? "" : texto).trim().replace(/\s+/g, " ");
+    if (!limpio) return "";
+    return limpio.charAt(0).toUpperCase() + limpio.slice(1);
+}
+
+/**
+ * Conecta un <select> de país con un <input> de lengua materna:
+ *  - La lengua materna NO se muestra hasta que se elige un país (si se
+ *    pasa "contenedorLengua", se oculta/enseña ese contenedor).
+ *  - Al elegir país, PRE-LLENA el idioma asociado (IDIOMA_POR_PAIS) ya
+ *    con la primera letra en mayúscula — el usuario lo puede cambiar o
+ *    borrar libremente (por ejemplo si habla un dialecto), y en cuanto
+ *    lo edita a mano deja de sobreescribirse en cambios de país
+ *    posteriores. Si el país no tiene idioma mapeado, no toca el campo.
  * @param {HTMLSelectElement} selectPais
  * @param {HTMLInputElement} inputLengua
+ * @param {HTMLElement} [contenedorLengua] - se muestra solo cuando hay país.
  */
-function activarAutocompletadoIdioma(selectPais, inputLengua) {
+function activarAutocompletadoIdioma(selectPais, inputLengua, contenedorLengua) {
 
     if (!selectPais || !inputLengua) return;
 
     let editadoAMano = false;
     inputLengua.addEventListener("input", () => { editadoAMano = true; });
 
-    selectPais.addEventListener("change", () => {
-        if (editadoAMano) return;
-        const idioma = IDIOMA_POR_PAIS[selectPais.value];
-        if (idioma) inputLengua.value = idioma;
-    });
+    const sincronizar = () => {
+        const tienePais = !!selectPais.value;
+        if (contenedorLengua) contenedorLengua.style.display = tienePais ? "" : "none";
+        if (tienePais && !editadoAMano) {
+            const idioma = IDIOMA_POR_PAIS[selectPais.value];
+            if (idioma) inputLengua.value = capitalizarLengua(idioma);
+        }
+    };
+
+    selectPais.addEventListener("change", sincronizar);
+    sincronizar(); // estado inicial (por si el país ya venía elegido)
 
 }
 
