@@ -84,10 +84,37 @@
         <p style="font-weight:600; margin:20px 0 10px;">Datos de perfil</p>
 
         <label style="display:block; font-weight:600; margin-bottom:6px;">Edad</label>
-        <p id="campoEdadPerfilTexto" style="padding:10px 0; color:var(--texto-suave);">—</p>
-        <small style="display:block; color:#888; margin:-8px 0 10px;">
+        <p id="campoEdadPerfilTexto" style="display:none; padding:10px 0; color:var(--texto-suave);">—</p>
+        <small id="notaEdadPerfil" style="display:none; color:#888; margin:-8px 0 10px;">
             La edad se calcula con la fecha de nacimiento que diste al registrarte y ya no se puede editar aquí.
         </small>
+
+        <!-- Solo aparece si tu cuenta es de antes de que el registro
+             pidiera este dato (Etapa 11) — se completa UNA sola vez;
+             después queda igual de fija que la de cualquier otra cuenta. -->
+        <div id="cajaCompletarEdad" style="display:none;">
+            <input type="date" id="campoFechaNacimientoPerfil">
+            <small style="display:block; color:#888; margin:-8px 0 10px;">
+                Tu cuenta es de antes de que pidiéramos este dato — complétalo aquí. Una vez que lo guardes, ya no se podrá editar.
+            </small>
+        </div>
+
+        <label style="display:block; font-weight:600; margin:15px 0 6px;">Género</label>
+        <p id="campoGeneroPerfilTexto" style="display:none; padding:10px 0; color:var(--texto-suave);">—</p>
+
+        <!-- Mismo criterio que la edad: solo aparece si todavía no lo
+             tienes guardado, y una vez guardado ya no se puede cambiar. -->
+        <div id="cajaCompletarGenero" style="display:none;">
+            <label class="opcionTipo" style="display:inline-flex; align-items:center; gap:6px; width:auto; margin-right:15px;">
+                <input type="radio" name="generoPerfilNuevo" value="hombre"> Hombre
+            </label>
+            <label class="opcionTipo" style="display:inline-flex; align-items:center; gap:6px; width:auto;">
+                <input type="radio" name="generoPerfilNuevo" value="mujer"> Mujer
+            </label>
+            <small style="display:block; color:#888; margin:8px 0 10px;">
+                Una vez que lo guardes, ya no se podrá editar.
+            </small>
+        </div>
 
         <label style="display:block; font-weight:600; margin:15px 0 6px;">País</label>
         <select id="campoPaisPerfil"></select>

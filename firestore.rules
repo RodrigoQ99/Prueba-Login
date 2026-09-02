@@ -240,5 +240,22 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if esAdmin();
     }
+
+    // Registro de uso/costo de IA (Etapa 37, ver registrarUsoIA.js) —
+    // SOLO el admin puede leerlo, para ver el panel de costos. Nadie
+    // escribe aquí desde el navegador nunca — solo la Cloud Function
+    // correspondiente, con el Admin SDK (que no pasa por estas reglas).
+    match /usoIA/{id} {
+      allow read: if esAdmin();
+      allow write: if false;
+    }
+
+    // "Librería de respuestas" del panel de Análisis con IA (Etapa 37,
+    // ver analizarDatosUsuariosIA.js) — mismo criterio que /usoIA: solo
+    // lectura para el admin, y solo la Cloud Function escribe aquí.
+    match /analisisIA/{id} {
+      allow read: if esAdmin();
+      allow write: if false;
+    }
   }
 }

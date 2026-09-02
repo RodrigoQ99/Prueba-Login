@@ -23,6 +23,7 @@ const { betaZodOutputFormat } = require("@anthropic-ai/sdk/helpers/beta/zod");
 const { verificarAdmin } = require("./verificarAdmin");
 const { BANDAS_PREGUNTAS_PREMIO, PREGUNTAS_MEJORA_POR_DEFECTO, RANGO_PALABRAS_MEJORA } = require("./cantidadPreguntas");
 const { LecturaExtraidaSchema } = require("./esquemaLecturaExtraida");
+const { registrarUsoIA } = require("./registrarUsoIA");
 const { db } = require("../admin-init");
 
 const NOMBRE_NIVEL = { facil: "fácil", intermedio: "intermedio", dificil: "difícil" };
@@ -113,6 +114,12 @@ const generarLecturaOriginalIA = onCall(
             logger.error("Claude no devolvió una lectura válida:", response.stop_reason);
             throw new HttpsError("internal", "La IA no devolvió un resultado válido. Intenta de nuevo.");
         }
+
+        await registrarUsoIA({
+            tipo: "inventar_historia",
+            inputTokens: response.usage.input_tokens,
+            outputTokens: response.usage.output_tokens
+        });
 
         return response.parsed_output;
 

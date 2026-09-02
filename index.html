@@ -73,7 +73,8 @@
                 <small style="display:block; color:#888; margin:-8px 0 10px;">
                     Escribe el nombre completo, igual que tus compañeros, para que sus puntos se sumen juntos.
                 </small>
-                <input type="text" id="inputGrado" placeholder="Grado (ej. 4to bachillerato)">
+                <label style="display:block; text-align:left; color:#555; font-size:13px; margin:8px 0 4px;">Grado</label>
+                <select id="inputGrado"></select>
             </div>
 
             <div id="datosPerfilRegistro" style="margin-top:15px;">
@@ -82,6 +83,13 @@
                 <label style="display:block; text-align:left; color:#555; font-size:13px; margin:10px 0 4px;">País</label>
                 <select id="inputPais" required></select>
                 <input type="text" id="inputLenguaMaterna" placeholder="Lengua materna">
+                <label style="display:block; text-align:left; color:#555; font-size:13px; margin:10px 0 4px;">Género</label>
+                <label class="opcionTipo" style="display:inline-flex; align-items:center; gap:6px; width:auto; margin-right:15px;">
+                    <input type="radio" name="generoRegistro" value="hombre"> Hombre
+                </label>
+                <label class="opcionTipo" style="display:inline-flex; align-items:center; gap:6px; width:auto;">
+                    <input type="radio" name="generoRegistro" value="mujer"> Mujer
+                </label>
             </div>
 
             <p style="font-weight:600; margin:15px 0 8px;">¿Qué géneros de lectura te gustan?</p>
@@ -143,6 +151,7 @@
 <script src="admin-comun.js"></script>
 <script src="generos.js"></script>
 <script src="paises.js"></script>
+<script src="grados.js"></script>
 <script src="racha.js"></script>
 <script src="inicio.js"></script>
 <script src="auth.js"></script>

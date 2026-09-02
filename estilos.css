@@ -376,7 +376,8 @@ button:active{
     cursor:pointer;
 }
 
-#camposEstudiante input{
+#camposEstudiante input,
+#camposEstudiante select{
     display:block;
     width:100%;
     padding:10px;
@@ -401,6 +402,7 @@ button:active{
    demás campos, más una flechita propia (el triángulo nativo del
    navegador se ve distinto en cada sistema, esto lo deja consistente). */
 #datosPerfilRegistro select,
+#camposEstudiante select,
 .cajaCheckpoint select{
     appearance:none;
     -webkit-appearance:none;

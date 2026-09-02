@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Costos de IA — Panel de administrador</title>
+    <link rel="stylesheet" href="estilos.css">
+
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
+</head>
+
+
+<body>
+
+
+<!-- ==========================
+     PANTALLA DE LOGIN
+=========================== -->
+<div id="pantallaLoginAdmin" class="pantallaAuth" style="display:none;">
+    <div class="cajaAuth">
+        <h1>Panel de administrador</h1>
+        <p>Inicia sesión con la cuenta autorizada para administrar el contenido.</p>
+        <button id="btnLoginGoogleAdmin" class="botonGoogle">
+            Iniciar sesión con Google
+        </button>
+    </div>
+</div>
+
+
+<!-- ==========================
+     SIN PERMISO
+=========================== -->
+<div id="pantallaSinPermiso" class="pantallaAuth" style="display:none;">
+    <div class="cajaAuth">
+        <h1>Sin permiso</h1>
+        <p>Esta cuenta no está autorizada para administrar el contenido.</p>
+        <button id="btnCerrarSesionAdminSinPermiso">Cerrar sesión</button>
+    </div>
+</div>
+
+
+<!-- ==========================
+     PANEL (solo administradores)
+=========================== -->
+<div id="contenedorAdminPanel" style="display:none; max-width:700px; margin:0 auto; padding:20px;">
+
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:20px;">
+        <a href="admin-panel.html" style="text-decoration:none; color:var(--texto-suave); font-weight:600;">← Inicio</a>
+        <h1 style="margin:0;">💰 Costos de IA</h1>
+        <span style="width:50px;"></span>
+    </div>
+
+    <p style="text-align:center; color:var(--texto-suave); font-size:13px; margin-bottom:20px;">
+        Registrado por la app a partir de los tokens que reporta cada llamada a Claude — no es el saldo real de tu
+        cuenta de Anthropic. Compáralo contra la consola de Anthropic si necesitas la cifra exacta.
+    </p>
+
+    <div id="resumenCostos" class="tarjetasResumen"></div>
+
+    <div class="seccionAdmin">
+        <h3 class="seccionAdminTitulo">📊 Gasto por tipo de tarea</h3>
+        <div style="overflow-x:auto;">
+            <table class="tablaEstadisticas">
+                <thead>
+                    <tr>
+                        <th>Tarea</th>
+                        <th>Llamadas</th>
+                        <th>Tokens entrada</th>
+                        <th>Tokens salida</th>
+                        <th>Costo</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaCostoPorTipo"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="seccionAdmin">
+        <h3 class="seccionAdminTitulo">🕒 Llamadas más recientes</h3>
+        <div style="overflow-x:auto;">
+            <table class="tablaEstadisticas">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Tarea</th>
+                        <th>Tokens (E/S)</th>
+                        <th>Costo</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaLlamadasRecientes"></tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+
+<script src="firebase-init.js"></script>
+<script src="admin-comun.js"></script>
+<script src="admin-costos.js"></script>
+
+
+</body>
+
+
+</html>

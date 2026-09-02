@@ -28,6 +28,14 @@
 // - dividirFragmentoEnHiloIA: divide el fragmento YA ELEGIDO por el
 //   admin en exactamente 5 partes narrativamente coherentes y en
 //   orden — nunca decide qué fragmento usar, solo cómo dividirlo.
+// - analizarDatosUsuariosIA: la 4ta función de IA (Etapa 37, autorizada
+//   explícitamente por el admin — amplía el límite de 3 de la Etapa
+//   29). El admin le hace una pregunta en lenguaje natural sobre los
+//   usuarios registrados; el CÓDIGO (no Claude) agrupa y cuenta los
+//   datos según los filtros elegidos y le manda a Claude SOLO ese
+//   resumen ya compacto — nunca la lista de usuarios uno por uno — para
+//   que lo redacte en una respuesta clara. Cada consulta se guarda en
+//   la colección "analisisIA" (la "librería de respuestas").
 //
 // DESCONECTADA (Etapa 28): extraerLecturaDeDocumentoIA — el admin pidió
 // quitar por completo la opción de crear lecturas subiendo un
@@ -67,6 +75,7 @@ const { moderarPropuestaIA } = require("./lib/moderarPropuestaIA");
 const { generarLecturaOriginalIA } = require("./lib/generarLecturaOriginalIA");
 const { extraerTextoDePdfGuardado } = require("./lib/extraerTextoDePdfGuardado");
 const { dividirFragmentoEnHiloIA } = require("./lib/dividirFragmentoEnHiloIA");
+const { analizarDatosUsuariosIA } = require("./lib/analizarDatosUsuariosIA");
 // const { extraerPalabraDeUrlIA } = require("./lib/extraerPalabraDeUrlIA"); // DESCONECTADA — ver nota arriba
 // const { extraerPalabrasDeDocumentoIA } = require("./lib/extraerPalabrasDeDocumentoIA"); // DESCONECTADA — ver nota arriba
 // const { extraerLecturaDeDocumentoIA } = require("./lib/extraerLecturaDeDocumentoIA"); // DESCONECTADA — ver nota arriba
@@ -77,6 +86,7 @@ exports.moderarPropuestaIA = moderarPropuestaIA;
 exports.generarLecturaOriginalIA = generarLecturaOriginalIA;
 exports.extraerTextoDePdfGuardado = extraerTextoDePdfGuardado;
 exports.dividirFragmentoEnHiloIA = dividirFragmentoEnHiloIA;
+exports.analizarDatosUsuariosIA = analizarDatosUsuariosIA;
 // exports.extraerPalabraDeUrlIA = extraerPalabraDeUrlIA; // DESCONECTADA — ver nota arriba
 // exports.extraerPalabrasDeDocumentoIA = extraerPalabrasDeDocumentoIA; // DESCONECTADA — ver nota arriba
 // exports.extraerLecturaDeDocumentoIA = extraerLecturaDeDocumentoIA; // DESCONECTADA — ver nota arriba

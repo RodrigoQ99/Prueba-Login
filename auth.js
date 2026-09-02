@@ -49,6 +49,14 @@ tipoUsuarioInputs.forEach(input => {
     });
 });
 
+// Grado: SIEMPRE uno de LISTA_GRADOS (ver grados.js) — nunca texto
+// libre, para que "4to bachillerato" y "4to Bach" no cuenten como
+// grados distintos al agrupar el ranking de colegios (ver puntos.js).
+const selectGradoRegistro = document.getElementById("inputGrado");
+if (selectGradoRegistro && typeof renderizarSelectorGrado === "function") {
+    renderizarSelectorGrado(selectGradoRegistro, "");
+}
+
 // Botón de login con Google
 btnLoginGoogle.addEventListener("click", () => {
     const proveedor = new firebase.auth.GoogleAuthProvider();
@@ -137,6 +145,11 @@ formRegistro.addEventListener("submit", async (e) => {
         return;
     }
 
+    // Género (Etapa 36) — opcional, igual que la edad: quien no lo
+    // marque ahora puede completarlo después desde Perfil (una sola
+    // vez, ver perfil-informacion.js) — nunca se le exige aquí.
+    const generoElegidoRegistro = document.querySelector('input[name="generoRegistro"]:checked');
+
     const datosUsuario = {
         nombre: user.displayName || "",
         email: user.email || "",
@@ -145,6 +158,7 @@ formRegistro.addEventListener("submit", async (e) => {
         fechaRegistro: firebase.firestore.FieldValue.serverTimestamp(),
         fechaNacimiento: fechaNacimientoInput || null,
         edadPerfil: fechaNacimientoInput ? calcularEdadDesdeFecha(fechaNacimientoInput) : null,
+        genero: generoElegidoRegistro ? generoElegidoRegistro.value : null,
         pais: paisElegido,
         lenguaMaterna: document.getElementById("inputLenguaMaterna").value.trim(),
         generosLectura: contenedorGeneros ? leerGenerosSeleccionados(contenedorGeneros) : []

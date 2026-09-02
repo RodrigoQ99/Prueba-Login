@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análisis con IA — Panel de administrador</title>
+    <link rel="stylesheet" href="estilos.css">
+
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+    <!-- Solo para llamar a analizarDatosUsuariosIA (ver admin-ia.js) —
+         nunca se carga en páginas de participantes. -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-functions-compat.js"></script>
+
+</head>
+
+
+<body>
+
+
+<!-- ==========================
+     PANTALLA DE LOGIN
+=========================== -->
+<div id="pantallaLoginAdmin" class="pantallaAuth" style="display:none;">
+    <div class="cajaAuth">
+        <h1>Panel de administrador</h1>
+        <p>Inicia sesión con la cuenta autorizada para administrar el contenido.</p>
+        <button id="btnLoginGoogleAdmin" class="botonGoogle">
+            Iniciar sesión con Google
+        </button>
+    </div>
+</div>
+
+
+<!-- ==========================
+     SIN PERMISO
+=========================== -->
+<div id="pantallaSinPermiso" class="pantallaAuth" style="display:none;">
+    <div class="cajaAuth">
+        <h1>Sin permiso</h1>
+        <p>Esta cuenta no está autorizada para administrar el contenido.</p>
+        <button id="btnCerrarSesionAdminSinPermiso">Cerrar sesión</button>
+    </div>
+</div>
+
+
+<!-- ==========================
+     PANEL (solo administradores)
+=========================== -->
+<div id="contenedorAdminPanel" style="display:none; max-width:700px; margin:0 auto; padding:20px;">
+
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:20px;">
+        <a href="admin-panel.html" style="text-decoration:none; color:var(--texto-suave); font-weight:600;">← Inicio</a>
+        <h1 style="margin:0;">🔎 Análisis con IA</h1>
+        <span style="width:50px;"></span>
+    </div>
+
+    <p style="text-align:center; color:var(--texto-suave); font-size:14px; margin-bottom:20px;">
+        Pregunta en lenguaje natural sobre los datos de los usuarios registrados. La IA responde
+        ÚNICAMENTE con datos ya agregados/contados de la app — nunca busca en internet ni inventa cifras.
+    </p>
+
+    <div class="seccionAdmin">
+        <h3 class="seccionAdminTitulo">🔎 Filtros (opcionales)</h3>
+        <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
+            Se aplican tanto a la pregunta nueva como a la búsqueda en la librería de respuestas de abajo.
+        </p>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:120px;">
+                <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">Edad mínima</label>
+                <input type="number" id="filtroEdadMin" min="0" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--borde);">
+            </div>
+            <div style="flex:1; min-width:120px;">
+                <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">Edad máxima</label>
+                <input type="number" id="filtroEdadMax" min="0" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--borde);">
+            </div>
+        </div>
+
+        <label style="display:block; font-size:13px; font-weight:600; margin:10px 0 4px;">Género</label>
+        <select id="filtroGenero" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--borde);">
+            <option value="">Cualquiera</option>
+            <option value="hombre">Hombre</option>
+            <option value="mujer">Mujer</option>
+        </select>
+
+        <label style="display:block; font-size:13px; font-weight:600; margin:10px 0 4px;">País</label>
+        <select id="filtroPais" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--borde);"></select>
+
+        <label style="display:block; font-size:13px; font-weight:600; margin:10px 0 4px;">Géneros de lectura de interés</label>
+        <div id="filtroGenerosLectura"></div>
+    </div>
+
+    <div class="seccionAdmin">
+        <h3 class="seccionAdminTitulo">🤖 Preguntar</h3>
+        <textarea id="campoPreguntaAnalisis" rows="3" placeholder="Ej. ¿Cuál es el género de lectura favorito entre los usuarios de 10 a 12 años?"
+                  style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--borde); font-family:inherit; font-size:15px;"></textarea>
+        <button type="button" id="btnPreguntarAnalisis" style="width:100%; margin-top:10px;">🤖 Preguntar</button>
+        <div id="respuestaAnalisis" style="display:none; margin-top:15px; padding:12px; border-radius:10px; background:#f4f7fb; border:1px solid var(--borde);"></div>
+    </div>
+
+    <div class="seccionAdmin">
+        <h3 class="seccionAdminTitulo">📖 Librería de respuestas</h3>
+        <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
+            Consultas ya hechas antes — fíltralas con los mismos criterios de arriba en vez de volver a preguntarle a la IA.
+        </p>
+        <div style="display:flex; gap:8px; margin-bottom:15px;">
+            <button type="button" id="btnFiltrarLibreria" class="botonAdminContorno" style="flex:1;">Filtrar librería</button>
+            <button type="button" id="btnLimpiarFiltroLibreria" class="botonAdminContorno" style="flex:1;">Ver todas</button>
+        </div>
+        <div id="listaLibreriaAnalisis"></div>
+    </div>
+
+</div>
+
+
+<script src="firebase-init.js"></script>
+<script src="admin-comun.js"></script>
+<script src="generos.js"></script>
+<script src="paises.js"></script>
+<script src="admin-ia.js"></script>
+<script src="admin-analisis.js"></script>
+
+
+</body>
+
+
+</html>

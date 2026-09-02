@@ -5,8 +5,9 @@
 //
 // EXCLUSIVO para el panel de administrador: este archivo (y el
 // <script> de firebase-functions-compat.js que necesita) solo se
-// incluye en admin-lecturas.html, admin-mejora.html y
-// admin-propuestas.html — nunca en ninguna página de participantes.
+// incluye en admin-lecturas.html, admin-mejora.html,
+// admin-propuestas.html y admin-analisis.html — nunca en ninguna
+// página de participantes.
 // Además, la Cloud Function del otro lado (ver
 // functions/lib/verificarAdmin.js) vuelve a verificar esAdmin() por su
 // cuenta antes de llamar a Claude, así que aunque alguien intentara
@@ -270,3 +271,23 @@ async function dividirFragmentoConIA(fragmento) {
 //     }
 //
 // }
+
+
+// ==========================================================
+// ANÁLISIS DE DATOS DE USUARIOS CON IA (Etapa 37)
+// ==========================================================
+// 4ta función de IA — autorizada explícitamente por el admin, amplía
+// el límite de 3 funciones de la Etapa 29 (ver la nota en
+// functions/index.js). El CÓDIGO del lado del servidor (nunca Claude)
+// agrupa y cuenta los datos según los filtros antes de mandarle nada a
+// la IA — ver analizarDatosUsuariosIA.js.
+/**
+ * @param {string} pregunta
+ * @param {{edadMin?:number, edadMax?:number, genero?:string, pais?:string, generosLectura?:string[]}} filtros
+ * @returns {Promise<{respuesta:string, id:string|null}>}
+ */
+async function analizarDatosUsuariosConIA({ pregunta, filtros }) {
+    const llamar = functionsIA.httpsCallable("analizarDatosUsuariosIA", { timeout: 60000 });
+    const resultado = await llamar({ pregunta, filtros: filtros || {} });
+    return resultado.data;
+}

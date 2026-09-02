@@ -5,11 +5,45 @@
 // los dos se muestra en el ranking. El alias no se puede repetir
 // entre cuentas (comparación exacta, con tildes y mayúsculas).
 //
-// La edad ya NO se edita aquí: se calculó sola a partir de la fecha de
-// nacimiento que dio al registrarse (ver auth.js) — solo se muestra.
-// "edadPerfil" es un dato informativo, sin relación con "edadActual"
-// (la edad que navega Mejorar la lectura).
-// ==========================================================
+// La edad ya NO se edita aquí una vez guardada: se calculó sola a
+// partir de la fecha de nacimiento que dio al registrarse (ver
+// auth.js) — solo se muestra. "edadPerfil" es un dato informativo, sin
+// relación con "edadActual" (la edad que navega Mejorar la lectura).
+//
+// Etapa 36 — "completar una sola vez": cuentas de ANTES de la Etapa 11
+// (edad) o de antes de esta misma etapa (género) no tienen esos campos
+// guardados. Si falta alguno, esta pantalla deja completarlo — pero
+// SOLO mientras falte: en cuanto se guarda, la caja de "completar" se
+// esconde para siempre y pasa a mostrarse como texto fijo, igual que
+// cualquier cuenta que ya lo tenía desde el registro. La protección es
+// del mismo tipo que ya existía para la edad (solo en el frontend: no
+// se ofrece la opción de editarlo, no hay una regla de Firestore que lo
+// bloquee — mismo criterio ya aceptado para ese campo).
+
+// auth.js no se carga en esta página — se copia esta única función
+// (ya existe igual en auth.js) porque aquí también hace falta calcular
+// la edad a partir de la fecha de nacimiento.
+function calcularEdadDesdeFecha(fechaTexto) {
+
+    const nacimiento = new Date(fechaTexto + "T00:00:00");
+    const hoy = new Date();
+
+    let edad = hoy.getFullYear() - nacimiento.getFullYear();
+    const noHaCumplidoAunEsteAnio =
+        hoy.getMonth() < nacimiento.getMonth() ||
+        (hoy.getMonth() === nacimiento.getMonth() && hoy.getDate() < nacimiento.getDate());
+
+    if (noHaCumplidoAunEsteAnio) edad--;
+
+    return edad;
+
+}
+
+// Guardada en cargarPerfil() para que el botón "Guardar cambios" (más
+// abajo, otra función) sepa si la edad/género YA estaban guardados
+// antes de este visita — así nunca reenvía ni pisa un valor que ya
+// existía, y solo los incluye en el guardado si de verdad faltaban.
+let _datosPerfilActual = {};
 
 async function cargarPerfil() {
 
@@ -25,6 +59,8 @@ async function cargarPerfil() {
         console.error("No se pudo cargar tu perfil:", error);
     }
 
+    _datosPerfilActual = datos;
+
     document.getElementById("campoNombrePerfil").value = datos.nombre || user.displayName || "";
     document.getElementById("campoAliasPerfil").value = datos.alias || "";
 
@@ -32,8 +68,39 @@ async function cargarPerfil() {
     const radio = document.querySelector(`input[name="mostrarComo"][value="${valorMostrar}"]`);
     if (radio) radio.checked = true;
 
-    document.getElementById("campoEdadPerfilTexto").textContent =
-        typeof datos.edadPerfil === "number" ? `${datos.edadPerfil} años` : "Sin dato";
+    // Edad: si ya la tiene, se muestra fija (como siempre). Si NO la
+    // tiene (cuenta de antes de la Etapa 11), se muestra la caja para
+    // completarla una sola vez.
+    const campoEdadTexto = document.getElementById("campoEdadPerfilTexto");
+    const notaEdad = document.getElementById("notaEdadPerfil");
+    const cajaCompletarEdad = document.getElementById("cajaCompletarEdad");
+
+    if (typeof datos.edadPerfil === "number") {
+        campoEdadTexto.textContent = `${datos.edadPerfil} años`;
+        campoEdadTexto.style.display = "block";
+        notaEdad.style.display = "block";
+        cajaCompletarEdad.style.display = "none";
+    } else {
+        campoEdadTexto.style.display = "none";
+        notaEdad.style.display = "none";
+        cajaCompletarEdad.style.display = "block";
+        const campoFecha = document.getElementById("campoFechaNacimientoPerfil");
+        campoFecha.max = new Date().toISOString().split("T")[0]; // no fechas futuras
+    }
+
+    // Género: mismo criterio que la edad.
+    const campoGeneroTexto = document.getElementById("campoGeneroPerfilTexto");
+    const cajaCompletarGenero = document.getElementById("cajaCompletarGenero");
+
+    if (datos.genero) {
+        campoGeneroTexto.textContent = datos.genero === "hombre" ? "Hombre" : "Mujer";
+        campoGeneroTexto.style.display = "block";
+        cajaCompletarGenero.style.display = "none";
+    } else {
+        campoGeneroTexto.style.display = "none";
+        cajaCompletarGenero.style.display = "block";
+    }
+
     // País: mismo <select> restringido a LISTA_PAISES que el registro
     // (ver paises.js) — nunca texto libre.
     if (typeof renderizarSelectorPais === "function") {
@@ -108,9 +175,10 @@ document.getElementById("btnGuardarPerfil").addEventListener("click", async () =
 
         }
 
-        // La edad NO se manda aquí a propósito: ya no es editable desde
-        // esta pantalla, así que el valor guardado en el registro se
-        // conserva tal cual.
+        // La edad y el género NO se reenvían si YA estaban guardados —
+        // esta pantalla no los deja editar una vez que existen (ver la
+        // nota al inicio del archivo). Solo se incluyen en "cambios" si
+        // de verdad faltaban Y el usuario los completó ahora.
         const cambios = {
             nombre: nombre,
             mostrarAlias: mostrarAlias,
@@ -118,6 +186,21 @@ document.getElementById("btnGuardarPerfil").addEventListener("click", async () =
             lenguaMaterna: document.getElementById("campoLenguaMaternaPerfil").value.trim(),
             generosLectura: leerGenerosSeleccionados(document.getElementById("contenedorGenerosPerfil"))
         };
+
+        if (typeof _datosPerfilActual.edadPerfil !== "number") {
+            const fechaNacimiento = document.getElementById("campoFechaNacimientoPerfil").value;
+            if (fechaNacimiento) {
+                cambios.fechaNacimiento = fechaNacimiento;
+                cambios.edadPerfil = calcularEdadDesdeFecha(fechaNacimiento);
+            }
+        }
+
+        if (!_datosPerfilActual.genero) {
+            const generoElegido = document.querySelector('input[name="generoPerfilNuevo"]:checked');
+            if (generoElegido) {
+                cambios.genero = generoElegido.value;
+            }
+        }
 
         cambios.alias = alias ? alias : firebase.firestore.FieldValue.delete();
 

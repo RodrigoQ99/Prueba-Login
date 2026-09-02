@@ -23,6 +23,7 @@ const { betaZodOutputFormat } = require("@anthropic-ai/sdk/helpers/beta/zod");
 const { verificarAdmin } = require("./verificarAdmin");
 const { contarPalabras, determinarCantidadPreguntas } = require("./cantidadPreguntas");
 const { BancoPreguntasSchema } = require("./esquemaPreguntas");
+const { registrarUsoIA } = require("./registrarUsoIA");
 const { db } = require("../admin-init");
 
 const NOMBRE_NIVEL = { facil: "fácil", intermedio: "intermedio", dificil: "difícil" };
@@ -92,6 +93,12 @@ const generarPreguntasIA = onCall({ secrets: ["ANTHROPIC_API_KEY"] }, async (req
         logger.error("Claude no devolvió un banco de preguntas válido:", response.stop_reason);
         throw new HttpsError("internal", "La IA no devolvió un resultado válido. Intenta de nuevo.");
     }
+
+    await registrarUsoIA({
+        tipo: "generar_preguntas",
+        inputTokens: response.usage.input_tokens,
+        outputTokens: response.usage.output_tokens
+    });
 
     return { preguntas: response.parsed_output.preguntas };
 

@@ -22,6 +22,7 @@ const Anthropic = require("@anthropic-ai/sdk");
 const { betaZodOutputFormat } = require("@anthropic-ai/sdk/helpers/beta/zod");
 const { verificarAdmin } = require("./verificarAdmin");
 const { ModeracionSchema } = require("./esquemaModeracion");
+const { registrarUsoIA } = require("./registrarUsoIA");
 const { db } = require("../admin-init");
 
 function construirPrompt({ texto, preguntas }) {
@@ -76,6 +77,12 @@ const moderarPropuestaIA = onCall({ secrets: ["ANTHROPIC_API_KEY"] }, async (req
         logger.error("Claude no devolvió un veredicto válido:", response.stop_reason);
         throw new HttpsError("internal", "La IA no devolvió un resultado válido. Intenta de nuevo.");
     }
+
+    await registrarUsoIA({
+        tipo: "analizar_sugerencia",
+        inputTokens: response.usage.input_tokens,
+        outputTokens: response.usage.output_tokens
+    });
 
     return response.parsed_output;
 
