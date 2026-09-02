@@ -71,6 +71,11 @@ auth.onAuthStateChanged(async (user) => {
         if (typeof btnQueEsEsto !== "undefined" && btnQueEsEsto) {
             btnQueEsEsto.style.display = "none";
         }
+        // Saludo del ajolote: en la pantalla de login, saludos genéricos
+        // y empujones divertidos para que inicie sesión.
+        if (typeof mostrarSaludoAjoloteSinSesion === "function") {
+            mostrarSaludoAjoloteSinSesion();
+        }
         return;
     }
 
