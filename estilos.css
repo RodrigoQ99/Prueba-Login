@@ -1382,3 +1382,18 @@ button.menuLink{
     gap:10px;
     margin-top:14px;
 }
+
+/* Desglose por banda de edad en "Aprobados" (admin-aprobados.html) */
+.chipEdad{
+    display:inline-block;
+    background:var(--fondo);
+    border:1px solid var(--borde);
+    border-radius:999px;
+    padding:3px 10px;
+    font-size:12px;
+    color:var(--texto-suave);
+}
+
+.chipEdad strong{
+    color:var(--texto);
+}

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aprobados — Panel de administrador</title>
+    <link rel="stylesheet" href="estilos.css">
+
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
+</head>
+
+
+<body>
+
+
+<!-- ==========================
+     PANTALLA DE LOGIN
+=========================== -->
+<div id="pantallaLoginAdmin" class="pantallaAuth" style="display:none;">
+    <div class="cajaAuth">
+        <h1>Panel de administrador</h1>
+        <p>Inicia sesión con la cuenta autorizada para administrar el contenido.</p>
+        <button id="btnLoginGoogleAdmin" class="botonGoogle">
+            Iniciar sesión con Google
+        </button>
+    </div>
+</div>
+
+
+<!-- ==========================
+     SIN PERMISO
+=========================== -->
+<div id="pantallaSinPermiso" class="pantallaAuth" style="display:none;">
+    <div class="cajaAuth">
+        <h1>Sin permiso</h1>
+        <p>Esta cuenta no está autorizada para administrar el contenido.</p>
+        <button id="btnCerrarSesionAdminSinPermiso">Cerrar sesión</button>
+    </div>
+</div>
+
+
+<!-- ==========================
+     PANEL (solo administradores)
+=========================== -->
+<div id="contenedorAdminPanel" style="display:none; max-width:700px; margin:0 auto; padding:20px;">
+
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:20px;">
+        <a href="admin-panel.html" style="text-decoration:none; color:var(--texto-suave); font-weight:600;">← Inicio</a>
+        <h1 style="margin:0;">📖 Aprobados</h1>
+        <span style="width:50px;"></span>
+    </div>
+
+    <p style="font-size:13px; color:var(--texto-suave); margin-bottom:15px;">
+        Quién ha aprobado cada lectura de premios (cuestionario respondido completo). Sirve para ver la
+        edad de quien la leyó y si su nivel de comprensión corresponde a lo esperado para su edad.
+        Solo visible para administradores.
+    </p>
+
+    <div id="resumenGeneral" class="tarjetasResumen"></div>
+
+    <div class="seccionAdmin">
+        <h3 class="seccionAdminTitulo">Filtros</h3>
+        <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+            <input type="text" id="filtroTexto" placeholder="Buscar por nombre o colegio…"
+                   autocomplete="off"
+                   style="flex:1 1 200px; padding:9px 12px; border-radius:8px; border:1px solid var(--borde);">
+            <select id="filtroNivel" style="padding:9px 12px; border-radius:8px; border:1px solid var(--borde);">
+                <option value="">Todos los niveles</option>
+                <option value="facil">Fácil</option>
+                <option value="intermedio">Intermedio</option>
+                <option value="dificil">Difícil</option>
+            </select>
+            <select id="filtroBanda" style="padding:9px 12px; border-radius:8px; border:1px solid var(--borde);">
+                <option value="">Todas las edades</option>
+            </select>
+            <button type="button" id="btnDescargarCsv" class="botonAdminContorno"
+                    style="padding:9px 14px; border-radius:8px; font-weight:600;">⬇️ CSV</button>
+        </div>
+    </div>
+
+    <div id="listaAprobados">
+        <p style="text-align:center; color:var(--texto-suave);">Cargando…</p>
+    </div>
+
+</div>
+
+
+<script src="firebase-init.js"></script>
+<script src="admin-comun.js"></script>
+<script src="lecturas.js"></script>
+<script src="admin-aprobados.js"></script>
+
+
+</body>
+
+
+</html>
