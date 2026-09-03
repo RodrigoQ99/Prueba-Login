@@ -2,67 +2,102 @@
 // AHORCADO
 // ==========================================================
 // Palabra al azar del banco GENERAL de palabras (bancoPalabras, ver
-// admin.js) — el admin lo llena a mano, con IA (URL/documento) o
-// importando un Excel (Etapa 28, sin IA). Desde la Etapa 29 este es el
-// ÚNICO banco: se quitó el glosario personal que cada usuario podía
-// subir con IA — los usuarios ya no pueden subir documentos ni usar IA,
-// eso queda exclusivo del panel de administrador (ver la nota en
-// functions/index.js sobre cargarGlosarioPersonalIA, desconectada).
+// admin.js). "Diccionario desbloqueado" (usuarios/{uid}
+// .palabrasDesbloqueadasAhorcado): registro PERMANENTE de las palabras
+// ya ADIVINADAS — solo esas entran al diccionario y dejan de salir al
+// azar. Una palabra que se pierde nunca se revela ni se guarda.
 //
-// "Diccionario desbloqueado" (Etapa 31): usuarios/{uid}
-// .palabrasDesbloqueadasAhorcado es un registro PERMANENTE (nunca se
-// borra) de las palabras que el usuario ya ADIVINÓ CORRECTAMENTE — solo
-// esas entran a su diccionario y se le dejan de mostrar al azar. Una
-// palabra que PIERDE nunca se revela ni se guarda ahí (ver
-// "Las palabras solo se muestran cuando se adivinan" — el usuario lo
-// pidió explícitamente) — sigue disponible para volver a intentarla
-// después. Cuando ya desbloqueó TODO el banco, simplemente deja de
-// excluir nada (vuelve a poder salir cualquiera) SIN borrar su
-// diccionario — a diferencia de antes, este campo ya no se reinicia
-// nunca, porque también sirve para la pantalla "Ver diccionario".
+// OPORTUNIDADES = TOKEN COMPARTIDO
+// -------------------------------------------------------------------
+//   - El jugador tiene un pozo de "oportunidades" (tokens), editable
+//     por el admin en configuracion/ahorcado (campo "tokens").
+//   - Cada token se gasta SOLO al completar el muñeco (6 errores) en
+//     una palabra = fallarla. Ganar o cambiar de palabra sin
+//     terminarla NO cuesta.
+//   - Al fallar quedando tokens > 0, el jugador decide: "Reintentar
+//     esta palabra" (misma palabra, se conservan las letras ya
+//     acertadas/falladas, el muñeco vuelve a 0) o "Jugar otra palabra".
+//   - Al llegar a 0 tokens: espera configuracion/ahorcado.esperaMinutos
+//     (por defecto 60) antes de poder volver a jugar. Al pasar la
+//     espera, los tokens se recargan al máximo de una vez.
+//   - Durante la espera solo se puede "Ver diccionario". Un contador
+//     regresivo mm:ss aparece junto al título "🔤 Ahorcado".
+//
+// El estado del pozo vive en usuarios/{uid}: ahorcadoTokens (número) y
+// ahorcadoBloqueadoHasta (Timestamp, cuándo termina la espera).
 // ==========================================================
 
-// "Oportunidades" (Etapa 31): dentro de CADA oportunidad tiene derecho
-// a fallar hasta 6 letras (el ahorcado clásico completo, sus 6 partes)
-// — recién ahí se pierde ESA oportunidad. Con 3 oportunidades por
-// palabra, se permiten hasta 3×6=18 letras falladas en total antes de
-// perder de verdad. "erroresActuales" (0 a 6, dibuja la figura) es
-// INDEPENDIENTE de "oportunidadesRestantes" (0 a 3): al completarse el
-// ahorcado se resta una oportunidad y, si todavía queda alguna, la
-// figura se limpia y sigue con la MISMA palabra — las letras ya
-// acertadas se conservan, y las ya falladas se quedan marcadas (no
-// tiene sentido dejar que las vuelva a intentar).
-const OPORTUNIDADES_MAX_AHORCADO = 3;
-const ERRORES_MAX_POR_OPORTUNIDAD = 6;
+const ERRORES_MAX_POR_OPORTUNIDAD = 6; // partes del muñeco = fallos por palabra
+
+// Config editable por el admin (configuracion/ahorcado). Valores por
+// defecto mientras carga o si nunca se guardó.
+let CONFIG_AHORCADO = { tokens: 3, esperaMinutos: 60 };
+let _promesaConfigAhorcado = null;
+
+function cargarConfigAhorcado(forzar) {
+
+    if (_promesaConfigAhorcado && !forzar) return _promesaConfigAhorcado;
+
+    _promesaConfigAhorcado = db.collection("configuracion").doc("ahorcado").get()
+        .then(doc => {
+            if (doc.exists) {
+                const d = doc.data();
+                if (typeof d.tokens === "number" && d.tokens >= 1) CONFIG_AHORCADO.tokens = Math.floor(d.tokens);
+                if (typeof d.esperaMinutos === "number" && d.esperaMinutos >= 1) CONFIG_AHORCADO.esperaMinutos = d.esperaMinutos;
+            }
+            return CONFIG_AHORCADO;
+        })
+        .catch(error => {
+            console.error("No se pudo cargar la configuración de Ahorcado:", error);
+            return CONFIG_AHORCADO;
+        });
+
+    return _promesaConfigAhorcado;
+}
+
+
+// ==========================
+// ESTADO
+// ==========================
 
 let palabraActual = null;
 let letrasAcertadas = [];
 let letrasFalladas = [];
-// Orden en que se fueron intentando (aciertos Y fallos, mezclados) —
-// SOLO para mostrarlas en pantalla (Etapa 33: ya no hay botones de
-// letras, se juega con el teclado físico — aquí solo se ve un registro
-// de lo ya intentado, no se puede hacer clic en nada de esto).
-let letrasIntentadas = [];
-let erroresActuales = 0;
-let oportunidadesRestantes = OPORTUNIDADES_MAX_AHORCADO;
-// Evita que taches del teclado sigan mutando el estado después de que
-// la ronda ya terminó (antes lo evitaban los botones deshabilitados;
-// ahora que el teclado físico no se puede "deshabilitar", hace falta
-// este candado explícito).
-let rondaTerminada = false;
+let letrasIntentadas = []; // orden de intento (aciertos y fallos), solo para mostrar
+let erroresActuales = 0;    // 0..6, dibuja la figura
 
-// "jugar" | "diccionario" — qué pantalla se muestra ahora mismo.
+let tokensAhorcado = 0;             // pozo compartido de oportunidades
+let esperaHastaAhorcado = null;     // millis: cuándo termina la espera
+let esperandoDecisionAhorcado = false; // falló una palabra y quedan tokens: espera "Reintentar / Otra"
+let rondaTerminada = false;         // ganó, o se agotaron los tokens
+let _intervaloEsperaAhorcado = null;
+
+// "jugar" | "diccionario"
 let vistaActualAhorcado = "jugar";
 
-// Mapa explícito en vez de normalize("NFD") + quitar acentos: la Ñ se
-// descompone bajo NFD en "N" + tilde combinada (mismo rango Unicode que
-// los acentos de las vocales), así que quitarlos a ciegas convertiría
-// "Ñ" en "N" — hay que tratarla como letra propia, no como acento.
+// Mapa explícito (la Ñ NO es un acento: bajo NFD se descompone en N +
+// tilde combinada, así que quitar acentos a ciegas la volvería N).
 const MAPA_ACENTOS_AHORCADO = { "Á": "A", "É": "E", "Í": "I", "Ó": "O", "Ú": "U", "Ü": "U" };
 
 function normalizarLetraAhorcado(letra) {
     const mayuscula = (letra || "").toUpperCase();
     return MAPA_ACENTOS_AHORCADO[mayuscula] || mayuscula;
+}
+
+// Firestore Timestamp | número | null -> millis | null
+function leerMillisAhorcado(valor) {
+    if (!valor) return null;
+    if (typeof valor === "number") return valor;
+    if (typeof valor.toMillis === "function") return valor.toMillis();
+    if (typeof valor.seconds === "number") return valor.seconds * 1000;
+    return null;
+}
+
+function mmssRestante(ms) {
+    const total = Math.max(0, Math.ceil(ms / 1000));
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return m + ":" + String(s).padStart(2, "0");
 }
 
 
@@ -72,8 +107,16 @@ function normalizarLetraAhorcado(letra) {
 
 async function iniciarRondaAhorcado(user) {
 
+    if (_intervaloEsperaAhorcado) {
+        clearInterval(_intervaloEsperaAhorcado);
+        _intervaloEsperaAhorcado = null;
+    }
+    actualizarChipEsperaAhorcado(null);
+
     const cont = document.getElementById("juegoAhorcado");
     cont.innerHTML = "<p style='text-align:center;'>Cargando...</p>";
+
+    await cargarConfigAhorcado();
 
     let datosUsuario = {};
     try {
@@ -83,13 +126,47 @@ async function iniciarRondaAhorcado(user) {
         console.error("No se pudo cargar tu perfil:", error);
     }
 
-    let banco = [];
+    // ---- Pozo de oportunidades / espera ----
+    const bloqueadoHastaMs = leerMillisAhorcado(datosUsuario.ahorcadoBloqueadoHasta);
+    const ahora = Date.now();
 
+    if (bloqueadoHastaMs && bloqueadoHastaMs > ahora) {
+        // Todavía en espera: solo diccionario.
+        mostrarEsperaAhorcado(bloqueadoHastaMs);
+        return;
+    }
+
+    if (bloqueadoHastaMs && bloqueadoHastaMs <= ahora) {
+        // Pasó la espera: recarga TOTAL de tokens.
+        tokensAhorcado = CONFIG_AHORCADO.tokens;
+        try {
+            await db.collection("usuarios").doc(user.uid).update({
+                ahorcadoTokens: tokensAhorcado,
+                ahorcadoBloqueadoHasta: firebase.firestore.FieldValue.delete()
+            });
+        } catch (error) {
+            console.error("No se pudo recargar tus oportunidades de Ahorcado:", error);
+        }
+    } else {
+        tokensAhorcado = (typeof datosUsuario.ahorcadoTokens === "number")
+            ? datosUsuario.ahorcadoTokens
+            : CONFIG_AHORCADO.tokens;
+        // Si el admin bajó el máximo, no dejar más de lo permitido.
+        if (tokensAhorcado > CONFIG_AHORCADO.tokens) tokensAhorcado = CONFIG_AHORCADO.tokens;
+
+        if (tokensAhorcado <= 0) {
+            // Sin tokens y sin bloqueo guardado (raro): arranca la espera ya.
+            esperaHastaAhorcado = ahora + CONFIG_AHORCADO.esperaMinutos * 60000;
+            await persistirEstadoAhorcado(true);
+            mostrarEsperaAhorcado(esperaHastaAhorcado);
+            return;
+        }
+    }
+
+    // ---- Banco de palabras ----
+    let banco = [];
     try {
         const snapshot = await db.collection("bancoPalabras").get();
-        // Solo palabras globales o del mismo país del usuario (Etapa 30
-        // — "bases de datos separadas" por país, ver filtrarPorPais en
-        // lecturas.js).
         banco = filtrarPorPais(
             snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })),
             datosUsuario.pais || null
@@ -103,14 +180,13 @@ async function iniciarRondaAhorcado(user) {
     if (banco.length === 0) {
         cont.innerHTML =
             "<p style='text-align:center;'>Todavía no hay palabras en el banco. Pídele al administrador que agregue algunas. 📖</p>";
+        palabraActual = null;
+        rondaTerminada = true;
+        actualizarVisibilidadSelectorVista();
         return;
     }
 
     const desbloqueadas = datosUsuario.palabrasDesbloqueadasAhorcado || [];
-
-    // Si ya desbloqueó TODO el banco, simplemente ya no excluye nada —
-    // el diccionario (ese mismo arreglo) NUNCA se borra, a diferencia de
-    // antes (ver nota arriba).
     const candidatas = banco.filter(p => !desbloqueadas.includes(p.id));
     const paraElegir = candidatas.length > 0 ? candidatas : banco;
 
@@ -119,11 +195,10 @@ async function iniciarRondaAhorcado(user) {
     letrasFalladas = [];
     letrasIntentadas = [];
     erroresActuales = 0;
-    oportunidadesRestantes = OPORTUNIDADES_MAX_AHORCADO;
     rondaTerminada = false;
+    esperandoDecisionAhorcado = false;
 
     renderAhorcado();
-
 }
 
 
@@ -155,8 +230,44 @@ function renderFiguraAhorcado(partesAMostrar) {
             ${partes.slice(0, partesAMostrar).join("")}
         </svg>
     `;
-
 }
+
+
+// ==========================
+// AJUSTAR EL ANCHO DE LA PALABRA A LA PANTALLA (una sola fila)
+// ==========================
+// La palabra se pinta en un <span> que no envuelve (white-space:nowrap);
+// aquí se le baja el tamaño de letra y el espaciado hasta que quepa en
+// el ancho disponible, para que siempre se lea en un solo renglón.
+
+function ajustarAnchoPalabraAhorcado() {
+
+    const span = document.getElementById("palabraAhorcadoTexto");
+    if (!span || !span.parentElement) return;
+
+    const disponible = span.parentElement.clientWidth - 2;
+    if (disponible <= 0) return; // el juego está oculto (vista "diccionario")
+
+    let fontPx = 32;
+    let lsPx = 6;
+
+    span.style.fontSize = fontPx + "px";
+    span.style.letterSpacing = lsPx + "px";
+
+    let guarda = 0;
+    while (span.scrollWidth > disponible && guarda < 60) {
+        if (fontPx > 13) fontPx -= 1;
+        if (lsPx > 1) lsPx -= 0.4;
+        span.style.fontSize = fontPx + "px";
+        span.style.letterSpacing = Math.max(1, lsPx) + "px";
+        if (fontPx <= 13 && lsPx <= 1) break;
+        guarda++;
+    }
+}
+
+window.addEventListener("resize", () => {
+    if (document.getElementById("palabraAhorcadoTexto")) ajustarAnchoPalabraAhorcado();
+});
 
 
 // ==========================
@@ -166,6 +277,12 @@ function renderFiguraAhorcado(partesAMostrar) {
 function renderAhorcado() {
 
     const cont = document.getElementById("juegoAhorcado");
+
+    if (!palabraActual) {
+        actualizarVisibilidadSelectorVista();
+        return;
+    }
+
     const letrasPalabra = [...palabraActual.palabra.toUpperCase()];
 
     const letrasNecesarias = [...new Set(
@@ -173,31 +290,23 @@ function renderAhorcado() {
     )];
 
     const gano = letrasNecesarias.every(l => letrasAcertadas.includes(l));
-    const perdio = oportunidadesRestantes <= 0;
+    const perdio = rondaTerminada && !gano; // se agotaron los tokens
     const terminado = gano || perdio;
 
-    // Si perdió, la palabra NUNCA se revela (ni aquí ni al final) — solo
-    // se muestra completa cuando SÍ se adivinó.
+    // Si perdió, la palabra NUNCA se revela.
     const palabraMostrada = letrasPalabra.map(caracter => {
         const normal = normalizarLetraAhorcado(caracter);
-        if (!/[A-ZÑ]/.test(normal)) return caracter; // espacios, guiones, etc. siempre visibles
+        if (!/[A-ZÑ]/.test(normal)) return caracter;
         return letrasAcertadas.includes(normal) ? caracter : "_";
     }).join(" ");
 
-    // Se acaba de "quemar" una oportunidad (la figura se completó y
-    // volvió a limpiar), pero todavía queda otra — se avisa con un
-    // mensaje aparte del de "terminado" (que es solo para game over/gano
-    // de verdad).
-    const rondaRecienPerdida = !terminado && erroresActuales === 0 && letrasFalladas.length > 0
-        && oportunidadesRestantes < OPORTUNIDADES_MAX_AHORCADO;
-
-    // Ya NO son botones — solo un registro de lo que ya se intentó (con
-    // el teclado físico), en el orden en que se fue escribiendo.
     const chipsLetras = letrasIntentadas.map(letra => {
         const acertada = letrasAcertadas.includes(letra);
         const clase = acertada ? "botonExito" : "botonPeligro";
         return `<span class="botonAdminChico ${clase}" style="min-width:38px; display:inline-block; text-align:center;">${letra}</span>`;
     }).join("");
+
+    const jugando = !terminado && !esperandoDecisionAhorcado;
 
     cont.innerHTML = `
         ${palabraActual.pista
@@ -206,20 +315,24 @@ function renderAhorcado() {
 
         ${renderFiguraAhorcado(erroresActuales)}
 
-        ${rondaRecienPerdida
-            ? `<p style="text-align:center; font-weight:600; color:#c0392b; margin-bottom:10px;">
-                   💀 ¡Se completó el ahorcado! Pierdes esta oportunidad — te queda${oportunidadesRestantes === 1 ? "" : "n"} ${oportunidadesRestantes}. Sigue con la misma palabra.
-               </p>`
-            : ""}
+        ${esperandoDecisionAhorcado ? `
+            <p style="text-align:center; font-weight:600; color:#c0392b; margin:12px 0 10px;">
+                💀 ¡Se completó el ahorcado! Perdiste 1 oportunidad — te queda${tokensAhorcado === 1 ? "" : "n"} ${tokensAhorcado}.
+            </p>
+            <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:15px;">
+                <button id="btnReintentarAhorcado">🔄 Reintentar esta palabra</button>
+                <button id="btnOtraPalabraAhorcado" style="background:white; color:var(--azul); border:2px solid var(--azul);">➡️ Jugar otra palabra</button>
+            </div>
+        ` : ""}
 
-        <p style="text-align:center; font-size:32px; letter-spacing:6px; font-weight:700; margin:15px 0;">
-            ${palabraMostrada}
-        </p>
+        <div style="text-align:center; margin:15px 0; overflow:hidden;">
+            <span id="palabraAhorcadoTexto" style="white-space:nowrap; display:inline-block; font-weight:700; font-size:32px; letter-spacing:6px;">${palabraMostrada}</span>
+        </div>
 
-        <p style="text-align:center; margin-bottom:2px;">Oportunidades: ${oportunidadesRestantes}/${OPORTUNIDADES_MAX_AHORCADO}</p>
-        <p style="text-align:center; margin-bottom:10px; color:var(--texto-suave); font-size:14px;">Errores en esta oportunidad: ${erroresActuales}/${ERRORES_MAX_POR_OPORTUNIDAD}</p>
+        <p style="text-align:center; margin-bottom:2px;">Oportunidades: ${tokensAhorcado}/${CONFIG_AHORCADO.tokens}</p>
+        <p style="text-align:center; margin-bottom:10px; color:var(--texto-suave); font-size:14px;">Errores en esta palabra: ${erroresActuales}/${ERRORES_MAX_POR_OPORTUNIDAD}</p>
 
-        ${!terminado ? `
+        ${jugando ? `
             <p style="text-align:center; color:var(--texto-suave); font-size:13px; margin-bottom:10px;">
                 ⌨️ Escribe una letra en el recuadro de abajo para intentarla.
             </p>
@@ -229,27 +342,36 @@ function renderAhorcado() {
             ${chipsLetras || `<span style="color:var(--texto-suave); font-size:13px;">Todavía no has intentado ninguna letra.</span>`}
         </div>
 
-        ${terminado ? `
+        ${gano ? `
             <p style="text-align:center; font-weight:700; font-size:18px; margin-bottom:15px;">
-                ${gano ? "🎉 ¡Adivinaste la palabra! Se agregó a tu diccionario 📖" : "😔 Ya no te quedan oportunidades."}
+                🎉 ¡Adivinaste la palabra! Se agregó a tu diccionario 📖
             </p>
             <button id="btnJugarOtraAhorcado" style="display:block; margin:0 auto;">🔄 Jugar otra</button>
         ` : ""}
     `;
 
-    if (terminado) {
+    if (gano) {
         document.getElementById("btnJugarOtraAhorcado").addEventListener("click", () => {
             iniciarRondaAhorcado(auth.currentUser);
         });
     }
 
-    // Recuadro para escribir letras (abre el teclado del teléfono). Vive
-    // fuera de #juegoAhorcado, así que sobrevive a este re-render: solo
-    // hay que mostrarlo/ocultarlo y devolverle el foco mientras se juega,
-    // para que el teclado del teléfono no se cierre entre letra y letra.
+    if (esperandoDecisionAhorcado) {
+        document.getElementById("btnReintentarAhorcado").addEventListener("click", () => {
+            esperandoDecisionAhorcado = false;
+            erroresActuales = 0; // el muñeco vuelve a 0; las letras ya jugadas se conservan
+            renderAhorcado();
+        });
+        document.getElementById("btnOtraPalabraAhorcado").addEventListener("click", () => {
+            iniciarRondaAhorcado(auth.currentUser);
+        });
+    }
+
+    // Recuadro de teclado (vive fuera de #juegoAhorcado): visible solo
+    // mientras se está adivinando de verdad.
     const entrada = document.getElementById("entradaLetraAhorcado");
     if (entrada) {
-        if (!terminado && vistaActualAhorcado === "jugar") {
+        if (jugando && vistaActualAhorcado === "jugar") {
             entrada.style.display = "block";
             entrada.value = "";
             entrada.focus({ preventScroll: true });
@@ -259,6 +381,8 @@ function renderAhorcado() {
         }
     }
 
+    actualizarVisibilidadSelectorVista();
+    ajustarAnchoPalabraAhorcado();
 }
 
 
@@ -268,7 +392,7 @@ function renderAhorcado() {
 
 function manejarLetraAhorcado(letra) {
 
-    if (rondaTerminada) return;
+    if (rondaTerminada || esperandoDecisionAhorcado || !palabraActual) return;
     if (letrasAcertadas.includes(letra) || letrasFalladas.includes(letra)) return;
 
     letrasIntentadas.push(letra);
@@ -278,52 +402,147 @@ function manejarLetraAhorcado(letra) {
     if (letrasPalabra.includes(letra)) {
         letrasAcertadas.push(letra);
     } else {
-
         letrasFalladas.push(letra);
         erroresActuales++;
-
-        // Se completó el ahorcado (6 fallos) DENTRO de esta oportunidad:
-        // se pierde esa oportunidad. Si todavía queda alguna, la figura
-        // se limpia y sigue con la MISMA palabra (las letras ya
-        // acertadas/falladas no se pierden); si era la última, ahí sí
-        // se acabó de verdad (perdio, más abajo).
-        if (erroresActuales >= ERRORES_MAX_POR_OPORTUNIDAD) {
-            oportunidadesRestantes--;
-            if (oportunidadesRestantes > 0) {
-                erroresActuales = 0;
-            }
-        }
-
     }
 
     const letrasNecesarias = [...new Set(letrasPalabra.filter(l => /[A-ZÑ]/.test(l)))];
     const gano = letrasNecesarias.every(l => letrasAcertadas.includes(l));
-    const perdio = oportunidadesRestantes <= 0;
 
-    if (gano || perdio) {
+    if (gano) {
         rondaTerminada = true;
-        guardarPalabraJugadaAhorcado(gano);
+        guardarPalabraJugadaAhorcado(true);
+        renderAhorcado();
+        return;
+    }
+
+    // ¿Se completó el muñeco en esta palabra? -> se gasta un token.
+    if (erroresActuales >= ERRORES_MAX_POR_OPORTUNIDAD) {
+
+        tokensAhorcado = Math.max(0, tokensAhorcado - 1);
+
+        if (tokensAhorcado <= 0) {
+            esperaHastaAhorcado = Date.now() + CONFIG_AHORCADO.esperaMinutos * 60000;
+            rondaTerminada = true;
+            persistirEstadoAhorcado(true);
+            guardarPalabraJugadaAhorcado(false);
+            mostrarEsperaAhorcado(esperaHastaAhorcado);
+            return;
+        }
+
+        esperandoDecisionAhorcado = true;
+        persistirEstadoAhorcado(false);
     }
 
     renderAhorcado();
+}
 
+// Guarda el pozo de tokens (y, si es game over, hasta cuándo dura la
+// espera) en usuarios/{uid}.
+async function persistirEstadoAhorcado(gameOver) {
+
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const cambios = { ahorcadoTokens: tokensAhorcado };
+    if (gameOver && esperaHastaAhorcado) {
+        cambios.ahorcadoBloqueadoHasta = firebase.firestore.Timestamp.fromMillis(esperaHastaAhorcado);
+    }
+
+    try {
+        await db.collection("usuarios").doc(user.uid).update(cambios);
+    } catch (error) {
+        console.error("No se pudo guardar tu estado de Ahorcado:", error);
+    }
 }
 
 
 // ==========================
-// TECLADO FÍSICO (Etapa 33 — ya no hay botones en pantalla)
+// PANTALLA DE ESPERA + CONTADOR REGRESIVO
 // ==========================
-// Un solo listener global (no uno por ronda) — revisa el estado actual
-// cada vez que se presiona una tecla, así funciona sin importar cuántas
-// veces se haya vuelto a renderizar el juego.
+
+function mostrarEsperaAhorcado(hastaMs) {
+
+    esperaHastaAhorcado = hastaMs;
+    rondaTerminada = true;
+    palabraActual = null;
+    esperandoDecisionAhorcado = false;
+
+    const cont = document.getElementById("juegoAhorcado");
+    cont.innerHTML = `
+        <p style="text-align:center; font-weight:700; font-size:18px; margin-bottom:6px;">⏳ Se te acabaron las oportunidades de Ahorcado.</p>
+        <p style="text-align:center; color:var(--texto-suave); margin-bottom:6px;">Podrás volver a jugar y a acumular palabras en:</p>
+        <p id="contadorGrandeEspera" style="text-align:center; font-size:44px; font-weight:800; margin:6px 0; font-variant-numeric:tabular-nums;">--:--</p>
+        <p style="text-align:center; color:var(--texto-suave); font-size:13px;">Mientras tanto puedes revisar tu 📖 diccionario.</p>
+    `;
+
+    const entrada = document.getElementById("entradaLetraAhorcado");
+    if (entrada) { entrada.blur(); entrada.style.display = "none"; }
+
+    actualizarVisibilidadSelectorVista();
+    arrancarIntervaloEspera(hastaMs);
+}
+
+function arrancarIntervaloEspera(hastaMs) {
+
+    if (_intervaloEsperaAhorcado) clearInterval(_intervaloEsperaAhorcado);
+
+    const tick = () => {
+        const restante = hastaMs - Date.now();
+
+        if (restante <= 0) {
+            clearInterval(_intervaloEsperaAhorcado);
+            _intervaloEsperaAhorcado = null;
+            actualizarChipEsperaAhorcado(null);
+            if (auth.currentUser) iniciarRondaAhorcado(auth.currentUser);
+            return;
+        }
+
+        const grande = document.getElementById("contadorGrandeEspera");
+        if (grande) grande.textContent = mmssRestante(restante);
+        actualizarChipEsperaAhorcado(hastaMs);
+    };
+
+    tick();
+    _intervaloEsperaAhorcado = setInterval(tick, 1000);
+}
+
+// Etiqueta chica junto al título "🔤 Ahorcado" (como la racha, pero un
+// mm:ss regresivo). hastaMs null -> se esconde.
+function actualizarChipEsperaAhorcado(hastaMs) {
+
+    const chip = document.getElementById("contadorEsperaAhorcado");
+    if (!chip) return;
+
+    if (!hastaMs) { chip.style.display = "none"; return; }
+
+    const restante = hastaMs - Date.now();
+    if (restante <= 0) { chip.style.display = "none"; return; }
+
+    chip.textContent = "⏱️ " + mmssRestante(restante);
+    chip.style.display = "inline-block";
+}
+
+// El selector "🎮 Jugar / 📖 Ver diccionario" NO se ve a media partida:
+// solo al inicio, al terminar la ronda (ganó o se agotaron los tokens)
+// y durante la espera.
+function actualizarVisibilidadSelectorVista() {
+    const sel = document.getElementById("selectorVistaAhorcado");
+    if (!sel) return;
+    const enPartida = !!palabraActual && !rondaTerminada;
+    sel.style.display = enPartida ? "none" : "flex";
+}
+
+
+// ==========================
+// TECLADO FÍSICO (computadora)
+// ==========================
+
 document.addEventListener("keydown", (e) => {
 
     if (vistaActualAhorcado !== "jugar") return;
-    if (!palabraActual || rondaTerminada) return;
+    if (!palabraActual || rondaTerminada || esperandoDecisionAhorcado) return;
 
-    // No interceptar si el foco está en un campo de texto real (por si
-    // algún día esta pantalla agrega uno) — nunca debería pasar aquí,
-    // pero es una salvaguarda barata.
     const activo = document.activeElement;
     if (activo && (activo.tagName === "INPUT" || activo.tagName === "TEXTAREA")) return;
 
@@ -331,17 +550,13 @@ document.addEventListener("keydown", (e) => {
     if (!/^[A-ZÑ]$/.test(letra)) return;
 
     manejarLetraAhorcado(letra);
-
 });
 
 
 // ==========================
 // TECLADO DEL TELÉFONO — recuadro real que abre el teclado nativo
 // ==========================
-// En el celular no hay "keydown" utilizable sin un campo de texto real.
-// Este <input> (en ahorcado.html, fuera de #juegoAhorcado) abre el
-// teclado del teléfono al tocarlo; cada letra que se escribe se procesa
-// y el campo se limpia de inmediato. El listener se engancha UNA vez.
+
 const _entradaLetraAhorcado = document.getElementById("entradaLetraAhorcado");
 if (_entradaLetraAhorcado) {
     _entradaLetraAhorcado.addEventListener("input", () => {
@@ -349,22 +564,19 @@ if (_entradaLetraAhorcado) {
         const letra = normalizarLetraAhorcado(_entradaLetraAhorcado.value.slice(-1));
         _entradaLetraAhorcado.value = "";
 
-        if (vistaActualAhorcado !== "jugar" || !palabraActual || rondaTerminada) return;
+        if (vistaActualAhorcado !== "jugar" || !palabraActual || rondaTerminada || esperandoDecisionAhorcado) return;
         if (!/^[A-ZÑ]$/.test(letra)) return;
 
         manejarLetraAhorcado(letra);
-
     });
 }
+
 
 async function guardarPalabraJugadaAhorcado(gano) {
 
     const user = auth.currentUser;
     if (!user) return;
 
-    // Solo se "desbloquea" (y entra al diccionario) si la adivinó — si
-    // perdió, la palabra sigue disponible para volver a intentarla,
-    // nunca se le revela ni se guarda.
     if (gano) {
         try {
             await db.collection("usuarios").doc(user.uid).update({
@@ -375,17 +587,14 @@ async function guardarPalabraJugadaAhorcado(gano) {
         }
     }
 
-    // Terminar una ronda (ganada o perdida) es actividad verificable —
-    // mantiene viva la racha 🔥 igual que completar una lectura (ver
-    // racha.js). Esto SÍ cuenta pase lo que pase, a diferencia de
-    // "desbloquear" la palabra.
+    // Terminar una ronda (ganada o se agotaron los tokens) mantiene viva
+    // la racha 🔥 igual que completar una lectura (ver racha.js).
     if (typeof registrarActividadRacha === "function") registrarActividadRacha();
-
 }
 
 
 // ==========================
-// "VER DICCIONARIO" — palabras ya desbloqueadas + su significado
+// "VER DICCIONARIO"
 // ==========================
 
 function activarSelectorVistaAhorcado(user) {
@@ -401,14 +610,11 @@ function activarSelectorVistaAhorcado(user) {
         document.getElementById("juegoAhorcado").style.display = vistaActualAhorcado === "jugar" ? "block" : "none";
         document.getElementById("diccionarioAhorcado").style.display = vistaActualAhorcado === "diccionario" ? "block" : "none";
 
-        // El recuadro para escribir letras solo tiene sentido en "Jugar"
-        // y con una ronda en curso (renderAhorcado lo vuelve a mostrar y
-        // enfocar). En "Ver diccionario" siempre oculto.
         const entrada = document.getElementById("entradaLetraAhorcado");
         if (entrada && vistaActualAhorcado !== "jugar") {
             entrada.blur();
             entrada.style.display = "none";
-        } else if (entrada && palabraActual && !rondaTerminada) {
+        } else if (entrada && palabraActual && !rondaTerminada && !esperandoDecisionAhorcado) {
             entrada.style.display = "block";
         }
     }
@@ -418,6 +624,7 @@ function activarSelectorVistaAhorcado(user) {
     btnJugar.addEventListener("click", () => {
         vistaActualAhorcado = "jugar";
         actualizarBotones();
+        if (document.getElementById("palabraAhorcadoTexto")) ajustarAnchoPalabraAhorcado();
     });
 
     btnDiccionario.addEventListener("click", () => {
@@ -425,7 +632,6 @@ function activarSelectorVistaAhorcado(user) {
         actualizarBotones();
         mostrarDiccionarioAhorcado(user);
     });
-
 }
 
 async function mostrarDiccionarioAhorcado(user) {
@@ -451,9 +657,6 @@ async function mostrarDiccionarioAhorcado(user) {
 
     let palabras = [];
     try {
-        // Se trae TODO el banco (sin filtrar por país): una palabra ya
-        // desbloqueada se queda en tu diccionario para siempre, aunque
-        // el admin le cambie el país después.
         const snapshot = await db.collection("bancoPalabras").get();
         const todas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         palabras = todas
@@ -478,7 +681,6 @@ async function mostrarDiccionarioAhorcado(user) {
             </div>
         `).join("")}
     `;
-
 }
 
 
@@ -496,5 +698,4 @@ auth.onAuthStateChanged((user) => {
 
     activarSelectorVistaAhorcado(user);
     iniciarRondaAhorcado(user);
-
 });

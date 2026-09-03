@@ -47,13 +47,19 @@
 
 <div id="contenedorAhorcado" style="max-width:600px; margin:40px auto; padding:0 20px;">
 
-    <h1 style="text-align:center;">🔤 Ahorcado</h1>
+    <div style="display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;">
+        <h1 style="margin:0;">🔤 Ahorcado</h1>
+        <span id="contadorEsperaAhorcado"
+              style="display:none; background:#fdecea; color:#c0392b; border:1px solid #f5c6cb; border-radius:999px; padding:3px 10px; font-size:13px; font-weight:700; font-variant-numeric:tabular-nums;">⏱️ --:--</span>
+    </div>
 
     <p style="text-align:center; color:#555; margin-bottom:20px;">
         Adivina la palabra letra por letra (con tu teclado) antes de que se acaben tus oportunidades.
     </p>
 
-    <div style="display:flex; gap:10px; justify-content:center; margin-bottom:20px;">
+    <!-- Solo visible al inicio, al terminar la ronda y durante la espera —
+         nunca a media partida (ver actualizarVisibilidadSelectorVista). -->
+    <div id="selectorVistaAhorcado" style="display:flex; gap:10px; justify-content:center; margin-bottom:20px;">
         <button type="button" id="btnVistaJugar" class="botonAdminChico">🎮 Jugar</button>
         <button type="button" id="btnVistaDiccionario" class="botonAdminChico">📖 Ver diccionario</button>
     </div>

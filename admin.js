@@ -2257,6 +2257,23 @@ function inicializarAdminAhorcado() {
         <h2 style="text-align:center;">🔤 Ahorcado</h2>
 
         <div class="seccionAdmin">
+            <h3 class="seccionAdminTitulo">⏱️ Ahorcado — oportunidades</h3>
+            <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
+                Las oportunidades son un "token" compartido: se gasta una cada vez que alguien completa el
+                muñeco (falla una palabra). Al quedarse en 0, el jugador espera los minutos de abajo antes de
+                volver a jugar; al pasar la espera se le recargan todas de una vez.
+            </p>
+            <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">Oportunidades (tokens) por tanda</label>
+            <input type="number" id="campoTokensAhorcado" min="1" max="20"
+                   style="width:100%; box-sizing:border-box; padding:8px; border-radius:8px; border:1px solid var(--borde); margin-bottom:10px;">
+            <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">Espera al agotarlas (minutos)</label>
+            <input type="number" id="campoEsperaAhorcado" min="1" max="1440"
+                   style="width:100%; box-sizing:border-box; padding:8px; border-radius:8px; border:1px solid var(--borde); margin-bottom:10px;">
+            <button type="button" id="btnGuardarConfigAhorcado">Guardar</button>
+            <p id="estadoConfigAhorcado" style="display:none; font-size:13px; margin-top:8px;"></p>
+        </div>
+
+        <div class="seccionAdmin">
             <h3 class="seccionAdminTitulo">🔤 Ahorcado — banco de palabras</h3>
             <div class="seccionAdminBotones">
                 <button id="btnNuevaPalabra">➕ Agregar palabra y significado</button>
@@ -2303,6 +2320,8 @@ function inicializarAdminAhorcado() {
     const listaPalabras = document.getElementById("listaAdminPalabras");
     renderizarListaAdminPalabras(listaPalabras);
     renderizarHistorialImportacionesBanco();
+    cargarConfigAhorcadoEnFormulario();
+    document.getElementById("btnGuardarConfigAhorcado").addEventListener("click", guardarConfigAhorcadoDesdeFormulario);
     document.getElementById("btnNuevaPalabra").addEventListener("click", () => {
         abrirFormularioPalabra(null, () => renderizarListaAdminPalabras(listaPalabras));
     });
@@ -2320,6 +2339,59 @@ function inicializarAdminAhorcado() {
     // activarCargaPalabrasConIA(() => renderizarListaAdminPalabras(listaPalabras));
     activarImportacionExcelPalabras(() => renderizarListaAdminPalabras(listaPalabras));
 
+}
+
+// ==========================================================
+// CONFIGURACIÓN DE OPORTUNIDADES DE AHORCADO (configuracion/ahorcado)
+// ==========================================================
+// tokens: pozo compartido de oportunidades. esperaMinutos: cuánto
+// espera el jugador al agotarlas. Lo lee ahorcado.js (cargarConfigAhorcado).
+
+async function cargarConfigAhorcadoEnFormulario() {
+
+    const cfg = { tokens: 3, esperaMinutos: 60 };
+
+    try {
+        const doc = await db.collection("configuracion").doc("ahorcado").get();
+        if (doc.exists) {
+            const d = doc.data();
+            if (typeof d.tokens === "number") cfg.tokens = d.tokens;
+            if (typeof d.esperaMinutos === "number") cfg.esperaMinutos = d.esperaMinutos;
+        }
+    } catch (error) {
+        console.error("No se pudo cargar la configuración de Ahorcado:", error);
+    }
+
+    const campoTokens = document.getElementById("campoTokensAhorcado");
+    const campoEspera = document.getElementById("campoEsperaAhorcado");
+    if (campoTokens) campoTokens.value = cfg.tokens;
+    if (campoEspera) campoEspera.value = cfg.esperaMinutos;
+}
+
+async function guardarConfigAhorcadoDesdeFormulario() {
+
+    const estado = document.getElementById("estadoConfigAhorcado");
+    const tokens = Math.floor(Number(document.getElementById("campoTokensAhorcado").value));
+    const esperaMinutos = Math.floor(Number(document.getElementById("campoEsperaAhorcado").value));
+
+    if (!(tokens >= 1) || !(esperaMinutos >= 1)) {
+        estado.textContent = "Escribe números válidos (mínimo 1 en cada campo).";
+        estado.style.color = "#c0392b";
+        estado.style.display = "block";
+        return;
+    }
+
+    try {
+        await db.collection("configuracion").doc("ahorcado").set({ tokens, esperaMinutos });
+        estado.textContent = "✅ Guardado.";
+        estado.style.color = "#2e9e5b";
+        estado.style.display = "block";
+    } catch (error) {
+        console.error("No se pudo guardar la configuración de Ahorcado:", error);
+        estado.textContent = "❌ No se pudo guardar.";
+        estado.style.color = "#c0392b";
+        estado.style.display = "block";
+    }
 }
 
 // ==========================================================
