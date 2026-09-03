@@ -157,6 +157,14 @@ service cloud.firestore {
       allow write: if esAdmin();
     }
 
+    // Historial de Excels importados al banco de Ahorcado (nombre, fecha,
+    // cuántas palabras trajo, enlace de descarga del archivo guardado en
+    // Storage — ver archivarExcelImportado en admin.js). Solo el admin.
+    match /importacionesBancoAhorcado/{id} {
+      allow read: if esAdmin();
+      allow write: if esAdmin();
+    }
+
     // Premios canjeables: uno por cada lectura aprobada por primera vez,
     // con su código de 6 dígitos. Cualquiera logueado puede leer (mismo
     // criterio que "progreso") — se necesita para que, al generar un

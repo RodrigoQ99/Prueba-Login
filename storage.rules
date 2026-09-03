@@ -67,6 +67,23 @@ service firebase.storage {
       allow delete: if esAdmin();
     }
 
+    // Excels que el admin importa al banco de palabras de Ahorcado
+    // (ver archivarExcelImportado en admin.js). Se guardan tal cual para
+    // poder volver a descargarlos; el historial vive en la colección
+    // importacionesBancoAhorcado de Firestore. Algunos navegadores mandan
+    // los .xlsx como 'application/octet-stream', por eso también se acepta.
+    match /archivosBancoAhorcado/{archivo} {
+      allow read: if esAdmin();
+      allow create: if esAdmin()
+                    && request.resource.size < 10 * 1024 * 1024
+                    && request.resource.contentType.matches(
+                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet|'
+                         + 'application/vnd.ms-excel|'
+                         + 'application/octet-stream'
+                       );
+      allow delete: if esAdmin();
+    }
+
     // SIN USO desde la Etapa 30 — se quitó del panel la opción de
     // cargar palabras con IA (URL/documento); extraerPalabrasDeDocumentoIA
     // ya no está desplegada (ver functions/index.js). Se deja la regla

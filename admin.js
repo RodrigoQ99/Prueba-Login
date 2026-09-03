@@ -2011,15 +2011,24 @@ async function eliminarPalabra(id, alEliminar) {
 
 }
 
-// El banco de Ahorcado se ve por LETRA INICIAL, no como una lista larga
-// con todas las palabras a la vista: una fila de botones A, B, C… (Ñ va
-// después de la N) y solo al tocar una letra se muestran sus palabras.
+// El banco de Ahorcado NO se muestra como una lista larga con todas las
+// palabras a la vista. Se ve:
+//  - por LETRA INICIAL: una fila de botones A, B, C… (Ñ va después de la
+//    N); solo al tocar una letra se despliegan sus palabras.
+//  - "📃 Ver lista completa": a demanda, todas en una sola lista A→Z.
+//  - buscador: filtra por palabra o por significado (para encontrar
+//    cuáles hay que arreglar); casilla "solo sin significado".
 const LETRAS_BANCO_AHORCADO = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ".split("");
 const ACENTOS_INICIAL_BANCO = { "Á": "A", "À": "A", "Ä": "A", "É": "E", "È": "E", "Ë": "E", "Í": "I", "Ï": "I", "Ó": "O", "Ò": "O", "Ö": "O", "Ú": "U", "Ü": "U" };
 
-// Se conserva entre re-renders (editar/borrar vuelve a llamar a
-// renderizarListaAdminPalabras) para no perder la letra que estaba abierta.
+// Estado que sobrevive a los re-render (editar/borrar/importar vuelven a
+// llamar a renderizarListaAdminPalabras).
+let _palabrasBancoCache = [];
+let _contenedorBancoPalabras = null;
 let _letraBancoSeleccionada = null;
+let _verListaCompletaBanco = false;
+let _busquedaBanco = "";
+let _soloSinSignificadoBanco = false;
 
 function letraInicialBanco(texto) {
     const c = (texto || "").trim().charAt(0).toUpperCase();
@@ -2028,99 +2037,203 @@ function letraInicialBanco(texto) {
     return /[A-ZÑ]/.test(norm) ? norm : "#";
 }
 
+function normalizarBusquedaBanco(s) {
+    return String(s == null ? "" : s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+function palabraSinSignificado(p) {
+    return !p.pista || !String(p.pista).trim();
+}
+
+// Trae el banco de Firestore, lo cachea y lo pinta. Lo llaman el arranque
+// del panel y los callbacks de agregar / editar / borrar / importar.
 async function renderizarListaAdminPalabras(contenedor) {
 
+    _contenedorBancoPalabras = contenedor;
     contenedor.innerHTML = "<p style='text-align:center;'>Cargando...</p>";
-
-    let palabras = [];
 
     try {
         const snapshot = await db.collection("bancoPalabras").orderBy("palabra").get();
-        palabras = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        _palabrasBancoCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } catch (error) {
         console.error("No se pudo cargar el banco de palabras:", error);
         contenedor.innerHTML = "<p style='text-align:center;'>No se pudo cargar el banco de palabras.</p>";
         return;
     }
 
+    pintarBancoPalabras();
+}
+
+// Arma el "cascarón" (buscador + botones de letra) una sola vez; los
+// cambios de estado solo repintan la zona de resultados (refrescarVistaBanco),
+// para que el buscador no pierda el foco entre teclas.
+function pintarBancoPalabras() {
+
+    const contenedor = _contenedorBancoPalabras;
+    if (!contenedor) return;
+    const palabras = _palabrasBancoCache;
+
     if (palabras.length === 0) {
-        contenedor.innerHTML = "<p style='text-align:center;'>Todavía no hay palabras en el banco.</p>";
+        contenedor.innerHTML = "<p style='text-align:center;'>Todavía no hay palabras en el banco. Usa \"➕ Agregar palabra y significado\" o importa un Excel.</p>";
         return;
     }
 
-    // Agrupar por letra inicial (ya vienen ordenadas por "palabra").
     const porLetra = {};
-    palabras.forEach(p => {
-        const L = letraInicialBanco(p.palabra);
-        (porLetra[L] = porLetra[L] || []).push(p);
-    });
-
+    palabras.forEach(p => { const L = letraInicialBanco(p.palabra); (porLetra[L] = porLetra[L] || []).push(p); });
     const letrasOrden = LETRAS_BANCO_AHORCADO.concat(porLetra["#"] ? ["#"] : []);
+    if (_letraBancoSeleccionada && !porLetra[_letraBancoSeleccionada]) _letraBancoSeleccionada = null;
 
-    // Si la letra abierta se quedó sin palabras (se borró la última), cerrar.
-    if (_letraBancoSeleccionada && !porLetra[_letraBancoSeleccionada]) {
-        _letraBancoSeleccionada = null;
-    }
+    const sinSignificado = palabras.filter(palabraSinSignificado).length;
 
     const botonesLetras = letrasOrden.map(L => {
         const cuenta = (porLetra[L] || []).length;
-        const activa = L === _letraBancoSeleccionada;
-        const vacia = cuenta === 0;
-        return `<button type="button" class="botonAdminChico" data-letra-banco="${L}" ${vacia ? "disabled" : ""}
-            style="min-width:40px; ${activa ? "background:var(--azul); color:white;" : ""} ${vacia ? "opacity:.3; cursor:default;" : ""}"
+        return `<button type="button" class="botonAdminChico" data-letra-banco="${L}" style="min-width:40px;"
             title="${cuenta} palabra(s) con ${L}">${L}${cuenta ? ` <span style="font-size:10px; opacity:.8;">${cuenta}</span>` : ""}</button>`;
     }).join("");
 
     contenedor.innerHTML = `
-        <div style="display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:15px;">
-            ${botonesLetras}
+        <div style="margin-bottom:12px;">
+            <input type="text" id="buscadorBancoPalabras" autocomplete="off"
+                   placeholder="Buscar palabra o significado (para ver cuáles arreglar)…"
+                   value="${(_busquedaBanco || "").replace(/"/g, "&quot;")}"
+                   style="width:100%; box-sizing:border-box; padding:9px 12px; border-radius:8px; border:1px solid var(--borde);">
+            <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--texto-suave); margin-top:6px;">
+                <input type="checkbox" id="soloSinSignificadoBanco" ${_soloSinSignificadoBanco ? "checked" : ""}>
+                Solo palabras sin significado (${sinSignificado})
+            </label>
         </div>
+
+        <div style="display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:12px;">
+            ${botonesLetras}
+            <button type="button" class="botonAdminChico" data-ver-lista-completa>📃 Ver lista completa</button>
+        </div>
+
         <div id="palabrasDeLetraBanco"></div>
     `;
 
+    const inputBuscar = contenedor.querySelector("#buscadorBancoPalabras");
+    inputBuscar.addEventListener("input", () => { _busquedaBanco = inputBuscar.value; refrescarVistaBanco(); });
+
+    contenedor.querySelector("#soloSinSignificadoBanco").addEventListener("change", (e) => {
+        _soloSinSignificadoBanco = e.target.checked;
+        refrescarVistaBanco();
+    });
+
     contenedor.querySelectorAll("[data-letra-banco]").forEach(btn => {
         btn.addEventListener("click", () => {
+            if (btn.disabled) return;
             const L = btn.dataset.letraBanco;
             _letraBancoSeleccionada = (_letraBancoSeleccionada === L) ? null : L;
-            renderizarListaAdminPalabras(contenedor);
+            _verListaCompletaBanco = false;
+            refrescarVistaBanco();
         });
     });
 
-    const zona = contenedor.querySelector("#palabrasDeLetraBanco");
+    contenedor.querySelector("[data-ver-lista-completa]").addEventListener("click", () => {
+        _verListaCompletaBanco = !_verListaCompletaBanco;
+        _letraBancoSeleccionada = null;
+        refrescarVistaBanco();
+    });
 
-    if (!_letraBancoSeleccionada) {
+    refrescarVistaBanco();
+}
+
+// Solo actualiza la zona de resultados + los estados de los botones
+// (activo / deshabilitado). No reconstruye el buscador.
+function refrescarVistaBanco() {
+
+    const contenedor = _contenedorBancoPalabras;
+    if (!contenedor) return;
+    const palabras = _palabrasBancoCache;
+
+    const porLetra = {};
+    palabras.forEach(p => { const L = letraInicialBanco(p.palabra); (porLetra[L] = porLetra[L] || []).push(p); });
+    if (_letraBancoSeleccionada && !porLetra[_letraBancoSeleccionada]) _letraBancoSeleccionada = null;
+
+    const buscando = _busquedaBanco.trim() !== "" || _soloSinSignificadoBanco;
+
+    contenedor.querySelectorAll("[data-letra-banco]").forEach(btn => {
+        const L = btn.dataset.letraBanco;
+        const cuenta = (porLetra[L] || []).length;
+        const activa = !buscando && L === _letraBancoSeleccionada;
+        btn.disabled = buscando || cuenta === 0;
+        btn.style.background = activa ? "var(--azul)" : "";
+        btn.style.color = activa ? "white" : "";
+        btn.style.opacity = (cuenta === 0) ? ".3" : (buscando ? ".5" : "");
+    });
+
+    const btnCompleta = contenedor.querySelector("[data-ver-lista-completa]");
+    if (btnCompleta) {
+        btnCompleta.disabled = buscando;
+        const act = !buscando && _verListaCompletaBanco;
+        btnCompleta.style.background = act ? "var(--azul)" : "";
+        btnCompleta.style.color = act ? "white" : "";
+        btnCompleta.style.opacity = buscando ? ".5" : "";
+    }
+
+    const zona = contenedor.querySelector("#palabrasDeLetraBanco");
+    let lista = null;
+    let encabezado = "";
+
+    if (buscando) {
+        const q = normalizarBusquedaBanco(_busquedaBanco.trim());
+        lista = palabras.filter(p => {
+            if (_soloSinSignificadoBanco && !palabraSinSignificado(p)) return false;
+            if (!q) return true;
+            return normalizarBusquedaBanco(p.palabra).includes(q)
+                || normalizarBusquedaBanco(p.pista || "").includes(q);
+        });
+        encabezado = `${lista.length} resultado(s)`;
+    } else if (_verListaCompletaBanco) {
+        lista = palabras;
+        encabezado = `${palabras.length} palabra(s) en el banco`;
+    } else if (_letraBancoSeleccionada) {
+        lista = porLetra[_letraBancoSeleccionada] || [];
+        encabezado = `${lista.length} palabra(s) con ${_letraBancoSeleccionada}`;
+    }
+
+    if (!lista) {
         zona.innerHTML = `<p style="text-align:center; color:var(--texto-suave); font-size:13px;">
-            Elige una letra para ver sus palabras (${palabras.length} en el banco).
+            Elige una letra, activa "Ver lista completa" o escribe en el buscador.
         </p>`;
         return;
     }
 
-    zona.innerHTML = (porLetra[_letraBancoSeleccionada] || []).map(p => `
-        <div class="tarjetaLectura" style="cursor:default;">
-            <div class="tarjetaInfo">
-                <p class="tarjetaTitulo">${p.palabra} <span style="font-weight:400; font-size:12px; color:var(--texto-suave);">${p.pais ? "· " + p.pais : "· 🌎 Global"}</span></p>
-                <p class="tarjetaNivel">${p.pista || "Sin pista"}</p>
-            </div>
-            <div style="display:flex; gap:8px;">
-                <button type="button" class="botonAdminChico" data-editar-palabra="${p.id}">✏️</button>
-                <button type="button" class="botonAdminChico botonPeligro" data-eliminar-palabra="${p.id}">🗑️</button>
-            </div>
-        </div>
-    `).join("");
+    if (lista.length === 0) {
+        zona.innerHTML = `<p style="text-align:center; color:var(--texto-suave); font-size:13px;">Nada coincide.</p>`;
+        return;
+    }
+
+    zona.innerHTML = `
+        <p style="text-align:center; color:var(--texto-suave); font-size:13px; margin-bottom:8px;">${encabezado}</p>
+        ${lista.map(p => {
+            const falta = palabraSinSignificado(p);
+            return `
+            <div class="tarjetaLectura" style="cursor:default;">
+                <div class="tarjetaInfo">
+                    <p class="tarjetaTitulo">${p.palabra} <span style="font-weight:400; font-size:12px; color:var(--texto-suave);">${p.pais ? "· " + p.pais : "· 🌎 Global"}</span></p>
+                    <p class="tarjetaNivel" style="${falta ? "color:#c0392b;" : ""}">${falta ? "⚠️ Sin significado — falta arreglar" : p.pista}</p>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button type="button" class="botonAdminChico" data-editar-palabra="${p.id}">✏️</button>
+                    <button type="button" class="botonAdminChico botonPeligro" data-eliminar-palabra="${p.id}">🗑️</button>
+                </div>
+            </div>`;
+        }).join("")}
+    `;
 
     zona.querySelectorAll("[data-editar-palabra]").forEach(btn => {
         btn.addEventListener("click", () => {
-            const palabra = palabras.find(p => p.id === btn.dataset.editarPalabra);
-            abrirFormularioPalabra(palabra, () => renderizarListaAdminPalabras(contenedor));
+            const palabra = _palabrasBancoCache.find(p => p.id === btn.dataset.editarPalabra);
+            abrirFormularioPalabra(palabra, () => renderizarListaAdminPalabras(_contenedorBancoPalabras));
         });
     });
 
     zona.querySelectorAll("[data-eliminar-palabra]").forEach(btn => {
         btn.addEventListener("click", () => {
-            eliminarPalabra(btn.dataset.eliminarPalabra, () => renderizarListaAdminPalabras(contenedor));
+            eliminarPalabra(btn.dataset.eliminarPalabra, () => renderizarListaAdminPalabras(_contenedorBancoPalabras));
         });
     });
-
 }
 
 
@@ -2146,18 +2259,24 @@ function inicializarAdminAhorcado() {
         <div class="seccionAdmin">
             <h3 class="seccionAdminTitulo">🔤 Ahorcado — banco de palabras</h3>
             <div class="seccionAdminBotones">
-                <button id="btnNuevaPalabra">+ Agregar palabra</button>
+                <button id="btnNuevaPalabra">➕ Agregar palabra y significado</button>
             </div>
 
             <div id="seccionImportarExcelPalabras" style="text-align:left; padding:12px; border:1px dashed var(--borde); border-radius:10px; margin:15px 0;">
                 <label style="font-weight:600; font-size:14px;">📊 Importar palabras desde un archivo Excel (.xlsx)</label>
                 <p style="font-size:12px; color:var(--texto-suave); margin:4px 0 8px;">
                     No usa inteligencia artificial — el archivo se lee directamente en tu navegador, nada se guarda hasta que confirmes.
+                    El archivo importado queda guardado para volver a descargarlo (ver "Archivos importados" abajo).
                 </p>
                 <input type="file" id="campoImportarExcelPalabras" accept=".xlsx,.xls" style="display:block; margin:8px 0;">
                 <p id="estadoImportarExcelPalabras" style="display:none; font-size:13px; margin:0;"></p>
                 <div id="previaImportarExcelPalabras" style="display:none; margin-top:12px;"></div>
             </div>
+
+            <details id="detalleArchivosBanco" style="margin:10px 0;">
+                <summary style="font-weight:600; font-size:14px; cursor:pointer;">📁 Archivos importados</summary>
+                <div id="historialImportacionesBanco" style="margin-top:10px;"></div>
+            </details>
 
             <div id="seccionCargaPalabrasIA" style="display:none; text-align:left; padding:12px; border:1px dashed var(--borde); border-radius:10px; margin:15px 0;">
 
@@ -2183,6 +2302,7 @@ function inicializarAdminAhorcado() {
 
     const listaPalabras = document.getElementById("listaAdminPalabras");
     renderizarListaAdminPalabras(listaPalabras);
+    renderizarHistorialImportacionesBanco();
     document.getElementById("btnNuevaPalabra").addEventListener("click", () => {
         abrirFormularioPalabra(null, () => renderizarListaAdminPalabras(listaPalabras));
     });
@@ -2264,7 +2384,9 @@ function activarImportacionExcelPalabras(alGuardarAlguna) {
             }
 
             estado.style.display = "none";
-            mostrarPreviaImportarExcelPalabras(filas, alGuardarAlguna);
+            // Se pasa el File original para archivarlo en Storage al
+            // confirmar la importación (ver archivarExcelImportado).
+            mostrarPreviaImportarExcelPalabras(filas, alGuardarAlguna, archivo);
 
         } catch (error) {
 
@@ -2285,7 +2407,7 @@ function activarImportacionExcelPalabras(alGuardarAlguna) {
 // Vista previa: tabla con las primeras filas + dos selectores (columna
 // de palabra / columna de significado) — todo se recalcula al vuelo si
 // el admin marca o desmarca "la primera fila tiene encabezados".
-function mostrarPreviaImportarExcelPalabras(filas, alGuardarAlguna) {
+function mostrarPreviaImportarExcelPalabras(filas, alGuardarAlguna, archivoOriginal) {
 
     const previa = document.getElementById("previaImportarExcelPalabras");
     const numColumnas = filas.reduce((max, fila) => Math.max(max, fila.length), 1);
@@ -2365,7 +2487,7 @@ function mostrarPreviaImportarExcelPalabras(filas, alGuardarAlguna) {
 
         previa.querySelector("#btnConfirmarImportarExcel").addEventListener("click", () => {
             const pais = previa.querySelector("#selectPaisExcel").value || null;
-            confirmarImportarExcelPalabras(filasDatos(), colPalabra, colSignificado, pais, alGuardarAlguna);
+            confirmarImportarExcelPalabras(filasDatos(), colPalabra, colSignificado, pais, alGuardarAlguna, archivoOriginal);
         });
 
     }
@@ -2380,7 +2502,7 @@ function mostrarPreviaImportarExcelPalabras(filas, alGuardarAlguna) {
 // del banco. Salta filas con la palabra o el significado vacíos (o
 // repetidas dentro del mismo archivo) y lleva la cuenta para el
 // resumen final.
-async function confirmarImportarExcelPalabras(filasDatos, colPalabra, colSignificado, pais, alGuardarAlguna) {
+async function confirmarImportarExcelPalabras(filasDatos, colPalabra, colSignificado, pais, alGuardarAlguna, archivoOriginal) {
 
     const estado = document.getElementById("estadoConfirmarImportarExcel");
     const btn = document.getElementById("btnConfirmarImportarExcel");
@@ -2428,9 +2550,14 @@ async function confirmarImportarExcelPalabras(filasDatos, colPalabra, colSignifi
         document.getElementById("previaImportarExcelPalabras").innerHTML = "";
         document.getElementById("campoImportarExcelPalabras").value = "";
 
+        // Guardar el Excel original + un registro del historial (no es
+        // crítico: si falla, las palabras ya quedaron importadas).
+        await archivarExcelImportado(archivoOriginal, validas.length);
+
         alert(`Se importaron ${validas.length} palabra(s). Se omitieron ${omitidas} fila(s) por estar incompletas o repetidas.`);
 
         if (alGuardarAlguna) alGuardarAlguna();
+        renderizarHistorialImportacionesBanco();
 
     } catch (error) {
 
@@ -2442,6 +2569,99 @@ async function confirmarImportarExcelPalabras(filasDatos, colPalabra, colSignifi
         btn.textContent = "✅ Confirmar e importar";
 
     }
+
+}
+
+// ==========================================================
+// ARCHIVO DE EXCELS IMPORTADOS AL BANCO DE AHORCADO
+// ==========================================================
+// Cada Excel que se importa se sube TAL CUAL a Firebase Storage
+// (archivosBancoAhorcado/) y se deja un registro en Firestore
+// (importacionesBancoAhorcado) con nombre, fecha y cuántas palabras
+// trajo — así el admin siempre puede volver a descargar el archivo
+// original. Ver storage.rules y firestore.rules.
+async function archivarExcelImportado(archivo, cantidadPalabras) {
+
+    if (!archivo || typeof firebase === "undefined" || typeof firebase.storage !== "function") return;
+
+    try {
+        const sello = new Date().toISOString().replace(/[:.]/g, "-");
+        const nombreLimpio = (archivo.name || "banco.xlsx").replace(/[^\w.\- ]+/g, "_");
+        const ruta = `archivosBancoAhorcado/${sello}__${nombreLimpio}`;
+
+        const ref = firebase.storage().ref(ruta);
+        await ref.put(archivo);
+        const url = await ref.getDownloadURL();
+
+        await db.collection("importacionesBancoAhorcado").add({
+            nombre: archivo.name || nombreLimpio,
+            rutaStorage: ruta,
+            urlDescarga: url,
+            palabrasImportadas: cantidadPalabras,
+            fecha: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (error) {
+        console.error("No se pudo archivar el Excel importado (las palabras sí se importaron):", error);
+    }
+
+}
+
+async function renderizarHistorialImportacionesBanco() {
+
+    const cont = document.getElementById("historialImportacionesBanco");
+    if (!cont) return;
+
+    cont.innerHTML = "<p style='font-size:13px; color:var(--texto-suave);'>Cargando...</p>";
+
+    let registros = [];
+    try {
+        const snapshot = await db.collection("importacionesBancoAhorcado").orderBy("fecha", "desc").get();
+        registros = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error("No se pudo cargar el historial de importaciones:", error);
+        cont.innerHTML = "<p style='font-size:13px; color:var(--texto-suave);'>No se pudo cargar el historial.</p>";
+        return;
+    }
+
+    if (registros.length === 0) {
+        cont.innerHTML = "<p style='font-size:13px; color:var(--texto-suave);'>Todavía no has importado ningún Excel.</p>";
+        return;
+    }
+
+    cont.innerHTML = registros.map(r => {
+        const fecha = (r.fecha && r.fecha.toDate) ? r.fecha.toDate().toLocaleString("es") : "—";
+        return `
+            <div class="tarjetaLectura" style="cursor:default;">
+                <div class="tarjetaInfo">
+                    <p class="tarjetaTitulo">${r.nombre || "(sin nombre)"}</p>
+                    <p class="tarjetaNivel">${fecha} · ${r.palabrasImportadas || 0} palabra(s)</p>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    ${r.urlDescarga ? `<a class="botonAdminChico" href="${r.urlDescarga}" target="_blank" rel="noopener" style="text-decoration:none;">⬇️ Descargar</a>` : ""}
+                    <button type="button" class="botonAdminChico botonPeligro" data-borrar-importacion="${r.id}">🗑️</button>
+                </div>
+            </div>
+        `;
+    }).join("");
+
+    cont.querySelectorAll("[data-borrar-importacion]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+            const registro = registros.find(r => r.id === btn.dataset.borrarImportacion);
+            if (!registro) return;
+            if (!confirm(`¿Quitar del historial el archivo "${registro.nombre || registro.id}"? Esto NO borra las palabras que ya se importaron, solo el archivo guardado.`)) return;
+            try {
+                if (registro.rutaStorage && typeof firebase.storage === "function") {
+                    await firebase.storage().ref(registro.rutaStorage).delete().catch(() => {});
+                }
+                await db.collection("importacionesBancoAhorcado").doc(registro.id).delete();
+            } catch (error) {
+                console.error("No se pudo quitar el archivo del historial:", error);
+                alert("No se pudo quitar el archivo del historial.");
+                return;
+            }
+            renderizarHistorialImportacionesBanco();
+        });
+    });
 
 }
 
