@@ -61,6 +61,31 @@ function obtenerLecturaPorId(id) {
     return CATALOGO_LECTURAS.find(lectura => lectura.id === id);
 }
 
+/**
+ * Cuenta las palabras del texto de una lectura (el texto vive como un
+ * arreglo de párrafos). Se calcula al vuelo, nunca se guarda — así
+ * siempre coincide con el texto actual aunque el admin lo edite.
+ * Lo usan el panel de admin (badge en la lista de lecturas y en la
+ * vista previa), la pantalla de resultado (motor.js) y el reporte de
+ * tiempos de lectura (admin-tiempos.js).
+ */
+function contarPalabrasLectura(lectura) {
+    if (!lectura) return 0;
+    const texto = Array.isArray(lectura.texto) ? lectura.texto.join(" ") : String(lectura.texto || "");
+    return (texto.trim().match(/\S+/g) || []).length;
+}
+
+/**
+ * Segundos -> "M:SS" (ej. 95 -> "1:35"). "—" si no es un número válido.
+ * Compartida por lecturas-premiadas.js, motor.js y admin-tiempos.js.
+ */
+function formatearDuracionLectura(segundos) {
+    if (typeof segundos !== "number" || !isFinite(segundos) || segundos < 0) return "—";
+    const min = Math.floor(segundos / 60);
+    const seg = Math.round(segundos % 60);
+    return `${min}:${String(seg).padStart(2, "0")}`;
+}
+
 
 // ==========================================================
 // FILTRO POR PAÍS (Etapa 30)

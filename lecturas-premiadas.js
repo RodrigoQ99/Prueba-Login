@@ -48,6 +48,10 @@ async function cargarListaLecturas() {
     let idsCompletados = new Set();
     let idsConProgreso = new Set();
     let mejorResultadoPorId = {};
+    // Tiempo propio del usuario por lectura (lectura + cuestionario). Se
+    // prefiere el intento APROBADO; entre intentos del mismo tipo, el
+    // más reciente. Se muestra en la tarjeta de cada lectura completada.
+    let tiempoPorId = {};
 
     try {
         const snapshot = await db.collection("progreso")
@@ -64,6 +68,17 @@ async function cargarListaLecturas() {
             const mejorActual = mejorResultadoPorId[data.lecturaId];
             if (!mejorActual || data.estrellas > mejorActual.estrellas) {
                 mejorResultadoPorId[data.lecturaId] = { estrellas: data.estrellas, total: data.totalPreguntas };
+            }
+
+            if (typeof data.duracionSegundos === "number") {
+                const fechaMs = (data.fecha && data.fecha.toDate) ? data.fecha.toDate().getTime() : 0;
+                const aprobado = data.puntosGanados > 0;
+                const prev = tiempoPorId[data.lecturaId];
+                if (!prev
+                    || (aprobado && !prev.aprobado)
+                    || (aprobado === prev.aprobado && fechaMs >= prev.fechaMs)) {
+                    tiempoPorId[data.lecturaId] = { segundos: data.duracionSegundos, aprobado, fechaMs };
+                }
             }
         });
 
@@ -122,12 +137,18 @@ async function cargarListaLecturas() {
             estado = "🎁 Oportunidad extra →";
         }
 
+        const tiempo = tiempoPorId[lectura.id];
+        const lineaTiempo = tiempo
+            ? `<p class="tarjetaNivel">⏱️ Tu tiempo: ${formatearDuracionLectura(tiempo.segundos)}</p>`
+            : "";
+
         return `
             <a href="lectura.html?id=${encodeURIComponent(lectura.id)}"
                class="tarjetaLectura ${completada ? "tarjetaCompletada" : ""} ${bloqueada ? "tarjetaBloqueada" : ""}">
                 <div class="tarjetaInfo">
                     <p class="tarjetaTitulo">${lectura.titulo}</p>
                     <p class="tarjetaNivel">Nivel ${nivelTexto}</p>
+                    ${lineaTiempo}
                 </div>
                 <span class="tarjetaEstado">${estado}</span>
             </a>

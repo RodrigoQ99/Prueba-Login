@@ -817,6 +817,21 @@ async function calificar(){
     document.getElementById("resultado").innerHTML =
         generarHTMLEstrellas(estrellas, totalPreguntas);
 
+    // Palabras del texto + cuánto tardó ESTE usuario en esta lectura
+    // (lectura + cuestionario). El mismo dato queda en "progreso" y
+    // alimenta el reporte de tiempos del admin (ver admin-tiempos.js).
+    const anteriorDatos = document.getElementById("datosFinalLectura");
+    if (anteriorDatos) anteriorDatos.remove();
+    const palabrasTexto = (typeof contarPalabrasLectura === "function")
+        ? contarPalabrasLectura(lecturaActual) : 0;
+    const tiempoTexto = (typeof formatearDuracionLectura === "function")
+        ? formatearDuracionLectura(duracionSegundos) : `${duracionSegundos || "—"}s`;
+    document.getElementById("resultado").insertAdjacentHTML("afterend", `
+        <p id="datosFinalLectura" style="font-size:14px; color:var(--texto-suave); margin:6px 0;">
+            📖 ${palabrasTexto} palabras · ⏱️ Tu tiempo: ${tiempoTexto}
+        </p>
+    `);
+
     // Bloquear respuestas después de calificar
     document.querySelectorAll("input[type='radio']").forEach(opcion => {
         opcion.disabled = true;

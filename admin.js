@@ -2851,7 +2851,7 @@ function abrirVistaPreviaLectura(lectura) {
         <div class="modalCaja modalCajaInfo modalCajaAdmin">
             <h2>👁️ Vista previa — ${lectura.titulo}</h2>
             <p style="font-size:13px; color:var(--texto-suave);">
-                Solo para revisar cómo se ve. No suma puntos, racha ni queda guardado en ningún lado.
+                ${contarPalabrasLectura(lectura)} palabras · Solo para revisar cómo se ve. No suma puntos, racha ni queda guardado en ningún lado.
             </p>
             <div style="text-align:left; margin:15px 0;">
                 ${(lectura.texto || []).map(p => `<p style="margin-bottom:12px;">${p}</p>`).join("")}
@@ -2920,7 +2920,7 @@ function renderizarListaAdminLecturas() {
         <div class="tarjetaLectura" style="cursor:default;">
             <div class="tarjetaInfo">
                 <p class="tarjetaTitulo">${lectura.titulo} <span style="font-weight:400; font-size:12px; color:var(--texto-suave);">${lectura.pais ? "· " + lectura.pais : "· 🌎 Global"}</span></p>
-                <p class="tarjetaNivel">${(lectura.bancoPreguntas || []).length} preguntas en el banco (muestra ${lectura.preguntasAMostrar})</p>
+                <p class="tarjetaNivel">${(lectura.bancoPreguntas || []).length} preguntas en el banco (muestra ${lectura.preguntasAMostrar}) · ${contarPalabrasLectura(lectura)} palabras</p>
                 ${lectura.autorUid ? `<p class="tarjetaNivel" style="color:var(--azul);">✍️ Sugerida por ${lectura.autorNombre || "un usuario"}</p>` : ""}
             </div>
             <div style="display:flex; gap:8px;">
