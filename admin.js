@@ -2011,6 +2011,23 @@ async function eliminarPalabra(id, alEliminar) {
 
 }
 
+// El banco de Ahorcado se ve por LETRA INICIAL, no como una lista larga
+// con todas las palabras a la vista: una fila de botones A, B, C… (Ñ va
+// después de la N) y solo al tocar una letra se muestran sus palabras.
+const LETRAS_BANCO_AHORCADO = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ".split("");
+const ACENTOS_INICIAL_BANCO = { "Á": "A", "À": "A", "Ä": "A", "É": "E", "È": "E", "Ë": "E", "Í": "I", "Ï": "I", "Ó": "O", "Ò": "O", "Ö": "O", "Ú": "U", "Ü": "U" };
+
+// Se conserva entre re-renders (editar/borrar vuelve a llamar a
+// renderizarListaAdminPalabras) para no perder la letra que estaba abierta.
+let _letraBancoSeleccionada = null;
+
+function letraInicialBanco(texto) {
+    const c = (texto || "").trim().charAt(0).toUpperCase();
+    if (!c) return "#";
+    const norm = ACENTOS_INICIAL_BANCO[c] || c;
+    return /[A-ZÑ]/.test(norm) ? norm : "#";
+}
+
 async function renderizarListaAdminPalabras(contenedor) {
 
     contenedor.innerHTML = "<p style='text-align:center;'>Cargando...</p>";
@@ -2031,7 +2048,54 @@ async function renderizarListaAdminPalabras(contenedor) {
         return;
     }
 
-    contenedor.innerHTML = palabras.map(p => `
+    // Agrupar por letra inicial (ya vienen ordenadas por "palabra").
+    const porLetra = {};
+    palabras.forEach(p => {
+        const L = letraInicialBanco(p.palabra);
+        (porLetra[L] = porLetra[L] || []).push(p);
+    });
+
+    const letrasOrden = LETRAS_BANCO_AHORCADO.concat(porLetra["#"] ? ["#"] : []);
+
+    // Si la letra abierta se quedó sin palabras (se borró la última), cerrar.
+    if (_letraBancoSeleccionada && !porLetra[_letraBancoSeleccionada]) {
+        _letraBancoSeleccionada = null;
+    }
+
+    const botonesLetras = letrasOrden.map(L => {
+        const cuenta = (porLetra[L] || []).length;
+        const activa = L === _letraBancoSeleccionada;
+        const vacia = cuenta === 0;
+        return `<button type="button" class="botonAdminChico" data-letra-banco="${L}" ${vacia ? "disabled" : ""}
+            style="min-width:40px; ${activa ? "background:var(--azul); color:white;" : ""} ${vacia ? "opacity:.3; cursor:default;" : ""}"
+            title="${cuenta} palabra(s) con ${L}">${L}${cuenta ? ` <span style="font-size:10px; opacity:.8;">${cuenta}</span>` : ""}</button>`;
+    }).join("");
+
+    contenedor.innerHTML = `
+        <div style="display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:15px;">
+            ${botonesLetras}
+        </div>
+        <div id="palabrasDeLetraBanco"></div>
+    `;
+
+    contenedor.querySelectorAll("[data-letra-banco]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const L = btn.dataset.letraBanco;
+            _letraBancoSeleccionada = (_letraBancoSeleccionada === L) ? null : L;
+            renderizarListaAdminPalabras(contenedor);
+        });
+    });
+
+    const zona = contenedor.querySelector("#palabrasDeLetraBanco");
+
+    if (!_letraBancoSeleccionada) {
+        zona.innerHTML = `<p style="text-align:center; color:var(--texto-suave); font-size:13px;">
+            Elige una letra para ver sus palabras (${palabras.length} en el banco).
+        </p>`;
+        return;
+    }
+
+    zona.innerHTML = (porLetra[_letraBancoSeleccionada] || []).map(p => `
         <div class="tarjetaLectura" style="cursor:default;">
             <div class="tarjetaInfo">
                 <p class="tarjetaTitulo">${p.palabra} <span style="font-weight:400; font-size:12px; color:var(--texto-suave);">${p.pais ? "· " + p.pais : "· 🌎 Global"}</span></p>
@@ -2044,14 +2108,14 @@ async function renderizarListaAdminPalabras(contenedor) {
         </div>
     `).join("");
 
-    contenedor.querySelectorAll("[data-editar-palabra]").forEach(btn => {
+    zona.querySelectorAll("[data-editar-palabra]").forEach(btn => {
         btn.addEventListener("click", () => {
             const palabra = palabras.find(p => p.id === btn.dataset.editarPalabra);
             abrirFormularioPalabra(palabra, () => renderizarListaAdminPalabras(contenedor));
         });
     });
 
-    contenedor.querySelectorAll("[data-eliminar-palabra]").forEach(btn => {
+    zona.querySelectorAll("[data-eliminar-palabra]").forEach(btn => {
         btn.addEventListener("click", () => {
             eliminarPalabra(btn.dataset.eliminarPalabra, () => renderizarListaAdminPalabras(contenedor));
         });
