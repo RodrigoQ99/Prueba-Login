@@ -62,6 +62,18 @@
         <p style="text-align:center;">Cargando...</p>
     </div>
 
+    <!-- Teclado: en el teléfono, tocar este recuadro abre el teclado
+         nativo; en computadora también se puede usar el teclado físico
+         directamente (ver ahorcado.js). Vive FUERA de #juegoAhorcado
+         para que no se destruya cada vez que se vuelve a dibujar el
+         juego y el teclado del teléfono no se cierre. -->
+    <input type="text" id="entradaLetraAhorcado"
+           inputmode="text" autocomplete="off" autocapitalize="characters"
+           autocorrect="off" spellcheck="false" maxlength="1"
+           placeholder="Escribe una letra"
+           aria-label="Escribe una letra para intentarla"
+           style="display:none; margin:15px auto 0; width:220px; padding:12px; font-size:24px; text-align:center; text-transform:uppercase; border-radius:10px; border:2px solid var(--azul); box-sizing:border-box;">
+
     <div id="diccionarioAhorcado" style="display:none;"></div>
 
     <div style="text-align:center; margin-top:25px;">

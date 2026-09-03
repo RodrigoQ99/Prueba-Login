@@ -221,7 +221,7 @@ function renderAhorcado() {
 
         ${!terminado ? `
             <p style="text-align:center; color:var(--texto-suave); font-size:13px; margin-bottom:10px;">
-                ⌨️ Escribe una letra con tu teclado para intentarla.
+                ⌨️ Escribe una letra en el recuadro de abajo para intentarla.
             </p>
         ` : ""}
 
@@ -241,6 +241,22 @@ function renderAhorcado() {
         document.getElementById("btnJugarOtraAhorcado").addEventListener("click", () => {
             iniciarRondaAhorcado(auth.currentUser);
         });
+    }
+
+    // Recuadro para escribir letras (abre el teclado del teléfono). Vive
+    // fuera de #juegoAhorcado, así que sobrevive a este re-render: solo
+    // hay que mostrarlo/ocultarlo y devolverle el foco mientras se juega,
+    // para que el teclado del teléfono no se cierre entre letra y letra.
+    const entrada = document.getElementById("entradaLetraAhorcado");
+    if (entrada) {
+        if (!terminado && vistaActualAhorcado === "jugar") {
+            entrada.style.display = "block";
+            entrada.value = "";
+            entrada.focus({ preventScroll: true });
+        } else {
+            entrada.blur();
+            entrada.style.display = "none";
+        }
     }
 
 }
@@ -318,6 +334,29 @@ document.addEventListener("keydown", (e) => {
 
 });
 
+
+// ==========================
+// TECLADO DEL TELÉFONO — recuadro real que abre el teclado nativo
+// ==========================
+// En el celular no hay "keydown" utilizable sin un campo de texto real.
+// Este <input> (en ahorcado.html, fuera de #juegoAhorcado) abre el
+// teclado del teléfono al tocarlo; cada letra que se escribe se procesa
+// y el campo se limpia de inmediato. El listener se engancha UNA vez.
+const _entradaLetraAhorcado = document.getElementById("entradaLetraAhorcado");
+if (_entradaLetraAhorcado) {
+    _entradaLetraAhorcado.addEventListener("input", () => {
+
+        const letra = normalizarLetraAhorcado(_entradaLetraAhorcado.value.slice(-1));
+        _entradaLetraAhorcado.value = "";
+
+        if (vistaActualAhorcado !== "jugar" || !palabraActual || rondaTerminada) return;
+        if (!/^[A-ZÑ]$/.test(letra)) return;
+
+        manejarLetraAhorcado(letra);
+
+    });
+}
+
 async function guardarPalabraJugadaAhorcado(gano) {
 
     const user = auth.currentUser;
@@ -361,6 +400,17 @@ function activarSelectorVistaAhorcado(user) {
         btnDiccionario.style.color = vistaActualAhorcado === "diccionario" ? "white" : "";
         document.getElementById("juegoAhorcado").style.display = vistaActualAhorcado === "jugar" ? "block" : "none";
         document.getElementById("diccionarioAhorcado").style.display = vistaActualAhorcado === "diccionario" ? "block" : "none";
+
+        // El recuadro para escribir letras solo tiene sentido en "Jugar"
+        // y con una ronda en curso (renderAhorcado lo vuelve a mostrar y
+        // enfocar). En "Ver diccionario" siempre oculto.
+        const entrada = document.getElementById("entradaLetraAhorcado");
+        if (entrada && vistaActualAhorcado !== "jugar") {
+            entrada.blur();
+            entrada.style.display = "none";
+        } else if (entrada && palabraActual && !rondaTerminada) {
+            entrada.style.display = "block";
+        }
     }
 
     actualizarBotones();
