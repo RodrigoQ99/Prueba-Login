@@ -99,21 +99,15 @@ auth.onAuthStateChanged(async (user) => {
         appContenido.style.display = "block";
         if (typeof iniciarLectura === "function") iniciarLectura();
     } else {
-        // Primera vez: pedir tipo de usuario (y colegio/grado si aplica)
+        // Primera vez: mostrar el formulario DE UNA VEZ y llenar cada
+        // parte conforme carga — nada de esperar a que todo esté listo
+        // antes de mostrar algo.
         pantallaLogin.style.display = "none";
         pantallaRegistro.style.display = "flex";
         appContenido.style.display = "none";
 
-        const contenedorGeneros = document.getElementById("contenedorGenerosRegistro");
-        if (contenedorGeneros) {
-            await cargarGenerosLectura();
-            renderizarCheckboxesGeneros(contenedorGeneros, []);
-        }
-
-        // País: SIEMPRE uno de los 195 de LISTA_PAISES (ver paises.js) —
-        // nunca texto libre, para poder separar datos por país más
-        // adelante sin encontrarse "Mexico"/"México"/"mexico" como si
-        // fueran países distintos.
+        // País: lista fija local (paises.js), instantáneo — se pinta
+        // primero, sin esperar a nada de la red.
         const selectPais = document.getElementById("inputPais");
         if (selectPais && typeof renderizarSelectorPais === "function") {
             renderizarSelectorPais(selectPais, "");
@@ -128,6 +122,21 @@ auth.onAuthStateChanged(async (user) => {
                     document.getElementById("grupoLenguaMaterna")
                 );
             }
+        }
+
+        // Géneros de lectura: se cargan aparte, con un "Cargando…"
+        // mientras tanto. El resto del formulario ya se puede llenar.
+        const contenedorGeneros = document.getElementById("contenedorGenerosRegistro");
+        if (contenedorGeneros) {
+            contenedorGeneros.innerHTML =
+                "<p style='color:#888; font-size:13px; margin:0;'>Cargando géneros…</p>";
+            cargarGenerosLectura()
+                .then(() => renderizarCheckboxesGeneros(contenedorGeneros, []))
+                .catch(error => {
+                    console.error("No se pudieron cargar los géneros de lectura:", error);
+                    contenedorGeneros.innerHTML =
+                        "<p style='color:#c0392b; font-size:13px; margin:0;'>No se pudieron cargar los géneros ahora. Puedes continuar y elegirlos después desde tu perfil.</p>";
+                });
         }
     }
 });

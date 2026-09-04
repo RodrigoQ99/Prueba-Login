@@ -153,8 +153,18 @@ async function cargarPerfil() {
         detallesDatos.open = faltaAlgo;
     }
 
-    await cargarGenerosLectura();
-    renderizarCheckboxesGeneros(document.getElementById("contenedorGenerosPerfil"), datos.generosLectura || []);
+    // Géneros: se cargan aparte (con "Cargando…") para no dejar el resto
+    // del formulario esperando a que termine esta consulta.
+    const contGeneros = document.getElementById("contenedorGenerosPerfil");
+    if (contGeneros) {
+        contGeneros.innerHTML = "<p style='color:#888; font-size:13px; margin:0;'>Cargando géneros…</p>";
+        cargarGenerosLectura()
+            .then(() => renderizarCheckboxesGeneros(contGeneros, datos.generosLectura || []))
+            .catch(error => {
+                console.error("No se pudieron cargar los géneros de lectura:", error);
+                contGeneros.innerHTML = "<p style='color:#c0392b; font-size:13px; margin:0;'>No se pudieron cargar los géneros ahora. Recarga la página para intentarlo de nuevo.</p>";
+            });
+    }
 
 }
 
@@ -271,3 +281,48 @@ document.getElementById("btnGuardarPerfil").addEventListener("click", async () =
 auth.onAuthStateChanged((user) => {
     if (user) cargarPerfil();
 });
+
+
+// ==========================================================
+// ELIMINAR MI CUENTA
+// ==========================================================
+// Llama a la Cloud Function eliminarMiCuenta (Admin SDK): borra los
+// datos personales, anonimiza el progreso y deja las lecturas
+// publicadas como "Usuario eliminado" (ver functions/lib/eliminarMiCuenta.js).
+const btnEliminarCuenta = document.getElementById("btnEliminarCuenta");
+if (btnEliminarCuenta) {
+    btnEliminarCuenta.addEventListener("click", async () => {
+
+        const mensaje = document.getElementById("mensajeEliminarCuenta");
+        mensaje.textContent = "";
+        mensaje.style.color = "#c0392b";
+
+        if (!confirm(
+            "¿Eliminar tu cuenta para siempre?\n\n" +
+            "Se borrarán tu perfil, tus puntos, tu racha, tus premios y tus propuestas. " +
+            "Esta acción NO se puede deshacer."
+        )) return;
+
+        const texto = prompt('Para confirmar, escribe: ELIMINAR');
+        if ((texto || "").trim().toUpperCase() !== "ELIMINAR") {
+            mensaje.textContent = "No se eliminó nada.";
+            return;
+        }
+
+        btnEliminarCuenta.disabled = true;
+        btnEliminarCuenta.textContent = "Eliminando…";
+
+        try {
+            const llamar = firebase.functions().httpsCallable("eliminarMiCuenta");
+            await llamar({});
+            alert("Tu cuenta fue eliminada. ¡Gracias por haber participado!");
+            try { await auth.signOut(); } catch (e) { /* ignora */ }
+            window.location.href = "index.html";
+        } catch (error) {
+            console.error("No se pudo eliminar la cuenta:", error);
+            mensaje.textContent = "No se pudo eliminar la cuenta. Intenta de nuevo en un momento.";
+            btnEliminarCuenta.disabled = false;
+            btnEliminarCuenta.textContent = "Eliminar mi cuenta para siempre";
+        }
+    });
+}

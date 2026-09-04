@@ -182,22 +182,123 @@ function activarAutocompletadoIdioma(selectPais, inputLengua, contenedorLengua) 
 
 }
 
+function normalizarBusquedaPais(s) {
+    return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+}
+
 /**
- * Pinta las 195 <option> dentro de un <select> ya existente en el HTML
- * (ver #inputPais en index.html / #campoPaisPerfil en
- * perfil-informacion.html) — con una primera opción deshabilitada de
- * "Selecciona tu país" cuando todavía no hay ninguno guardado.
+ * Convierte el <select id="inputPais" / #campoPaisPerfil> del HTML en un
+ * COMBOBOX "escribe para buscar": un <input> de texto que filtra
+ * LISTA_PAISES en vivo mientras se escribe (sin pedir nada a internet).
+ *
+ * El <select> original NO se quita: queda oculto y sigue guardando el
+ * valor elegido, así todo lo que ya lee `select.value` o escucha su
+ * evento "change" (auth.js, perfil-informacion.js,
+ * activarAutocompletadoIdioma) sigue funcionando igual — el combobox
+ * dispara "change" en el <select> cada vez que se elige o se borra un
+ * país.
+ *
  * @param {HTMLSelectElement} select
  * @param {string} [paisActual] - precarga la selección si ya tenía uno.
  */
 function renderizarSelectorPais(select, paisActual) {
 
-    select.innerHTML = `
-        <option value="" disabled ${!paisActual ? "selected" : ""}>Selecciona tu país</option>
-        ${LISTA_PAISES.map(pais => `
-            <option value="${pais}" ${pais === paisActual ? "selected" : ""}>${pais}</option>
-        `).join("")}
+    if (!select) return;
+
+    // El <select> pasa a ser un depósito oculto del valor. Se le quita
+    // "required" (un <select required> oculto y vacío bloquea el submit
+    // nativo); la validación "elige tu país" ya se hace a mano.
+    select.style.display = "none";
+    select.removeAttribute("required");
+    select.innerHTML = paisActual
+        ? `<option value="${paisActual}" selected>${paisActual}</option>`
+        : `<option value="" selected></option>`;
+    select.value = paisActual || "";
+
+    // Reusar el combobox si esta función se vuelve a llamar sobre el
+    // mismo <select> (evita duplicarlo).
+    let caja = select.previousElementSibling;
+    if (!caja || !caja.classList || !caja.classList.contains("comboPais")) {
+        caja = document.createElement("div");
+        caja.className = "comboPais";
+        select.parentNode.insertBefore(caja, select);
+    }
+
+    caja.innerHTML = `
+        <input type="text" class="comboPaisInput" autocomplete="off" autocapitalize="off" spellcheck="false"
+               placeholder="Escribe tu país…"
+               value="${paisActual ? String(paisActual).replace(/"/g, "&quot;") : ""}">
+        <div class="comboPaisLista" style="display:none;"></div>
     `;
+
+    const input = caja.querySelector(".comboPaisInput");
+    const lista = caja.querySelector(".comboPaisLista");
+
+    function fijarValor(pais) {
+        if (select.value === pais) return;
+        select.innerHTML = `<option value="${pais}" selected>${String(pais).replace(/"/g, "&quot;")}</option>`;
+        select.value = pais;
+        select.dispatchEvent(new Event("change"));
+    }
+
+    function elegir(pais) {
+        fijarValor(pais);
+        input.value = pais;
+        lista.style.display = "none";
+    }
+
+    function pintarLista() {
+        const q = normalizarBusquedaPais(input.value);
+        let resultados;
+        if (!q) {
+            resultados = LISTA_PAISES;
+        } else {
+            const empiezan = [];
+            const contienen = [];
+            for (const pais of LISTA_PAISES) {
+                const n = normalizarBusquedaPais(pais);
+                if (n.startsWith(q)) empiezan.push(pais);
+                else if (n.includes(q)) contienen.push(pais);
+            }
+            resultados = empiezan.concat(contienen);
+        }
+        resultados = resultados.slice(0, 60);
+
+        lista.innerHTML = resultados.length === 0
+            ? `<p class="comboPaisVacio">Sin coincidencias</p>`
+            : resultados.map(pais =>
+                `<button type="button" class="comboPaisOpcion" data-pais="${String(pais).replace(/"/g, "&quot;")}">${pais}</button>`
+              ).join("");
+        lista.style.display = "block";
+    }
+
+    input.addEventListener("focus", pintarLista);
+
+    input.addEventListener("input", () => {
+        const exacto = LISTA_PAISES.find(p => normalizarBusquedaPais(p) === normalizarBusquedaPais(input.value));
+        fijarValor(exacto || "");
+        pintarLista();
+    });
+
+    // mousedown (no click) para ganarle la carrera al blur del input.
+    lista.addEventListener("mousedown", (e) => {
+        const opcion = e.target.closest(".comboPaisOpcion");
+        if (opcion) {
+            e.preventDefault();
+            elegir(opcion.dataset.pais);
+        }
+    });
+
+    input.addEventListener("blur", () => {
+        setTimeout(() => { lista.style.display = "none"; }, 120);
+        const exacto = LISTA_PAISES.find(p => normalizarBusquedaPais(p) === normalizarBusquedaPais(input.value));
+        if (exacto) {
+            input.value = exacto; // normaliza mayúsculas/acentos a la forma oficial
+            fijarValor(exacto);
+        } else {
+            fijarValor("");
+        }
+    });
 
 }
 

@@ -1,4 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+/* La fuente 'Atkinson Hyperlegible' (solo se usa en body.pantallaLectura)
+   se carga con <link> en lectura.html / lectura-mejorar.html / qr.html,
+   NO con @import: el @import obliga al navegador a descargar primero
+   estilos.css y RECIÉN DESPUÉS la fuente, en serie — lento sobre todo en
+   iPhone/Safari y causa que el texto "salte" al cambiar de la fuente de
+   respaldo a Atkinson. El resto del sitio usa solo fuentes del sistema. */
 
 *{
 
@@ -217,6 +222,36 @@ p{
 
 
 
+/* Cronómetro del cuestionario: pegado arriba mientras se hace scroll,
+   así siempre se ve cuánto tiempo queda sin volver hacia arriba. Los
+   márgenes negativos cancelan el padding de #cuestionario para que
+   quede a lo ancho de la tarjeta, como una barra de encabezado. */
+#temporizadorCuestionario{
+
+    position:sticky;
+
+    top:0;
+
+    z-index:20;
+
+    background:white;
+
+    margin:-30px -30px 22px;
+
+    padding:14px 30px;
+
+    border-bottom:1px solid var(--borde);
+
+    border-radius:14px 14px 0 0;
+
+    font-weight:700;
+
+    text-align:center;
+
+}
+
+
+
 .pregunta{
 
     margin-bottom:35px;
@@ -417,6 +452,65 @@ button:active{
 
 #formRegistro button{
     width:100%;
+}
+
+/* Combobox de país "escribe para buscar" (ver renderizarSelectorPais en
+   paises.js) — reemplaza al <select> de 195 opciones. */
+.comboPais{
+    position:relative;
+    margin-bottom:10px;
+}
+
+.comboPaisInput{
+    display:block;
+    width:100%;
+    box-sizing:border-box;
+    padding:10px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    font-size:15px;
+    font-family:inherit;
+    background:#fff;
+}
+
+.comboPaisLista{
+    position:absolute;
+    z-index:60;
+    left:0;
+    right:0;
+    margin-top:2px;
+    max-height:230px;
+    overflow-y:auto;
+    background:#fff;
+    border:1px solid #ccc;
+    border-radius:8px;
+    box-shadow:0 8px 24px rgba(0,0,0,.14);
+    text-align:left;
+}
+
+.comboPaisOpcion{
+    display:block;
+    width:100%;
+    text-align:left;
+    padding:9px 12px;
+    border:none;
+    background:none;
+    cursor:pointer;
+    font-size:14px;
+    font-family:inherit;
+    color:var(--texto, #1c1f26);
+}
+
+.comboPaisOpcion:hover,
+.comboPaisOpcion:focus{
+    background:#eef3fb;
+}
+
+.comboPaisVacio{
+    margin:0;
+    padding:10px 12px;
+    color:#888;
+    font-size:13px;
 }
 
 
@@ -736,6 +830,15 @@ button:active{
     #cuestionario{
 
         padding:20px;
+
+    }
+
+
+    #temporizadorCuestionario{
+
+        margin:-20px -20px 18px;
+
+        padding:12px 20px;
 
     }
 

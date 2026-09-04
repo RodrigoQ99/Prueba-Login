@@ -154,6 +154,22 @@
 
         <p id="mensajePerfil" style="text-align:center; margin-top:12px; font-weight:600;"></p>
 
+        <hr style="margin:28px 0 16px; border:none; border-top:1px solid var(--borde);">
+
+        <details>
+            <summary style="cursor:pointer; color:#c0392b; font-weight:600; font-size:14px;">Eliminar mi cuenta</summary>
+            <p style="font-size:13px; color:var(--texto-suave); margin:10px 0;">
+                Se borran tu perfil, tus puntos, tu racha, tus premios y tus propuestas.
+                Tus lecturas publicadas se quedan en el catálogo pero como "Usuario eliminado".
+                <strong>Esta acción no se puede deshacer.</strong>
+            </p>
+            <button type="button" id="btnEliminarCuenta"
+                    style="width:100%; background:#c0392b; color:white; border:none; padding:12px; border-radius:8px; font-weight:600;">
+                Eliminar mi cuenta para siempre
+            </button>
+            <p id="mensajeEliminarCuenta" style="text-align:center; margin-top:10px; font-weight:600; font-size:13px;"></p>
+        </details>
+
     </div>
 
 </div>
@@ -161,6 +177,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-functions-compat.js"></script>
 <script src="firebase-init.js"></script>
 <script src="admin-comun.js"></script>
 <script src="generos.js"></script>
