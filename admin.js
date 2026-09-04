@@ -160,16 +160,35 @@ async function activarBotonInventarHistoriaIA(overlay, { campoTitulo, campoTexto
         btn.textContent = "🤖 Inventando la historia... (puede tardar unos segundos)";
         estado.style.display = "none";
 
+        const campoPpm = overlay.querySelector("#campoPalabrasPorMinuto");
+        const ppmElegido = Number(campoPpm && campoPpm.value);
+        if (ppmElegido >= 1 && typeof guardarPpmGeneracionIA === "function") {
+            guardarPpmGeneracionIA(ppmElegido);
+        }
+
         try {
 
-            const resultado = await generarLecturaOriginalConIA({ generos, ...contexto() });
+            const resultado = await generarLecturaOriginalConIA({
+                generos,
+                ...contexto(),
+                palabrasPorMinuto: ppmElegido >= 1 ? ppmElegido : undefined
+            });
 
             campoTitulo.value = resultado.titulo;
             campoTexto.value = resultado.texto.join("\n\n");
             // "Generar preguntas con IA" decide si mostrarse según el
             // contenido de campoTexto — como se llenó a mano (sin pasar
-            // por el input real del usuario), hay que avisarle.
+            // por el input real del usuario), hay que avisarle. El mismo
+            // evento actualiza el contador de palabras en vivo.
             campoTexto.dispatchEvent(new Event("input"));
+
+            // Tiempo de lectura automático (lo calcula la Cloud Function
+            // según las palabras que devolvió y las ppm) — el admin ya no
+            // lo escribe a mano.
+            const campoTiempo = overlay.querySelector("#campoTiempoLectura");
+            if (campoTiempo && typeof resultado.tiempoLectura === "number" && resultado.tiempoLectura > 0) {
+                campoTiempo.value = resultado.tiempoLectura;
+            }
 
             preguntas.length = 0;
             preguntas.push(...resultado.preguntas);
@@ -362,6 +381,74 @@ function abrirColaDeLecturasImportadas(lecturasDetectadas, abrirUnFormulario, al
 // ==========================================================
 // Usa construirEditorPreguntas (ver editor-preguntas.js).
 
+// ==========================================================
+// CÁLCULO AUTOMÁTICO DE TIEMPO DE LECTURA (ajuste Etapa 25)
+// ==========================================================
+// "Palabras por minuto" configurable (configuracion/generacionIA) — se
+// usa para calcular el tiempoLectura de las historias que inventa la IA
+// (y con el botón "↻ Calcular por palabras" también para texto a mano).
+// La fórmula es la MISMA que en functions/lib/generarLecturaOriginalIA.js:
+//   palabras / ppm * 60, redondeado a 10 s (residuo >= 5 sube), más la
+//   espera inicial del motor y su margen de seguridad de 2 s. Así el
+//   tramo en que el texto se mueve dura exactamente palabras/ppm*60.
+
+let _ppmGeneracionIA = null;
+
+async function cargarPpmGeneracionIA() {
+    if (_ppmGeneracionIA != null) return _ppmGeneracionIA;
+    let ppm = 180;
+    try {
+        const doc = await db.collection("configuracion").doc("generacionIA").get();
+        const v = doc.exists ? doc.data().palabrasPorMinuto : null;
+        if (typeof v === "number" && v > 0) ppm = v;
+    } catch (error) {
+        console.error("No se pudo cargar 'palabras por minuto' de generación IA:", error);
+    }
+    _ppmGeneracionIA = ppm;
+    return ppm;
+}
+
+async function guardarPpmGeneracionIA(ppm) {
+    if (!(ppm >= 1)) return;
+    _ppmGeneracionIA = Math.round(ppm);
+    try {
+        await db.collection("configuracion").doc("generacionIA").set({ palabrasPorMinuto: _ppmGeneracionIA });
+    } catch (error) {
+        console.error("No se pudo guardar 'palabras por minuto' de generación IA:", error);
+    }
+}
+
+function contarPalabrasCampo(valor) {
+    return String(valor || "").trim().split(/\s+/).filter(Boolean).length;
+}
+
+function calcularTiempoLecturaLocal(palabras, ppm) {
+    const ppmSeguro = (ppm >= 1) ? ppm : 180;
+    const espera = (typeof CONFIG_LECTURA_PREMIOS !== "undefined"
+        && CONFIG_LECTURA_PREMIOS
+        && typeof CONFIG_LECTURA_PREMIOS.esperaInicialSegundos === "number")
+        ? CONFIG_LECTURA_PREMIOS.esperaInicialSegundos
+        : 3;
+    const seg = (palabras / ppmSeguro) * 60;
+    const decena = Math.floor(seg / 10) * 10;
+    const base = (seg - decena) >= 5 ? decena + 10 : decena;
+    return base + espera + 2; // 2 = MARGEN_SEGURIDAD de motor.js
+}
+
+// Engancha un contador de palabras en vivo debajo de un <textarea> de
+// texto de lectura. Devuelve una función para leer el conteo actual.
+function activarContadorPalabras(textarea, contador) {
+    if (!textarea || !contador) return () => 0;
+    const actualizar = () => {
+        const n = contarPalabrasCampo(textarea.value);
+        contador.textContent = n === 1 ? "1 palabra" : `${n} palabras`;
+    };
+    textarea.addEventListener("input", actualizar);
+    actualizar();
+    return () => contarPalabrasCampo(textarea.value);
+}
+
+
 // "alCancelar" es OPCIONAL — si se pasa, se llama tanto al cerrar con
 // la X como al hacer clic afuera del modal (no solo al guardar). La
 // usa abrirColaDeLecturasImportadas (Etapa 22) para avanzar a la
@@ -399,6 +486,15 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
                 <div id="seccionInventarHistoriaIA" style="display:none; padding:12px; border:1px dashed var(--borde); border-radius:10px; margin-bottom:15px;">
                     <label style="font-weight:600;">🤖 O inventa una historia original con IA según el género</label>
                     <div id="checkboxesGenerosInventar" style="margin:8px 0;"></div>
+
+                    <label style="display:block; font-size:13px; font-weight:600; margin-top:8px;">Palabras por minuto (velocidad de lectura)</label>
+                    <input type="number" id="campoPalabrasPorMinuto" min="60" max="600" value="180"
+                           style="width:100%; box-sizing:border-box; padding:8px; border-radius:8px; border:1px solid var(--borde); margin:4px 0 2px;">
+                    <p style="font-size:12px; color:var(--texto-suave); margin:0 0 8px;">
+                        La IA calcula sola las palabras, las preguntas y el tiempo de lectura según el nivel elegido.
+                        Este valor (se guarda para todas las historias) ajusta la dificultad general de lectura.
+                    </p>
+
                     <button type="button" id="btnInventarHistoriaIA" class="botonAdminContorno" style="width:100%;">
                         🤖 Inventar historia con estos géneros
                     </button>
@@ -428,7 +524,10 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
                 <label>Tiempo de lectura en segundos</label>
                 <input type="number" id="campoTiempoLectura" min="10" required
                        value="${(lecturaExistente && lecturaExistente.tiempoLectura) || 60}"
-                       style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+                       style="width:100%; padding:10px; margin:6px 0 4px; border-radius:8px; border:1px solid var(--borde);">
+                <button type="button" id="btnCalcularTiempoPorPalabras" class="botonAdminChico" style="margin:0 0 15px;">
+                    ↻ Calcular por palabras
+                </button>
 
                 <label>Tiempo de cuestionario en segundos</label>
                 <input type="number" id="campoTiempoCuestionario" min="10" required
@@ -437,8 +536,9 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
 
                 <label>Texto</label>
                 <textarea id="campoTexto" rows="10" required
-                          style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde); font-family:inherit;"
+                          style="width:100%; padding:10px; margin:6px 0 4px; border-radius:8px; border:1px solid var(--borde); font-family:inherit;"
                 >${((lecturaExistente && lecturaExistente.texto) || []).join("\n\n")}</textarea>
+                <p id="contadorPalabrasTexto" style="font-size:12px; color:var(--texto-suave); margin:0 0 15px;">0 palabras</p>
 
                 <label>Cuántas preguntas se muestran por sesión</label>
                 <input type="number" id="campoPreguntasAMostrar" min="1"
@@ -485,6 +585,31 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
         preguntas,
         contexto: () => ({ tipo: "premio", nivel: overlay.querySelector("#campoNivel").value }),
         alGenerar: () => { origenLectura = "ia"; }
+    });
+
+    // Contador de palabras en vivo + "palabras por minuto" configurable +
+    // botón para calcular el tiempo de lectura desde el conteo actual.
+    const leerConteoTexto = activarContadorPalabras(
+        overlay.querySelector("#campoTexto"),
+        overlay.querySelector("#contadorPalabrasTexto")
+    );
+
+    // Para que "↻ Calcular por palabras" use la espera inicial real del
+    // motor (no solo el valor por defecto).
+    if (typeof cargarConfigLecturaPremios === "function") cargarConfigLecturaPremios();
+
+    const campoPpm = overlay.querySelector("#campoPalabrasPorMinuto");
+    cargarPpmGeneracionIA().then(ppm => { if (campoPpm) campoPpm.value = ppm; });
+    if (campoPpm) {
+        campoPpm.addEventListener("change", () => {
+            const ppm = Number(campoPpm.value);
+            if (ppm >= 1) guardarPpmGeneracionIA(ppm);
+        });
+    }
+
+    overlay.querySelector("#btnCalcularTiempoPorPalabras").addEventListener("click", () => {
+        const ppm = Number(campoPpm && campoPpm.value) || _ppmGeneracionIA || 180;
+        overlay.querySelector("#campoTiempoLectura").value = calcularTiempoLecturaLocal(leerConteoTexto(), ppm);
     });
 
     function cerrarFormularioLectura() {
@@ -704,8 +829,9 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar, alCa
 
                 <label>Texto</label>
                 <textarea id="campoTexto" rows="10" required
-                          style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde); font-family:inherit;"
+                          style="width:100%; padding:10px; margin:6px 0 4px; border-radius:8px; border:1px solid var(--borde); font-family:inherit;"
                 >${((lecturaExistente && lecturaExistente.texto) || []).join("\n\n")}</textarea>
+                <p id="contadorPalabrasTexto" style="font-size:12px; color:var(--texto-suave); margin:0 0 15px;">0 palabras</p>
 
                 <label>Cuántas preguntas se muestran por sesión</label>
                 <input type="number" id="campoPreguntasAMostrar" min="1"
@@ -753,6 +879,13 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar, alCa
         contexto: () => ({ tipo: "mejora", edad: Number(overlay.querySelector("#campoEdad").value) }),
         alGenerar: () => { origenLectura = "ia"; }
     });
+
+    // Contador de palabras en vivo (Mejorar la lectura no calcula el
+    // tiempo por palabras: su tiempoLectura depende de la edad).
+    activarContadorPalabras(
+        overlay.querySelector("#campoTexto"),
+        overlay.querySelector("#contadorPalabrasTexto")
+    );
 
     function cerrarFormularioMejora() {
         overlay.remove();

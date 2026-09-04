@@ -1,19 +1,31 @@
 // ==========================================================
-// CLOUD FUNCTION: generarLecturaOriginalIA (Etapa 29)
+// CLOUD FUNCTION: generarLecturaOriginalIA (Etapa 29 / ajuste Etapa 25)
 // ==========================================================
 // EXCLUSIVA para el panel de administrador (ver verificarAdmin.js).
 // El admin elige uno o varios GÉNEROS (de GENEROS_LECTURA, ver
 // generos.js) y le pide a Claude que INVENTE una historia
-// completamente original que los combine — nunca copiada, resumida ni
-// adaptada de una obra existente — junto con su banco de preguntas,
-// listos para revisar y editar en el mismo formulario de creación de
-// lectura de siempre (nunca se guarda solo).
+// completamente original que los combine, junto con su banco de
+// preguntas, listos para revisar y editar en el formulario de creación
+// de lectura de siempre (nunca se guarda solo).
 //
-// Reusa EXACTAMENTE las mismas bandas de palabras/preguntas que ya usa
-// el resto del proyecto (ver cantidadPreguntas.js) — no se inventó una
-// estructura paralela: premios usa BANDAS_PREGUNTAS_PREMIO según el
-// nivel elegido; Mejorar la lectura usa RANGO_PALABRAS_MEJORA +
-// PREGUNTAS_MEJORA_POR_DEFECTO (3 preguntas fijas).
+// RANGOS DE PALABRAS / TIEMPO (ajuste Etapa 25) — SOLO para ESTA
+// función de "Inventar historia con IA". No tocan
+// determinarCantidadPreguntas ni protagonista.js: las lecturas que el
+// admin escribió a mano se quedan exactamente como están.
+//   - Fácil:      1 a 2 min  ->  180 a 360 palabras
+//   - Intermedio: 3 a 5 min  ->  540 a 900 palabras
+//   - Difícil:    6 a 7 min  -> 1080 a 1260 palabras
+// (a "palabras por minuto" configurable, 180 por defecto).
+// La CANTIDAD de preguntas por nivel NO cambia (5 / 8 / 11, sale de
+// BANDAS_PREGUNTAS_PREMIO).
+//
+// El "tiempoLectura" se calcula solo a partir de las palabras que
+// devuelve Claude:  palabras / ppm * 60, redondeado a los 10 s más
+// cercanos (residuo >= 5 sube, < 5 baja), MÁS la espera inicial del
+// motor y su margen de seguridad de 2 s. Así, sin tocar motor.js, el
+// tramo en que el texto se está moviendo dura exactamente
+// palabras/ppm*60 y alguien que lea a "ppm" exactas termina de ver el
+// texto justo cuando el cronómetro llega a 0.
 // ==========================================================
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
@@ -30,6 +42,61 @@ const NOMBRE_NIVEL = { facil: "fácil", intermedio: "intermedio", dificil: "dif�
 const ORDEN_NIVELES = ["facil", "intermedio", "dificil"];
 const MAXIMO_GENEROS = 5;
 
+// Rangos de palabras EXCLUSIVOS de "Inventar historia con IA".
+const RANGOS_PALABRAS_INVENTAR = {
+    facil:      { min: 180,  max: 360 },
+    intermedio: { min: 540,  max: 900 },
+    dificil:    { min: 1080, max: 1260 }
+};
+
+const PPM_POR_DEFECTO = 180;
+const ESPERA_INICIAL_POR_DEFECTO = 3;
+// Igual que MARGEN_SEGURIDAD en motor.js: el texto termina de moverse
+// unos segundos antes del 0. Se SUMA aquí (con la espera inicial) para
+// no tener que restárselo al tiempo de lectura real (ver nota de arriba).
+const MARGEN_SEGURIDAD_MOTOR = 2;
+
+function contarPalabrasTexto(parrafos) {
+    const texto = Array.isArray(parrafos) ? parrafos.join(" ") : String(parrafos || "");
+    return texto.trim().split(/\s+/).filter(Boolean).length;
+}
+
+// Redondea a la decena más cercana: residuo >= 5 sube, < 5 baja.
+// Ej: 167 -> 170, 164 -> 160.
+function redondearA10(segundos) {
+    const decena = Math.floor(segundos / 10) * 10;
+    return (segundos - decena) >= 5 ? decena + 10 : decena;
+}
+
+function calcularTiempoLecturaIA(palabras, ppm, esperaInicial) {
+    const base = redondearA10((palabras / ppm) * 60);
+    return base + esperaInicial + MARGEN_SEGURIDAD_MOTOR;
+}
+
+async function leerConfiguracionTiempos() {
+
+    let ppm = PPM_POR_DEFECTO;
+    let esperaInicial = ESPERA_INICIAL_POR_DEFECTO;
+
+    try {
+        const doc = await db.collection("configuracion").doc("generacionIA").get();
+        const v = doc.exists ? doc.data().palabrasPorMinuto : null;
+        if (typeof v === "number" && v > 0) ppm = v;
+    } catch (error) {
+        logger.error("No se pudo leer configuracion/generacionIA:", error);
+    }
+
+    try {
+        const doc = await db.collection("configuracion").doc("lecturaPremios").get();
+        const v = doc.exists ? doc.data().esperaInicialSegundos : null;
+        if (typeof v === "number" && v >= 0) esperaInicial = v;
+    } catch (error) {
+        logger.error("No se pudo leer configuracion/lecturaPremios:", error);
+    }
+
+    return { ppm, esperaInicial };
+}
+
 function construirPrompt({ generos, tipo, nivel, edad, cantidadPreguntas, rangoPalabras }) {
 
     const listaGeneros = generos.length > 1
@@ -39,6 +106,8 @@ function construirPrompt({ generos, tipo, nivel, edad, cantidadPreguntas, rangoP
     const contextoAudiencia = tipo === "mejora"
         ? `Esta lectura es para el catálogo "Mejorar la lectura", dirigida a un lector de ${edad ? `${edad} años` : "la edad indicada"}. El vocabulario y la complejidad deben ser apropiados para esa edad.`
         : `Esta lectura pertenece al catálogo de premios, nivel "${NOMBRE_NIVEL[nivel] || nivel || "no especificado"}". Calibra el vocabulario y la complejidad de la historia y de las preguntas a ese nivel.`;
+
+    const objetivo = Math.round((rangoPalabras.min + rangoPalabras.max) / 2);
 
     return `Eres un asistente que ayuda a un administrador a crear contenido ORIGINAL para una plataforma educativa de fomento a la lectura.
 
@@ -50,7 +119,7 @@ IMPORTANTÍSIMO — ORIGINALIDAD: la historia debe ser inventada por ti en este 
 
 Escribe:
 1. Un TÍTULO breve y atractivo para la historia (que tampoco sea el título de una obra existente).
-2. El TEXTO completo de la historia, dividido en párrafos coherentes, de aproximadamente ${rangoPalabras.min} a ${rangoPalabras.max} palabras en total.
+2. El TEXTO completo de la historia, dividido en párrafos coherentes, de alrededor de ${objetivo} palabras en total (mínimo ${rangoPalabras.min}, máximo ${rangoPalabras.max} palabras). Ajústate a ese conteo lo mejor que puedas: es importante para calcular el tiempo de lectura.
 3. EXACTAMENTE ${cantidadPreguntas} preguntas de opción múltiple de comprensión lectora sobre la historia que acabas de escribir (no trivia externa), cada una con entre 3 y 4 opciones plausibles, marcando cuál opción es la correcta. Usa "a", "b", "c", "d" como valores de las opciones, en ese orden.`;
 
 }
@@ -75,7 +144,6 @@ const generarLecturaOriginalIA = onCall(
         if (generos.length > MAXIMO_GENEROS) {
             throw new HttpsError("invalid-argument", `Elige como máximo ${MAXIMO_GENEROS} géneros.`);
         }
-
         if (tipo !== "premio" && tipo !== "mejora") {
             throw new HttpsError("invalid-argument", "\"tipo\" debe ser \"premio\" o \"mejora\".");
         }
@@ -89,8 +157,8 @@ const generarLecturaOriginalIA = onCall(
         } else {
             const indiceNivel = ORDEN_NIVELES.indexOf(nivel);
             const banda = BANDAS_PREGUNTAS_PREMIO[indiceNivel] || BANDAS_PREGUNTAS_PREMIO[0];
-            cantidadPreguntas = banda.preguntas;
-            rangoPalabras = { min: banda.min, max: banda.max };
+            cantidadPreguntas = banda.preguntas; // 5 / 8 / 11 — sin cambios
+            rangoPalabras = RANGOS_PALABRAS_INVENTAR[nivel] || RANGOS_PALABRAS_INVENTAR.facil;
         }
 
         const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -121,7 +189,27 @@ const generarLecturaOriginalIA = onCall(
             outputTokens: response.usage.output_tokens
         });
 
-        return response.parsed_output;
+        // ---- Tiempo de lectura automático (solo catálogo de premios) ----
+        const palabrasTexto = contarPalabrasTexto(response.parsed_output.texto);
+
+        let tiempoLectura = null;
+        let palabrasPorMinuto = null;
+
+        if (tipo === "premio") {
+            const { ppm: ppmConfig, esperaInicial } = await leerConfiguracionTiempos();
+            palabrasPorMinuto = (typeof datos.palabrasPorMinuto === "number" && datos.palabrasPorMinuto > 0)
+                ? datos.palabrasPorMinuto
+                : ppmConfig;
+            tiempoLectura = calcularTiempoLecturaIA(palabrasTexto, palabrasPorMinuto, esperaInicial);
+        }
+
+        return {
+            ...response.parsed_output,
+            tiempoLectura,
+            palabrasTexto,
+            palabrasObjetivo: rangoPalabras,
+            palabrasPorMinuto
+        };
 
     }
 );

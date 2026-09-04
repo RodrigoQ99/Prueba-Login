@@ -66,9 +66,15 @@ async function moderarPropuestaConIA({ texto, preguntas }) {
  * @param {number} [edad] - solo si tipo === "mejora".
  * @returns {Promise<{titulo:string, texto:string[], preguntas:Array}>}
  */
-async function generarLecturaOriginalConIA({ generos, tipo, nivel, edad }) {
+async function generarLecturaOriginalConIA({ generos, tipo, nivel, edad, palabrasPorMinuto }) {
     const llamar = functionsIA.httpsCallable("generarLecturaOriginalIA", { timeout: 120000 });
-    const resultado = await llamar({ generos, tipo, nivel: nivel || null, edad: edad ?? null });
+    const resultado = await llamar({
+        generos,
+        tipo,
+        nivel: nivel || null,
+        edad: edad ?? null,
+        palabrasPorMinuto: (typeof palabrasPorMinuto === "number" && palabrasPorMinuto > 0) ? palabrasPorMinuto : null
+    });
     return resultado.data;
 }
 
