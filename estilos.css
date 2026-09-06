@@ -411,6 +411,28 @@ button:active{
     cursor:pointer;
 }
 
+/* Selector de avatar (perfil-informacion.html): un emoji por botón,
+   el elegido queda resaltado con el borde azul. */
+.opcionAvatar{
+    width:48px;
+    height:48px;
+    font-size:24px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:white;
+    border:2px solid var(--borde);
+    border-radius:50%;
+    cursor:pointer;
+    padding:0;
+    margin:0;
+}
+
+.opcionAvatar.opcionAvatarElegido{
+    border-color:var(--azul);
+    background:var(--fondo);
+}
+
 #camposEstudiante input,
 #camposEstudiante select{
     display:block;

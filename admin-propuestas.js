@@ -20,6 +20,35 @@
 // no dependen del resultado de la IA en absoluto.
 // ==========================================================
 
+// Vista previa de SOLO LECTURA de una pregunta (cualquier tipo, ver
+// editor-preguntas.js) dentro del modal de revisión de una propuesta —
+// no es interactiva, solo muestra cuál es la respuesta correcta.
+function vistaPreviaRespuestaPropuesta(pregunta) {
+
+    const tipo = pregunta.tipo || "opcionMultiple";
+
+    if (tipo === "vf") {
+        return `<p style="margin:2px 0 2px 15px; font-weight:700; color:#2e9e5b;">✓ ${pregunta.correcta ? "Verdadero" : "Falso"}</p>`;
+    }
+
+    if (tipo === "completar" || tipo === "textoLibre") {
+        return `<p style="margin:2px 0 2px 15px; font-weight:700; color:#2e9e5b;">✓ ${(pregunta.respuestasValidas || []).join(" / ")}</p>`;
+    }
+
+    if (tipo === "ordenar") {
+        return (pregunta.partes || []).map((parte, i) => `
+            <p style="margin:2px 0 2px 15px;">${i + 1}. ${parte}</p>
+        `).join("");
+    }
+
+    return (pregunta.opciones || []).map(opcion => `
+        <p style="margin:2px 0 2px 15px; ${opcion.valor === pregunta.correcta ? "font-weight:700; color:#2e9e5b;" : ""}">
+            ${opcion.valor === pregunta.correcta ? "✓ " : "— "}${opcion.texto}
+        </p>
+    `).join("");
+
+}
+
 const pantallaLoginAdmin = document.getElementById("pantallaLoginAdmin");
 const pantallaSinPermiso = document.getElementById("pantallaSinPermiso");
 const contenedorAdminPanel = document.getElementById("contenedorAdminPanel");
@@ -146,11 +175,7 @@ function abrirRevisionPropuesta(propuesta) {
                 ${(propuesta.bancoPreguntas || []).map((pregunta, pi) => `
                     <div style="margin-bottom:12px;">
                         <p style="font-weight:600; margin-bottom:4px;">${pi + 1}. ${pregunta.pregunta}</p>
-                        ${pregunta.opciones.map(opcion => `
-                            <p style="margin:2px 0 2px 15px; ${opcion.valor === pregunta.correcta ? "font-weight:700; color:#2e9e5b;" : ""}">
-                                ${opcion.valor === pregunta.correcta ? "✓ " : "— "}${opcion.texto}
-                            </p>
-                        `).join("")}
+                        ${vistaPreviaRespuestaPropuesta(pregunta)}
                     </div>
                 `).join("")}
             </div>

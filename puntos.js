@@ -314,6 +314,13 @@ async function guardarProgreso(lecturaId, nivel, estrellas, totalPreguntas, dura
         fecha: firebase.firestore.FieldValue.serverTimestamp()
     });
 
+    // "Top 1" de tiempo de esta lectura (Etapa 34): cuenta cualquier
+    // intento con nota completa, aunque ya la hubiera aprobado antes (a
+    // diferencia de puntosGanados, que solo cuenta la PRIMERA vez).
+    if (aprobo && typeof duracionSegundos === "number") {
+        await actualizarMejorTiempoLectura(lecturaId, duracionSegundos, user.uid);
+    }
+
     // Cuenta como actividad del día para la racha 🔥, se haya aprobado o
     // no — esta es la única oportunidad de esta lectura, así que
     // calificarla ya cuenta como "completarla" hoy (ver racha.js).
@@ -359,6 +366,54 @@ async function guardarProgreso(lecturaId, nivel, estrellas, totalPreguntas, dura
         puntosGanados,
         premio: PREMIO_POR_NIVEL[nivel]
     };
+}
+
+/**
+ * Actualiza el "mejor tiempo" público de una lectura (mejoresTiemposLectura/{lecturaId})
+ * si este intento fue más rápido que el registrado — se muestra en la
+ * tarjeta de la lectura para todos los usuarios (ver lecturas-premiadas.js).
+ * Respeta el alias del usuario, igual que actualizarRankingPersonal().
+ */
+async function actualizarMejorTiempoLectura(lecturaId, duracionSegundos, uid) {
+
+    const ref = db.collection("mejoresTiemposLectura").doc(lecturaId);
+
+    try {
+
+        // Chequeo rápido antes de gastar una lectura extra en el nombre:
+        // la mayoría de los intentos no baten el récord actual.
+        const actualDoc = await ref.get();
+        const actual = actualDoc.exists ? actualDoc.data() : null;
+        if (actual && typeof actual.segundos === "number" && actual.segundos <= duracionSegundos) {
+            return;
+        }
+
+        const usuarioDoc = await db.collection("usuarios").doc(uid).get();
+        const datosUsuario = usuarioDoc.exists ? usuarioDoc.data() : {};
+        const nombreAMostrar = (datosUsuario.mostrarAlias && datosUsuario.alias)
+            ? datosUsuario.alias
+            : (datosUsuario.nombre || "Anónimo");
+
+        // Transacción para que dos mejoras casi simultáneas no se pisen
+        // entre sí dejando guardado un tiempo que ya no es el más rápido.
+        await db.runTransaction(async (tx) => {
+            const doc = await tx.get(ref);
+            const vigente = doc.exists ? doc.data() : null;
+            if (vigente && typeof vigente.segundos === "number" && vigente.segundos <= duracionSegundos) {
+                return;
+            }
+            tx.set(ref, {
+                segundos: duracionSegundos,
+                uid: uid,
+                nombre: nombreAMostrar,
+                fecha: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        });
+
+    } catch (error) {
+        console.error("No se pudo actualizar el mejor tiempo de la lectura:", error);
+    }
+
 }
 
 /**

@@ -580,23 +580,125 @@ function arrancarLecturaCronometrada(){
 
 }
 
+// ==========================================================
+// TIPOS DE PREGUNTA (Etapa 34)
+// ==========================================================
+// Una pregunta sin "tipo" (todas las de antes de esta etapa) se trata
+// como "opcionMultiple" — ver mismo criterio en editor-preguntas.js y
+// esquemaPreguntas.js (Cloud Functions).
+
+function tipoDePregunta(pregunta) {
+    return pregunta.tipo || "opcionMultiple";
+}
+
+function barajarArray(arreglo) {
+    const copia = [...arreglo];
+    for (let i = copia.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copia[i], copia[j]] = [copia[j], copia[i]];
+    }
+    return copia;
+}
+
+// Sin mayúsculas/tildes/espacios extra — usada para comparar respuestas
+// de texto libre ("completar" y "textoLibre") contra lo que cargó el
+// admin, sin exigir una coincidencia carácter por carácter exacta.
+function normalizarTextoRespuesta(s) {
+    return String(s == null ? "" : s)
+        .trim()
+        .toLowerCase()
+        .normalize("NFD").replace(/[̀-ͯ]/g, "")
+        .replace(/\s+/g, " ");
+}
+
+function renderizarPreguntaOrdenar(pregunta, indice) {
+
+    // El orden que ve y reacomoda el usuario vive en _ordenActual (se
+    // baraja una sola vez, la primera vez que se dibuja esta pregunta).
+    if (!pregunta._ordenActual) {
+        pregunta._ordenActual = barajarArray(pregunta.partes);
+    }
+
+    return pregunta._ordenActual.map((parte, oi) => `
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+            <span style="flex:1; padding:8px; border:1px solid var(--borde); border-radius:8px; background:white;">${parte}</span>
+            <button type="button" data-accion="mover-parte-arriba" data-indice="${indice}" data-oi="${oi}"
+                    ${oi === 0 ? "disabled" : ""} style="width:auto; padding:6px 10px;">▲</button>
+            <button type="button" data-accion="mover-parte-abajo" data-indice="${indice}" data-oi="${oi}"
+                    ${oi === pregunta._ordenActual.length - 1 ? "disabled" : ""} style="width:auto; padding:6px 10px;">▼</button>
+        </div>
+    `).join("");
+
+}
+
 function renderizarPreguntas(){
 
     listaPreguntas.innerHTML = preguntasSeleccionadas
-        .map((pregunta, indice) => `
-            <div class="pregunta">
-                <p>${indice + 1}. ${pregunta.pregunta}</p>
-                ${pregunta.opciones.map(opcion => `
+        .map((pregunta, indice) => {
+
+            const tipo = tipoDePregunta(pregunta);
+
+            let cuerpo = "";
+
+            if (tipo === "vf") {
+                cuerpo = `
+                    <label><input type="radio" name="p${indice}" value="true"> Verdadero</label><br>
+                    <label><input type="radio" name="p${indice}" value="false"> Falso</label><br>
+                `;
+            } else if (tipo === "completar" || tipo === "textoLibre") {
+                cuerpo = `
+                    <input type="text" id="respuestaTexto-${indice}" autocomplete="off"
+                           placeholder="Escribe tu respuesta"
+                           style="width:100%; max-width:320px; padding:10px; border-radius:8px; border:1px solid var(--borde); box-sizing:border-box;">
+                `;
+            } else if (tipo === "ordenar") {
+                cuerpo = `<div id="ordenarPregunta-${indice}">${renderizarPreguntaOrdenar(pregunta, indice)}</div>`;
+            } else {
+                // opcionMultiple (por defecto)
+                cuerpo = pregunta.opciones.map(opcion => `
                     <label>
                         <input type="radio" name="p${indice}" value="${opcion.valor}">
                         ${opcion.texto}
                     </label>
                     <br>
-                `).join("")}
-            </div>
-        `).join("");
+                `).join("");
+            }
+
+            return `
+                <div class="pregunta">
+                    <p>${indice + 1}. ${pregunta.pregunta}</p>
+                    ${cuerpo}
+                </div>
+            `;
+
+        }).join("");
 
 }
+
+// Botones ▲▼ de las preguntas "ordenar": un solo listener DELEGADO sobre
+// todo #listaPreguntas (se registra una sola vez, fuera de
+// renderizarPreguntas) — así sigue funcionando sin importar cuántas
+// veces se vuelva a dibujar esa lista, y solo redibuja la propia
+// pregunta "ordenar" (no todo el cuestionario, para no perder lo ya
+// respondido en las demás preguntas).
+listaPreguntas.addEventListener("click", (e) => {
+
+    const btn = e.target.closest("[data-accion='mover-parte-arriba'], [data-accion='mover-parte-abajo']");
+    if (!btn) return;
+
+    const indice = Number(btn.dataset.indice);
+    const oi = Number(btn.dataset.oi);
+    const pregunta = preguntasSeleccionadas[indice];
+    const destino = btn.dataset.accion === "mover-parte-arriba" ? oi - 1 : oi + 1;
+
+    if (destino < 0 || destino >= pregunta._ordenActual.length) return;
+
+    [pregunta._ordenActual[oi], pregunta._ordenActual[destino]] =
+        [pregunta._ordenActual[destino], pregunta._ordenActual[oi]];
+
+    document.getElementById(`ordenarPregunta-${indice}`).innerHTML = renderizarPreguntaOrdenar(pregunta, indice);
+
+});
 
 
 // ==========================
@@ -787,11 +889,37 @@ async function calificar(){
 
     preguntasSeleccionadas.forEach((pregunta, indice) => {
 
-        const respuesta = document.querySelector(`input[name="p${indice}"]:checked`);
+        const tipo = tipoDePregunta(pregunta);
+        let acerto = false;
 
-        if(respuesta && respuesta.value === pregunta.correcta){
-            estrellas++;
+        if (tipo === "vf") {
+
+            const respuesta = document.querySelector(`input[name="p${indice}"]:checked`);
+            acerto = !!respuesta && (respuesta.value === "true") === pregunta.correcta;
+
+        } else if (tipo === "completar" || tipo === "textoLibre") {
+
+            const campo = document.getElementById(`respuestaTexto-${indice}`);
+            const dada = normalizarTextoRespuesta(campo ? campo.value : "");
+            acerto = dada.length > 0 && pregunta.respuestasValidas.some(
+                valida => normalizarTextoRespuesta(valida) === dada
+            );
+
+        } else if (tipo === "ordenar") {
+
+            const actual = pregunta._ordenActual || pregunta.partes;
+            acerto = actual.length === pregunta.partes.length
+                && actual.every((parte, i) => parte === pregunta.partes[i]);
+
+        } else {
+
+            // opcionMultiple (por defecto)
+            const respuesta = document.querySelector(`input[name="p${indice}"]:checked`);
+            acerto = !!respuesta && respuesta.value === pregunta.correcta;
+
         }
+
+        if (acerto) estrellas++;
 
     });
 
@@ -832,9 +960,11 @@ async function calificar(){
         </p>
     `);
 
-    // Bloquear respuestas después de calificar
-    document.querySelectorAll("input[type='radio']").forEach(opcion => {
-        opcion.disabled = true;
+    // Bloquear respuestas después de calificar (todos los tipos de
+    // pregunta: opción múltiple/vf son radios, completar/textoLibre son
+    // texto, y ordenar son los botones ▲▼ de reacomodar).
+    document.querySelectorAll("#listaPreguntas input, #listaPreguntas button").forEach(campo => {
+        campo.disabled = true;
     });
     document.getElementById("btnTerminarCuestionario").style.display = "none";
 
@@ -854,6 +984,23 @@ async function calificar(){
         document.getElementById("mensajeFinal").innerHTML =
             "Para volver a intentar esta lectura ingresa otro código";
 
+    }
+
+    // Enlace opcional a un libro recomendado (lo carga el admin por
+    // lectura, ver el editor en admin.js). Solo aparece si esta lectura
+    // en particular tiene URL guardada.
+    const anteriorLibro = document.getElementById("libroRecomendadoFinal");
+    if (anteriorLibro) anteriorLibro.remove();
+    if (lecturaActual && lecturaActual.libroRecomendadoUrl) {
+        const escLibro = (s) => String(s == null ? "" : s)
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        document.getElementById("mensajeFinal").insertAdjacentHTML("afterend", `
+            <p id="libroRecomendadoFinal" style="text-align:center; margin:12px 0;">
+                📚 <a href="${escLibro(lecturaActual.libroRecomendadoUrl)}" target="_blank" rel="noopener noreferrer">
+                    ${escLibro(lecturaActual.libroRecomendadoTexto || "¿Te gustó esta lectura? Conoce este libro")}
+                </a>
+            </p>
+        `);
     }
 
     mostrarBotonVolver();

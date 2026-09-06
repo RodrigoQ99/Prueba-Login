@@ -610,20 +610,112 @@ function avanzarAlCuestionario() {
     }
 
     listaPreguntasMejora.innerHTML = preguntasSeleccionadasMejora
-        .map((pregunta, indice) => `
-            <div class="pregunta">
-                <p>${indice + 1}. ${pregunta.pregunta}</p>
-                ${pregunta.opciones.map(opcion => `
+        .map((pregunta, indice) => {
+
+            const tipo = tipoDePregunta(pregunta);
+
+            let cuerpo = "";
+
+            if (tipo === "vf") {
+                cuerpo = `
+                    <label><input type="radio" name="mp${indice}" value="true"> Verdadero</label><br>
+                    <label><input type="radio" name="mp${indice}" value="false"> Falso</label><br>
+                `;
+            } else if (tipo === "completar" || tipo === "textoLibre") {
+                cuerpo = `
+                    <input type="text" id="respuestaTextoMejora-${indice}" autocomplete="off"
+                           placeholder="Escribe tu respuesta"
+                           style="width:100%; max-width:320px; padding:10px; border-radius:8px; border:1px solid var(--borde); box-sizing:border-box;">
+                `;
+            } else if (tipo === "ordenar") {
+                cuerpo = `<div id="ordenarPreguntaMejora-${indice}">${renderizarPreguntaOrdenarMejora(pregunta, indice)}</div>`;
+            } else {
+                // opcionMultiple (por defecto)
+                cuerpo = pregunta.opciones.map(opcion => `
                     <label>
                         <input type="radio" name="mp${indice}" value="${opcion.valor}">
                         ${opcion.texto}
                     </label>
                     <br>
-                `).join("")}
-            </div>
-        `).join("");
+                `).join("");
+            }
+
+            return `
+                <div class="pregunta">
+                    <p>${indice + 1}. ${pregunta.pregunta}</p>
+                    ${cuerpo}
+                </div>
+            `;
+
+        }).join("");
 
 }
+
+// ==========================================================
+// TIPOS DE PREGUNTA (Etapa 34) — misma lógica que motor.js; se
+// duplica (en vez de compartirse) porque motor.js y motor-mejorar.js
+// nunca se cargan en la misma página (lectura.html / lectura-mejorar.html),
+// mismo criterio que calcularEdadDesdeFecha en perfil-informacion.js.
+
+function tipoDePregunta(pregunta) {
+    return pregunta.tipo || "opcionMultiple";
+}
+
+function barajarArrayMejora(arreglo) {
+    const copia = [...arreglo];
+    for (let i = copia.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copia[i], copia[j]] = [copia[j], copia[i]];
+    }
+    return copia;
+}
+
+function normalizarTextoRespuesta(s) {
+    return String(s == null ? "" : s)
+        .trim()
+        .toLowerCase()
+        .normalize("NFD").replace(/[̀-ͯ]/g, "")
+        .replace(/\s+/g, " ");
+}
+
+function renderizarPreguntaOrdenarMejora(pregunta, indice) {
+
+    if (!pregunta._ordenActual) {
+        pregunta._ordenActual = barajarArrayMejora(pregunta.partes);
+    }
+
+    return pregunta._ordenActual.map((parte, oi) => `
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+            <span style="flex:1; padding:8px; border:1px solid var(--borde); border-radius:8px; background:white;">${parte}</span>
+            <button type="button" data-accion="mover-parte-arriba" data-indice="${indice}" data-oi="${oi}"
+                    ${oi === 0 ? "disabled" : ""} style="width:auto; padding:6px 10px;">▲</button>
+            <button type="button" data-accion="mover-parte-abajo" data-indice="${indice}" data-oi="${oi}"
+                    ${oi === pregunta._ordenActual.length - 1 ? "disabled" : ""} style="width:auto; padding:6px 10px;">▼</button>
+        </div>
+    `).join("");
+
+}
+
+// Listener delegado (registrado una sola vez) para los botones ▲▼ de
+// "ordenar" — ver el mismo patrón, con la misma razón, en motor.js.
+listaPreguntasMejora.addEventListener("click", (e) => {
+
+    const btn = e.target.closest("[data-accion='mover-parte-arriba'], [data-accion='mover-parte-abajo']");
+    if (!btn) return;
+
+    const indice = Number(btn.dataset.indice);
+    const oi = Number(btn.dataset.oi);
+    const pregunta = preguntasSeleccionadasMejora[indice];
+    const destino = btn.dataset.accion === "mover-parte-arriba" ? oi - 1 : oi + 1;
+
+    if (destino < 0 || destino >= pregunta._ordenActual.length) return;
+
+    [pregunta._ordenActual[oi], pregunta._ordenActual[destino]] =
+        [pregunta._ordenActual[destino], pregunta._ordenActual[oi]];
+
+    document.getElementById(`ordenarPreguntaMejora-${indice}`).innerHTML = renderizarPreguntaOrdenarMejora(pregunta, indice);
+
+});
 
 
 // ==========================
@@ -643,16 +735,41 @@ async function calificarMejora() {
 
     preguntas.forEach((pregunta, indice) => {
 
-        const respuesta = document.querySelector(`input[name="mp${indice}"]:checked`);
+        const tipo = tipoDePregunta(pregunta);
+        let acerto = false;
 
-        if (respuesta && respuesta.value === pregunta.correcta) {
-            correctas++;
+        if (tipo === "vf") {
+
+            const respuesta = document.querySelector(`input[name="mp${indice}"]:checked`);
+            acerto = !!respuesta && (respuesta.value === "true") === pregunta.correcta;
+
+        } else if (tipo === "completar" || tipo === "textoLibre") {
+
+            const campo = document.getElementById(`respuestaTextoMejora-${indice}`);
+            const dada = normalizarTextoRespuesta(campo ? campo.value : "");
+            acerto = dada.length > 0 && pregunta.respuestasValidas.some(
+                valida => normalizarTextoRespuesta(valida) === dada
+            );
+
+        } else if (tipo === "ordenar") {
+
+            const actual = pregunta._ordenActual || pregunta.partes;
+            acerto = actual.length === pregunta.partes.length
+                && actual.every((parte, i) => parte === pregunta.partes[i]);
+
+        } else {
+
+            const respuesta = document.querySelector(`input[name="mp${indice}"]:checked`);
+            acerto = !!respuesta && respuesta.value === pregunta.correcta;
+
         }
+
+        if (acerto) correctas++;
 
     });
 
-    document.querySelectorAll("#listaPreguntasMejora input[type='radio']").forEach(opcion => {
-        opcion.disabled = true;
+    document.querySelectorAll("#listaPreguntasMejora input, #listaPreguntasMejora button").forEach(campo => {
+        campo.disabled = true;
     });
 
     document.getElementById("btnCalificarMejora").style.display = "none";

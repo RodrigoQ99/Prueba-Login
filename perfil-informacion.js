@@ -44,6 +44,45 @@ function calcularEdadDesdeFecha(fechaTexto) {
 
 }
 
+// ==========================================================
+// AVATAR (Etapa 34): set fijo de emojis, sin subir fotos propias.
+// ==========================================================
+
+const AVATARES_DISPONIBLES = [
+    "🦊", "🐱", "🐶", "🐼", "🐨", "🦁", "🐸", "🐧",
+    "🦉", "🐢", "🦋", "🐙", "🦄", "🐝", "🐬", "🦖", "🐰", "🐯"
+];
+const AVATAR_POR_DEFECTO = "🙂";
+
+let _avatarElegido = AVATAR_POR_DEFECTO;
+
+function renderizarSelectorAvatar(avatarActual) {
+
+    _avatarElegido = AVATARES_DISPONIBLES.includes(avatarActual) ? avatarActual : AVATAR_POR_DEFECTO;
+
+    const preview = document.getElementById("previewAvatarPerfil");
+    const grilla = document.getElementById("grillaAvataresPerfil");
+    if (!grilla) return;
+
+    preview.textContent = _avatarElegido;
+
+    grilla.innerHTML = AVATARES_DISPONIBLES.map(emoji => `
+        <button type="button" class="opcionAvatar ${emoji === _avatarElegido ? "opcionAvatarElegido" : ""}"
+                data-avatar="${emoji}" aria-label="Elegir avatar ${emoji}">${emoji}</button>
+    `).join("");
+
+    grilla.querySelectorAll("[data-avatar]").forEach(btn => {
+        btn.addEventListener("click", () => {
+            _avatarElegido = btn.dataset.avatar;
+            preview.textContent = _avatarElegido;
+            grilla.querySelectorAll(".opcionAvatar").forEach(b => {
+                b.classList.toggle("opcionAvatarElegido", b.dataset.avatar === _avatarElegido);
+            });
+        });
+    });
+
+}
+
 // Guardada en cargarPerfil() para que el botón "Guardar cambios" (más
 // abajo, otra función) sepa si la edad/género YA estaban guardados
 // antes de este visita — así nunca reenvía ni pisa un valor que ya
@@ -65,6 +104,8 @@ async function cargarPerfil() {
     }
 
     _datosPerfilActual = datos;
+
+    renderizarSelectorAvatar(datos.avatar);
 
     document.getElementById("campoNombrePerfil").value = datos.nombre || user.displayName || "";
     document.getElementById("campoAliasPerfil").value = datos.alias || "";
@@ -227,6 +268,7 @@ document.getElementById("btnGuardarPerfil").addEventListener("click", async () =
         // usuario los completó ahora.
         const cambios = {
             nombre: nombre,
+            avatar: _avatarElegido,
             mostrarAlias: mostrarAlias,
             generosLectura: leerGenerosSeleccionados(document.getElementById("contenedorGenerosPerfil"))
         };

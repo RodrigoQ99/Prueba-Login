@@ -86,6 +86,18 @@ async function cargarListaLecturas() {
         console.error("Error al cargar el progreso:", error);
     }
 
+    // Mejor tiempo registrado por lectura, entre TODOS los usuarios que
+    // la aprobaron (Etapa 34, ver actualizarMejorTiempoLectura en
+    // puntos.js) — un solo documento chico por lectura, no hace falta
+    // filtrar por las desbloqueadas de este usuario.
+    let mejorTiempoPorId = {};
+    try {
+        const snapshotMejores = await db.collection("mejoresTiemposLectura").get();
+        snapshotMejores.forEach(doc => { mejorTiempoPorId[doc.id] = doc.data(); });
+    } catch (error) {
+        console.error("Error al cargar los mejores tiempos:", error);
+    }
+
     // Unir ambas fuentes: lo desbloqueado explícitamente + cualquier
     // lectura que ya tenga en su historial (por compatibilidad con
     // cuentas que ya tenían progreso antes de este cambio)
@@ -142,6 +154,16 @@ async function cargarListaLecturas() {
             ? `<p class="tarjetaNivel">⏱️ Tu tiempo: ${formatearDuracionLectura(tiempo.segundos)}</p>`
             : "";
 
+        // Escapado porque, a diferencia del título (lo escribe el admin),
+        // el nombre viene de lo que cada usuario puso en su perfil.
+        const mejorTiempo = mejorTiempoPorId[lectura.id];
+        const nombreMejorEscapado = mejorTiempo
+            ? String(mejorTiempo.nombre || "Anónimo").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            : "";
+        const lineaMejorTiempo = mejorTiempo
+            ? `<p class="tarjetaNivel">🏆 Mejor tiempo: ${formatearDuracionLectura(mejorTiempo.segundos)} — ${nombreMejorEscapado}</p>`
+            : "";
+
         return `
             <a href="lectura.html?id=${encodeURIComponent(lectura.id)}"
                class="tarjetaLectura ${completada ? "tarjetaCompletada" : ""} ${bloqueada ? "tarjetaBloqueada" : ""}">
@@ -149,6 +171,7 @@ async function cargarListaLecturas() {
                     <p class="tarjetaTitulo">${lectura.titulo}</p>
                     <p class="tarjetaNivel">Nivel ${nivelTexto}</p>
                     ${lineaTiempo}
+                    ${lineaMejorTiempo}
                 </div>
                 <span class="tarjetaEstado">${estado}</span>
             </a>

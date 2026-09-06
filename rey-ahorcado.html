@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Juegos</title>
+    <title>El rey ahorcado</title>
     <link rel="stylesheet" href="estilos.css">
 </head>
 
@@ -45,44 +45,32 @@
 </div>
 
 
-<div id="contenedorJuegos" style="max-width:600px; margin:40px auto; padding:0 20px;">
+<div id="contenedorReyAhorcado" style="max-width:600px; margin:40px auto; padding:0 20px;">
 
-    <h1 style="text-align:center;">🎮 Juegos</h1>
+    <h1 style="text-align:center;">👑 El rey ahorcado</h1>
 
-    <p style="text-align:center; color:var(--texto-suave); margin-bottom:25px;">
-        Minijuegos aparte de tus lecturas, sin premios ni ranking.
+    <p style="text-align:center; color:#555; margin-bottom:20px;">
+        Adivina la palabra letra por letra. Sin ningún error, te ganas la corona de oro 👑.
     </p>
 
-    <div style="display:flex; flex-direction:column; gap:15px;">
-
-        <a href="hilo-del-dia.html" class="tarjetaLectura">
-            <div class="tarjetaInfo">
-                <p class="tarjetaTitulo">🧵 El Hilo del día</p>
-                <p class="tarjetaNivel">Ordena los 5 fragmentos de la historia de hoy.</p>
-            </div>
-            <span class="tarjetaEstado">Jugar →</span>
-        </a>
-
-        <a href="ahorcado.html" class="tarjetaLectura">
-            <div class="tarjetaInfo">
-                <p class="tarjetaTitulo">🔤 Ahorcado</p>
-                <p class="tarjetaNivel">Adivina la palabra letra por letra.</p>
-            </div>
-            <span class="tarjetaEstado">Jugar →</span>
-        </a>
-
-        <a href="rey-ahorcado.html" class="tarjetaLectura">
-            <div class="tarjetaInfo">
-                <p class="tarjetaTitulo">👑 El rey ahorcado</p>
-                <p class="tarjetaNivel">Adivínala sin errores y gánate la corona de oro.</p>
-            </div>
-            <span class="tarjetaEstado">Jugar →</span>
-        </a>
-
+    <div id="juegoReyAhorcado">
+        <p style="text-align:center;">Cargando...</p>
     </div>
 
+    <!-- Teclado: en el teléfono, tocar este recuadro abre el teclado
+         nativo; en computadora también se puede usar el teclado físico
+         directamente (ver rey-ahorcado.js). Vive FUERA de #juegoReyAhorcado
+         para que no se destruya cada vez que se vuelve a dibujar el juego
+         y el teclado del teléfono no se cierre. -->
+    <input type="text" id="entradaLetraRey"
+           inputmode="text" autocomplete="off" autocapitalize="characters"
+           autocorrect="off" spellcheck="false" maxlength="1"
+           placeholder="Escribe una letra"
+           aria-label="Escribe una letra para intentarla"
+           style="display:none; margin:15px auto 0; width:220px; padding:12px; font-size:24px; text-align:center; text-transform:uppercase; border-radius:10px; border:2px solid var(--azul); box-sizing:border-box;">
+
     <div style="text-align:center; margin-top:25px;">
-        <a href="lecturas.html">← Volver a Lecturas</a>
+        <a href="juegos.html">← Regresar a juegos</a>
     </div>
 
 </div>
@@ -93,7 +81,7 @@
 <script src="firebase-init.js"></script>
 <script src="admin-comun.js"></script>
 <script src="lecturas.js"></script>
-<script src="racha.js"></script>
+<script src="rey-ahorcado.js"></script>
 <script src="menu.js"></script>
 
 </body>

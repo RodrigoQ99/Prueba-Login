@@ -111,42 +111,54 @@
 =========================== -->
 <div id="contenedor" style="display:none; max-width:560px; margin:0 auto; padding:30px 20px;">
 
-    <h1 style="text-align:center; margin-bottom:30px;">Inicio</h1>
+    <h1 style="text-align:center; margin-bottom:20px;">Inicio</h1>
+
+    <!-- Filtro Individual/Grupal (Etapa 34): por ahora TODO lo que existe
+         es individual — las actividades grupales todavía no existen, ver
+         inicio.js. Deja preparada la estructura para cuando se agreguen. -->
+    <div id="filtroTipoActividad" style="display:flex; gap:10px; justify-content:center; margin-bottom:20px;">
+        <button type="button" id="btnFiltroIndividual" class="botonAdminChico">🧍 Individuales</button>
+        <button type="button" id="btnFiltroGrupal" class="botonAdminChico">👥 Grupales</button>
+    </div>
 
     <div class="gridBotonesCuadrados">
 
-        <a href="perfil.html" class="botonCuadrado" style="position:relative;">
+        <a href="perfil.html" class="botonCuadrado" data-tipo-actividad="individual" style="position:relative;">
             <span id="badgeRachaInicio" style="position:absolute; top:8px; right:10px; font-size:12px; font-weight:700; color:var(--texto-suave);"></span>
             <span class="iconoBotonCuadrado">👤</span>
             <span>Perfil</span>
         </a>
 
-        <a href="lecturas.html" class="botonCuadrado">
+        <a href="lecturas.html" class="botonCuadrado" data-tipo-actividad="individual">
             <span class="iconoBotonCuadrado">📚</span>
             <span>Lecturas</span>
         </a>
 
-        <a href="mejora.html" class="botonCuadrado">
+        <a href="mejora.html" class="botonCuadrado" data-tipo-actividad="individual">
             <span class="iconoBotonCuadrado">📈</span>
             <span>Mejorar la lectura</span>
         </a>
 
-        <a href="juegos.html" class="botonCuadrado">
+        <a href="juegos.html" class="botonCuadrado" data-tipo-actividad="individual">
             <span class="iconoBotonCuadrado">🎮</span>
             <span>Juegos</span>
         </a>
 
-        <a href="ranking.html" class="botonCuadrado">
+        <a href="ranking.html" class="botonCuadrado" data-tipo-actividad="individual">
             <span class="iconoBotonCuadrado">🏆</span>
             <span>Ranking</span>
         </a>
 
-        <a href="premios.html" class="botonCuadrado">
+        <a href="premios.html" class="botonCuadrado" data-tipo-actividad="individual">
             <span class="iconoBotonCuadrado">🎁</span>
             <span>Premios</span>
         </a>
 
     </div>
+
+    <p id="mensajeSinActividadesGrupales" style="display:none; text-align:center; color:var(--texto-suave); margin-top:10px;">
+        Todavía no hay actividades grupales — ¡muy pronto! 👥
+    </p>
 
 </div>
 

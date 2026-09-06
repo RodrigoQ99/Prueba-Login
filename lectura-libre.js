@@ -74,25 +74,90 @@ async function iniciarLecturaLibre() {
     if (preguntas.length === 0) return;
 
     const contPreguntas = document.getElementById("preguntasLecturaLibre");
-    contPreguntas.innerHTML = preguntas.map((pregunta, pi) => `
-        <div style="margin-bottom:15px;">
-            <p style="font-weight:600; margin-bottom:6px;">${pi + 1}. ${pregunta.pregunta}</p>
-            ${pregunta.opciones.map(opcion => `
+    contPreguntas.innerHTML = preguntas.map((pregunta, pi) => {
+
+        const tipo = pregunta.tipo || "opcionMultiple";
+        let cuerpo = "";
+
+        if (tipo === "vf") {
+            cuerpo = `
+                <label style="display:block; margin-bottom:4px;"><input type="radio" name="preguntaLibre${pi}" value="true"> Verdadero</label>
+                <label style="display:block; margin-bottom:4px;"><input type="radio" name="preguntaLibre${pi}" value="false"> Falso</label>
+            `;
+        } else if (tipo === "completar" || tipo === "textoLibre") {
+            cuerpo = `
+                <input type="text" id="respuestaLibreTexto-${pi}" autocomplete="off" placeholder="Escribe tu respuesta"
+                       style="width:100%; max-width:320px; padding:8px; border-radius:8px; border:1px solid var(--borde); box-sizing:border-box;">
+            `;
+        } else if (tipo === "ordenar") {
+            pregunta._ordenActual = pregunta._ordenActual || barajarArrayLecturaLibre(pregunta.partes);
+            cuerpo = `<div id="ordenarLibre-${pi}">${renderizarOrdenarLecturaLibre(pregunta, pi)}</div>`;
+        } else {
+            cuerpo = (pregunta.opciones || []).map(opcion => `
                 <label style="display:block; margin-bottom:4px;">
                     <input type="radio" name="preguntaLibre${pi}" value="${opcion.valor}">
                     ${opcion.texto}
                 </label>
-            `).join("")}
-        </div>
-    `).join("");
+            `).join("");
+        }
+
+        return `
+            <div style="margin-bottom:15px;">
+                <p style="font-weight:600; margin-bottom:6px;">${pi + 1}. ${pregunta.pregunta}</p>
+                ${cuerpo}
+            </div>
+        `;
+
+    }).join("");
+
+    contPreguntas.addEventListener("click", (e) => {
+
+        const btn = e.target.closest("[data-accion='mover-parte-arriba'], [data-accion='mover-parte-abajo']");
+        if (!btn) return;
+
+        const pi = Number(btn.dataset.indice);
+        const oi = Number(btn.dataset.oi);
+        const pregunta = preguntas[pi];
+        const destino = btn.dataset.accion === "mover-parte-arriba" ? oi - 1 : oi + 1;
+
+        if (destino < 0 || destino >= pregunta._ordenActual.length) return;
+
+        [pregunta._ordenActual[oi], pregunta._ordenActual[destino]] =
+            [pregunta._ordenActual[destino], pregunta._ordenActual[oi]];
+
+        document.getElementById(`ordenarLibre-${pi}`).innerHTML = renderizarOrdenarLecturaLibre(pregunta, pi);
+
+    });
 
     document.getElementById("btnCalificarLecturaLibre").addEventListener("click", () => {
 
         let correctas = 0;
 
         preguntas.forEach((pregunta, pi) => {
-            const marcada = document.querySelector(`input[name="preguntaLibre${pi}"]:checked`);
-            if (marcada && marcada.value === pregunta.correcta) correctas++;
+
+            const tipo = pregunta.tipo || "opcionMultiple";
+            let acerto = false;
+
+            if (tipo === "vf") {
+                const marcada = document.querySelector(`input[name="preguntaLibre${pi}"]:checked`);
+                acerto = !!marcada && (marcada.value === "true") === pregunta.correcta;
+            } else if (tipo === "completar" || tipo === "textoLibre") {
+                const campo = document.getElementById(`respuestaLibreTexto-${pi}`);
+                const dada = normalizarTextoLecturaLibre(campo ? campo.value : "");
+                acerto = dada.length > 0 && pregunta.respuestasValidas.some(
+                    valida => normalizarTextoLecturaLibre(valida) === dada
+                );
+            } else if (tipo === "ordenar") {
+                const actual = pregunta._ordenActual || pregunta.partes;
+                acerto = actual.length === pregunta.partes.length
+                    && actual.every((parte, i) => parte === pregunta.partes[i]);
+            } else {
+                const marcada = document.querySelector(`input[name="preguntaLibre${pi}"]:checked`);
+                acerto = !!marcada && marcada.value === pregunta.correcta;
+            }
+
+            if (acerto) correctas++;
+
         });
 
         const resultado = document.getElementById("resultadoLecturaLibre");
@@ -101,6 +166,39 @@ async function iniciarLecturaLibre() {
 
     });
 
+}
+
+// Utilidades de tipos de pregunta (Etapa 34) — mismo criterio que
+// motor.js/motor-mejorar.js, duplicadas porque esta pantalla nunca
+// coincide con esas otras en la misma página.
+
+function barajarArrayLecturaLibre(arreglo) {
+    const copia = [...arreglo];
+    for (let i = copia.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copia[i], copia[j]] = [copia[j], copia[i]];
+    }
+    return copia;
+}
+
+function normalizarTextoLecturaLibre(s) {
+    return String(s == null ? "" : s)
+        .trim()
+        .toLowerCase()
+        .normalize("NFD").replace(/[̀-ͯ]/g, "")
+        .replace(/\s+/g, " ");
+}
+
+function renderizarOrdenarLecturaLibre(pregunta, pi) {
+    return pregunta._ordenActual.map((parte, oi) => `
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+            <span style="flex:1; padding:8px; border:1px solid var(--borde); border-radius:8px; background:white;">${parte}</span>
+            <button type="button" data-accion="mover-parte-arriba" data-indice="${pi}" data-oi="${oi}"
+                    ${oi === 0 ? "disabled" : ""} style="width:auto; padding:6px 10px;">▲</button>
+            <button type="button" data-accion="mover-parte-abajo" data-indice="${pi}" data-oi="${oi}"
+                    ${oi === pregunta._ordenActual.length - 1 ? "disabled" : ""} style="width:auto; padding:6px 10px;">▼</button>
+        </div>
+    `).join("");
 }
 
 auth.onAuthStateChanged((user) => {

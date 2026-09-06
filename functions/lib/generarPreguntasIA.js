@@ -40,9 +40,15 @@ function construirPrompt({ texto, tipo, nivel, edad, cantidadPreguntas }) {
 
 ${contextoAudiencia}
 
-Genera EXACTAMENTE ${cantidadPreguntas} preguntas de opción múltiple sobre el siguiente texto. Cada pregunta debe evaluar comprensión real del texto (no trivia externa), tener entre 3 y 4 opciones plausibles, y marcar cuál opción es la correcta. Las preguntas deben estar en español, ser claras y no ambiguas, y cubrir distintas partes del texto (no todas del mismo párrafo).
+Genera EXACTAMENTE ${cantidadPreguntas} preguntas sobre el siguiente texto. Cada pregunta debe evaluar comprensión real del texto (no trivia externa), estar en español, ser clara y no ambigua, y cubrir distintas partes del texto (no todas del mismo párrafo).
 
-Usa "a", "b", "c", "d" como valores de las opciones (en ese orden).
+Hay CINCO tipos de pregunta disponibles — elige, para cada una, el tipo que mejor se preste al fragmento que estás evaluando (no todas las preguntas de una misma lectura tienen que ser del mismo tipo; usa una mezcla razonable si el texto lo permite):
+
+- "opcionMultiple": 3 a 4 opciones plausibles, usa "a", "b", "c", "d" como valores de las opciones (en ese orden) y marca cuál es "correcta". Sirve para casi cualquier dato del texto.
+- "vf": una afirmación sobre el texto y si es verdadera o falsa ("correcta": true o false). Se presta bien para un dato puntual y concreto.
+- "completar": la pregunta es una oración del texto (o muy cercana a ella) con UN espacio en blanco marcado exactamente como "___", y "respuestasValidas" trae una o más formas correctas de llenarlo (ej. con o sin artículo). Se presta bien para vocabulario o un dato puntual dentro de una oración.
+- "ordenar": una lista de 3 a 5 fragmentos ("partes") en el ORDEN CORRECTO en que ocurren en el texto — el frontend los revuelve solo para mostrarlos. Se presta bien para una secuencia de eventos o pasos.
+- "textoLibre": una pregunta abierta de respuesta corta, con "respuestasValidas" listando una o más respuestas cortas aceptables (normalizadas: sin importar mayúsculas ni tildes). Se presta bien para preguntas directas ("¿quién...?", "¿dónde...?") con una respuesta corta e inequívoca — evita preguntas de opinión o con muchas respuestas posibles.
 
 Texto:
 """

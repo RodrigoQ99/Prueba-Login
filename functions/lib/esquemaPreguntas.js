@@ -1,13 +1,21 @@
 // ==========================================================
 // ESQUEMA (Zod) DEL BANCO DE PREGUNTAS
 // ==========================================================
-// Misma forma que ya usa el resto del proyecto para una pregunta (ver
-// editor-preguntas.js / protagonista.js en el frontend):
-//   { pregunta, opciones: [{ texto, valor }], correcta }
+// Mismo "tipo" de discriminador que usa el frontend (ver
+// editor-preguntas.js / motor.js): una pregunta sin "tipo" se trata
+// como "opcionMultiple" en el resto del proyecto (retrocompatibilidad
+// con lecturas ya existentes), pero la IA SIEMPRE debe declararlo
+// explícito, así que aquí es obligatorio.
+//
 // Se le pasa a client.messages.parse() como output_config.format, así
-// Claude queda OBLIGADO a responder con esta forma exacta — no hace
-// falta (ni conviene) confiar solo en la instrucción de texto "responde
-// en JSON".
+// Claude queda OBLIGADO a responder con alguna de estas formas exactas
+// — no hace falta (ni conviene) confiar solo en la instrucción de
+// texto "responde en JSON".
+//
+// El "refine" de opción múltiple (correcta === alguna opción) se
+// aplica DESPUÉS de armar el discriminatedUnion, no antes: Zod exige
+// que cada rama de un discriminatedUnion sea un ZodObject puro — un
+// .refine() ANTES lo envuelve en ZodEffects y deja de calificar.
 // ==========================================================
 
 const { z } = require("zod");
@@ -17,12 +25,49 @@ const OpcionSchema = z.object({
     valor: z.string().min(1)
 });
 
-const PreguntaSchema = z.object({
+const PreguntaOpcionMultipleSchema = z.object({
+    tipo: z.literal("opcionMultiple"),
     pregunta: z.string().min(1),
     opciones: z.array(OpcionSchema).min(2).max(5),
     correcta: z.string().min(1)
-}).refine(
-    (p) => p.opciones.some(o => o.valor === p.correcta),
+});
+
+const PreguntaVfSchema = z.object({
+    tipo: z.literal("vf"),
+    pregunta: z.string().min(1),
+    correcta: z.boolean()
+});
+
+// "completar": la pregunta debe traer el espacio en blanco escrito como
+// "___" dentro del propio texto (ej. "El río ___ es el más largo.").
+const PreguntaCompletarSchema = z.object({
+    tipo: z.literal("completar"),
+    pregunta: z.string().min(1),
+    respuestasValidas: z.array(z.string().min(1)).min(1).max(5)
+});
+
+// "ordenar": "partes" ya viene en el ORDEN CORRECTO — el frontend la
+// revuelve para mostrarla (ver motor.js).
+const PreguntaOrdenarSchema = z.object({
+    tipo: z.literal("ordenar"),
+    pregunta: z.string().min(1),
+    partes: z.array(z.string().min(1)).min(3).max(6)
+});
+
+const PreguntaTextoLibreSchema = z.object({
+    tipo: z.literal("textoLibre"),
+    pregunta: z.string().min(1),
+    respuestasValidas: z.array(z.string().min(1)).min(1).max(5)
+});
+
+const PreguntaSchema = z.discriminatedUnion("tipo", [
+    PreguntaOpcionMultipleSchema,
+    PreguntaVfSchema,
+    PreguntaCompletarSchema,
+    PreguntaOrdenarSchema,
+    PreguntaTextoLibreSchema
+]).refine(
+    (p) => p.tipo !== "opcionMultiple" || p.opciones.some(o => o.valor === p.correcta),
     { message: "\"correcta\" debe coincidir con el \"valor\" de una de las opciones." }
 );
 

@@ -120,7 +120,15 @@ IMPORTANTÍSIMO — ORIGINALIDAD: la historia debe ser inventada por ti en este 
 Escribe:
 1. Un TÍTULO breve y atractivo para la historia (que tampoco sea el título de una obra existente).
 2. El TEXTO completo de la historia, dividido en párrafos coherentes, de alrededor de ${objetivo} palabras en total (mínimo ${rangoPalabras.min}, máximo ${rangoPalabras.max} palabras). Ajústate a ese conteo lo mejor que puedas: es importante para calcular el tiempo de lectura.
-3. EXACTAMENTE ${cantidadPreguntas} preguntas de opción múltiple de comprensión lectora sobre la historia que acabas de escribir (no trivia externa), cada una con entre 3 y 4 opciones plausibles, marcando cuál opción es la correcta. Usa "a", "b", "c", "d" como valores de las opciones, en ese orden.`;
+3. EXACTAMENTE ${cantidadPreguntas} preguntas de comprensión lectora sobre la historia que acabas de escribir (no trivia externa).
+
+Hay CINCO tipos de pregunta disponibles — elige, para cada una, el tipo que mejor se preste a lo que estás evaluando (no todas tienen que ser del mismo tipo; usa una mezcla razonable):
+
+- "opcionMultiple": 3 a 4 opciones plausibles, usa "a", "b", "c", "d" como valores de las opciones (en ese orden) y marca cuál es "correcta".
+- "vf": una afirmación sobre la historia y si es verdadera o falsa ("correcta": true o false).
+- "completar": una oración de la historia (o muy cercana a ella) con UN espacio en blanco marcado exactamente como "___", y "respuestasValidas" con una o más formas correctas de llenarlo.
+- "ordenar": una lista de 3 a 5 fragmentos ("partes") en el ORDEN CORRECTO en que ocurren en la historia — el frontend los revuelve solo para mostrarlos. Se presta bien para una secuencia de eventos.
+- "textoLibre": una pregunta abierta de respuesta corta, con "respuestasValidas" listando una o más respuestas cortas aceptables — evita preguntas de opinión o con muchas respuestas posibles.`;
 
 }
 

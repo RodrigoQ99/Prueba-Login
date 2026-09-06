@@ -534,6 +534,18 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
                        value="${(lecturaExistente && lecturaExistente.tiempoCuestionario) || 30}"
                        style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
 
+                <label>Enlace de libro recomendado (opcional)</label>
+                <input type="url" id="campoLibroRecomendadoUrl" autocomplete="off" placeholder="https://..."
+                       value="${((lecturaExistente && lecturaExistente.libroRecomendadoUrl) || "").replace(/"/g, "&quot;")}"
+                       style="width:100%; padding:10px; margin:6px 0 8px; border-radius:8px; border:1px solid var(--borde);">
+                <input type="text" id="campoLibroRecomendadoTexto" autocomplete="off"
+                       placeholder="¿Te gustó esta lectura? Conoce este libro"
+                       value="${((lecturaExistente && lecturaExistente.libroRecomendadoTexto) || "").replace(/"/g, "&quot;")}"
+                       style="width:100%; padding:10px; margin:0 0 5px; border-radius:8px; border:1px solid var(--borde);">
+                <p style="font-size:12px; color:var(--texto-suave); margin:0 0 15px;">
+                    Se muestra al usuario junto al resultado, al terminar el cuestionario. Si dejas la URL vacía, no se muestra nada.
+                </p>
+
                 <label>Texto</label>
                 <textarea id="campoTexto" rows="10" required
                           style="width:100%; padding:10px; margin:6px 0 4px; border-radius:8px; border:1px solid var(--borde); font-family:inherit;"
@@ -684,6 +696,16 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
             // una lectura ya existente, mismo criterio que "orden".
             origen: esNueva ? origenLectura : (lecturaExistente.origen || "admin")
         };
+
+        // Enlace opcional a un libro recomendado (se muestra al usuario al
+        // terminar el cuestionario, ver calificar() en motor.js). Sin URL,
+        // no se guarda ningún campo (set() sin merge ya lo deja fuera).
+        const libroRecomendadoUrl = overlay.querySelector("#campoLibroRecomendadoUrl").value.trim();
+        if (libroRecomendadoUrl) {
+            datos.libroRecomendadoUrl = libroRecomendadoUrl;
+            datos.libroRecomendadoTexto = overlay.querySelector("#campoLibroRecomendadoTexto").value.trim()
+                || "¿Te gustó esta lectura? Conoce este libro";
+        }
 
         // Si esta lectura viene de una propuesta de "Ser el protagonista de
         // la historia" (ver admin-lecturas.js), conserva quién la escribió —
@@ -2070,6 +2092,12 @@ async function abrirFormularioPalabra(palabraExistente, alGuardar) {
             <label style="display:block; text-align:left;">País (vacío = visible para todos los países)</label>
             <select id="campoPaisPalabra" style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);"></select>
 
+            <label style="display:block; text-align:left;">
+                Ejemplos de uso (opcional, hasta 10) — se muestran en "El rey ahorcado" al completar la palabra
+            </label>
+            <div id="listaEjemplosPalabra" style="margin-top:8px;"></div>
+            <button type="button" id="btnAgregarEjemploPalabra" class="botonAdminChico" style="margin:6px 0 15px;">+ Agregar ejemplo</button>
+
             <button id="btnGuardarPalabra">${esNueva ? "Agregar" : "Guardar cambios"}</button>
             <button class="modalCerrar" style="background:white; border:1px solid var(--borde); color:var(--texto-suave); margin-top:10px;">Cancelar</button>
         </div>
@@ -2078,6 +2106,51 @@ async function abrirFormularioPalabra(palabraExistente, alGuardar) {
     document.body.appendChild(overlay);
 
     renderizarSelectorPaisConGlobal(overlay.querySelector("#campoPaisPalabra"), (palabraExistente && palabraExistente.pais) || "");
+
+    // Ejemplos de uso: misma idea de "agregar fila" que el editor de
+    // preguntas (ver editor-preguntas.js), pero solo con texto libre y
+    // un tope fijo de 10 — no hace falta nada tan elaborado aquí.
+    const ejemplos = (palabraExistente && Array.isArray(palabraExistente.ejemplos))
+        ? [...palabraExistente.ejemplos] : [];
+
+    const listaEjemplosEl = overlay.querySelector("#listaEjemplosPalabra");
+    const btnAgregarEjemplo = overlay.querySelector("#btnAgregarEjemploPalabra");
+
+    function renderEjemplos() {
+
+        listaEjemplosEl.innerHTML = ejemplos.map((ejemplo, i) => `
+            <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
+                <input type="text" data-ejemplo-indice="${i}" value="${(ejemplo || "").replace(/"/g, "&quot;")}"
+                       placeholder="Ej. La niña corrió hacia la escuela."
+                       style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--borde);">
+                <button type="button" class="botonAdminChico botonPeligro" data-quitar-ejemplo="${i}">✕</button>
+            </div>
+        `).join("");
+
+        listaEjemplosEl.querySelectorAll("[data-ejemplo-indice]").forEach(input => {
+            input.addEventListener("input", () => {
+                ejemplos[Number(input.dataset.ejemploIndice)] = input.value;
+            });
+        });
+
+        listaEjemplosEl.querySelectorAll("[data-quitar-ejemplo]").forEach(btn => {
+            btn.addEventListener("click", () => {
+                ejemplos.splice(Number(btn.dataset.quitarEjemplo), 1);
+                renderEjemplos();
+            });
+        });
+
+        btnAgregarEjemplo.style.display = ejemplos.length >= 10 ? "none" : "";
+
+    }
+
+    btnAgregarEjemplo.addEventListener("click", () => {
+        if (ejemplos.length >= 10) return;
+        ejemplos.push("");
+        renderEjemplos();
+    });
+
+    renderEjemplos();
 
     overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
 
@@ -2108,13 +2181,18 @@ async function abrirFormularioPalabra(palabraExistente, alGuardar) {
                 await db.collection("bancoPalabras").doc(palabraExistente.id).delete();
             }
 
-            await db.collection("bancoPalabras").doc(id).set({
+            const datosPalabra = {
                 palabra: palabra,
                 pista: pista || null,
                 // "" (opción "🌎 Todos los países") se guarda como null —
                 // visible para cualquier país (ver filtrarPorPais en lecturas.js).
                 pais: overlay.querySelector("#campoPaisPalabra").value || null
-            });
+            };
+
+            const ejemplosFinales = ejemplos.map(e => e.trim()).filter(e => e.length > 0).slice(0, 10);
+            if (ejemplosFinales.length > 0) datosPalabra.ejemplos = ejemplosFinales;
+
+            await db.collection("bancoPalabras").doc(id).set(datosPalabra);
 
             overlay.remove();
             if (alGuardar) alGuardar();
@@ -3359,25 +3437,90 @@ function abrirVistaPreviaLectura(lectura) {
     overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
 
     const contPreguntas = overlay.querySelector("#previaPreguntas");
-    contPreguntas.innerHTML = preguntas.map((pregunta, pi) => `
-        <div style="margin-bottom:15px;">
-            <p style="font-weight:600; margin-bottom:6px;">${pi + 1}. ${pregunta.pregunta}</p>
-            ${pregunta.opciones.map(opcion => `
+    contPreguntas.innerHTML = preguntas.map((pregunta, pi) => {
+
+        const tipo = pregunta.tipo || "opcionMultiple";
+        let cuerpo = "";
+
+        if (tipo === "vf") {
+            cuerpo = `
+                <label style="display:block; margin-bottom:4px;"><input type="radio" name="previaPregunta${pi}" value="true"> Verdadero</label>
+                <label style="display:block; margin-bottom:4px;"><input type="radio" name="previaPregunta${pi}" value="false"> Falso</label>
+            `;
+        } else if (tipo === "completar" || tipo === "textoLibre") {
+            cuerpo = `
+                <input type="text" id="previaRespuestaTexto-${pi}" autocomplete="off" placeholder="Escribe tu respuesta"
+                       style="width:100%; max-width:320px; padding:8px; border-radius:8px; border:1px solid var(--borde); box-sizing:border-box;">
+            `;
+        } else if (tipo === "ordenar") {
+            pregunta._ordenActual = pregunta._ordenActual || barajarArrayVistaPrevia(pregunta.partes);
+            cuerpo = `<div id="previaOrdenar-${pi}">${renderizarOrdenarVistaPrevia(pregunta, pi)}</div>`;
+        } else {
+            cuerpo = (pregunta.opciones || []).map(opcion => `
                 <label style="display:block; margin-bottom:4px;">
                     <input type="radio" name="previaPregunta${pi}" value="${opcion.valor}">
                     ${opcion.texto}
                 </label>
-            `).join("")}
-        </div>
-    `).join("") || "<p style='color:var(--texto-suave);'>Esta lectura no tiene preguntas todavía.</p>";
+            `).join("");
+        }
+
+        return `
+            <div style="margin-bottom:15px;">
+                <p style="font-weight:600; margin-bottom:6px;">${pi + 1}. ${pregunta.pregunta}</p>
+                ${cuerpo}
+            </div>
+        `;
+
+    }).join("") || "<p style='color:var(--texto-suave);'>Esta lectura no tiene preguntas todavía.</p>";
+
+    contPreguntas.addEventListener("click", (e) => {
+
+        const btn = e.target.closest("[data-accion='mover-parte-arriba'], [data-accion='mover-parte-abajo']");
+        if (!btn) return;
+
+        const pi = Number(btn.dataset.indice);
+        const oi = Number(btn.dataset.oi);
+        const pregunta = preguntas[pi];
+        const destino = btn.dataset.accion === "mover-parte-arriba" ? oi - 1 : oi + 1;
+
+        if (destino < 0 || destino >= pregunta._ordenActual.length) return;
+
+        [pregunta._ordenActual[oi], pregunta._ordenActual[destino]] =
+            [pregunta._ordenActual[destino], pregunta._ordenActual[oi]];
+
+        document.getElementById(`previaOrdenar-${pi}`).innerHTML = renderizarOrdenarVistaPrevia(pregunta, pi);
+
+    });
 
     overlay.querySelector("#btnCalificarPrevia").addEventListener("click", () => {
 
         let correctas = 0;
 
         preguntas.forEach((pregunta, pi) => {
-            const marcada = overlay.querySelector(`input[name="previaPregunta${pi}"]:checked`);
-            if (marcada && marcada.value === pregunta.correcta) correctas++;
+
+            const tipo = pregunta.tipo || "opcionMultiple";
+            let acerto = false;
+
+            if (tipo === "vf") {
+                const marcada = overlay.querySelector(`input[name="previaPregunta${pi}"]:checked`);
+                acerto = !!marcada && (marcada.value === "true") === pregunta.correcta;
+            } else if (tipo === "completar" || tipo === "textoLibre") {
+                const campo = overlay.querySelector(`#previaRespuestaTexto-${pi}`);
+                const dada = normalizarTextoVistaPrevia(campo ? campo.value : "");
+                acerto = dada.length > 0 && pregunta.respuestasValidas.some(
+                    valida => normalizarTextoVistaPrevia(valida) === dada
+                );
+            } else if (tipo === "ordenar") {
+                const actual = pregunta._ordenActual || pregunta.partes;
+                acerto = actual.length === pregunta.partes.length
+                    && actual.every((parte, i) => parte === pregunta.partes[i]);
+            } else {
+                const marcada = overlay.querySelector(`input[name="previaPregunta${pi}"]:checked`);
+                acerto = !!marcada && marcada.value === pregunta.correcta;
+            }
+
+            if (acerto) correctas++;
+
         });
 
         const resultado = overlay.querySelector("#previaResultado");
@@ -3388,6 +3531,38 @@ function abrirVistaPreviaLectura(lectura) {
 
     });
 
+}
+
+// Utilidades de tipos de pregunta para la vista previa de arriba —
+// mismo criterio que motor.js/motor-mejorar.js, duplicadas porque
+// nunca coinciden en la misma página.
+function barajarArrayVistaPrevia(arreglo) {
+    const copia = [...arreglo];
+    for (let i = copia.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copia[i], copia[j]] = [copia[j], copia[i]];
+    }
+    return copia;
+}
+
+function normalizarTextoVistaPrevia(s) {
+    return String(s == null ? "" : s)
+        .trim()
+        .toLowerCase()
+        .normalize("NFD").replace(/[̀-ͯ]/g, "")
+        .replace(/\s+/g, " ");
+}
+
+function renderizarOrdenarVistaPrevia(pregunta, pi) {
+    return pregunta._ordenActual.map((parte, oi) => `
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+            <span style="flex:1; padding:8px; border:1px solid var(--borde); border-radius:8px; background:white;">${parte}</span>
+            <button type="button" data-accion="mover-parte-arriba" data-indice="${pi}" data-oi="${oi}"
+                    ${oi === 0 ? "disabled" : ""} style="width:auto; padding:6px 10px;">▲</button>
+            <button type="button" data-accion="mover-parte-abajo" data-indice="${pi}" data-oi="${oi}"
+                    ${oi === pregunta._ordenActual.length - 1 ? "disabled" : ""} style="width:auto; padding:6px 10px;">▼</button>
+        </div>
+    `).join("");
 }
 
 
@@ -3548,17 +3723,31 @@ async function generarCodigoLecturaNuevo(lecturaId) {
  */
 function abrirModalCodigosLectura(lectura) {
 
+    const esc = (s) => String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
     const overlay = document.createElement("div");
     overlay.className = "modalOverlay";
     overlay.innerHTML = `
-        <div class="modalCaja modalCajaInfo" style="text-align:center;">
+        <div class="modalCaja modalCajaInfo" style="text-align:center; max-width:560px;">
             <h2>🔑 Códigos de canje</h2>
-            <p style="font-weight:600; margin-bottom:5px;">${lectura.titulo}</p>
+            <p style="font-weight:600; margin-bottom:5px;">${esc(lectura.titulo)}</p>
             <p style="font-size:13px; color:var(--texto-suave); margin-bottom:15px;">
                 Cada código de 8 caracteres desbloquea esta lectura una sola vez. Genera uno por cada golosina.
             </p>
-            <button type="button" id="btnGenerarCodigoLectura">🔑 Generar código</button>
-            <div id="listaCodigosLectura" style="text-align:left; margin-top:15px;"></div>
+
+            <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:10px;">
+                <button type="button" id="btnGenerarCodigoLectura">🔑 Generar 1 código</button>
+            </div>
+
+            <div style="display:flex; gap:8px; justify-content:center; align-items:center; flex-wrap:wrap; margin-bottom:15px;">
+                <label for="cantidadCodigosLote" style="font-size:13px; color:var(--texto-suave);">Generar en lote:</label>
+                <input type="number" id="cantidadCodigosLote" min="1" max="500" value="10"
+                       style="width:70px; padding:6px; border-radius:8px; border:1px solid var(--borde); text-align:center;">
+                <button type="button" id="btnGenerarLoteCodigos">Generar todas</button>
+            </div>
+
+            <div id="listaCodigosLectura" style="text-align:left; margin-top:5px;"></div>
             <button class="modalCerrar" style="background:white; border:1px solid var(--borde); color:var(--texto-suave); margin-top:15px;">Cerrar</button>
         </div>
     `;
@@ -3570,6 +3759,39 @@ function abrirModalCodigosLectura(lectura) {
     });
 
     const listaEl = overlay.querySelector("#listaCodigosLectura");
+
+    // Orden de la tabla: por defecto agrupa disponibles primero (como antes),
+    // pero cada encabezado de columna se puede hacer clic para reordenar.
+    let ordenCampo = "estado";
+    let ordenAsc = true;
+
+    function ordenarCodigos(codigos) {
+        const copia = [...codigos];
+        copia.sort((a, b) => {
+            let va, vb;
+            switch (ordenCampo) {
+                case "codigo":
+                    va = a.codigo; vb = b.codigo;
+                    break;
+                case "usadoPor":
+                    va = a._nombreUsuario || ""; vb = b._nombreUsuario || "";
+                    break;
+                case "usadoEn":
+                    va = a.usadoEn ? a.usadoEn.toMillis() : -1;
+                    vb = b.usadoEn ? b.usadoEn.toMillis() : -1;
+                    break;
+                case "estado":
+                default:
+                    // disponible (0) antes que usado (1)
+                    va = a.usado ? 1 : 0; vb = b.usado ? 1 : 0;
+                    break;
+            }
+            if (va < vb) return ordenAsc ? -1 : 1;
+            if (va > vb) return ordenAsc ? 1 : -1;
+            return 0;
+        });
+        return copia;
+    }
 
     async function render() {
 
@@ -3592,9 +3814,6 @@ function abrirModalCodigosLectura(lectura) {
             return;
         }
 
-        // Los disponibles primero, los usados al final
-        codigos.sort((a, b) => (a.usado === b.usado) ? 0 : (a.usado ? 1 : -1));
-
         // Trae el nombre de quien usó cada código, sin repetir consultas
         const uidsAConsultar = [...new Set(
             codigos.filter(c => c.usado && c.usadoPor).map(c => c.usadoPor)
@@ -3608,25 +3827,64 @@ function abrirModalCodigosLectura(lectura) {
                 nombresPorUid[uid] = uid;
             }
         }));
+        codigos.forEach(c => { c._nombreUsuario = c.usado ? (nombresPorUid[c.usadoPor] || "alguien") : ""; });
 
-        listaEl.innerHTML = codigos.map(c => `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--borde); gap:10px;">
-                <span style="display:flex; align-items:center; gap:6px; font-family:monospace; font-weight:700; letter-spacing:1px;">
-                    ${c.codigo}
-                    <button type="button" class="botonAdminChico" data-copiar="${c.codigo}"
-                            title="Copiar código" style="padding:4px 8px; font-size:13px;">📋</button>
-                </span>
-                <span style="font-size:13px; text-align:right; color:var(--texto-suave); white-space:nowrap;">
-                    ${c.usado
-                        ? `✅ Usado por ${nombresPorUid[c.usadoPor] || "alguien"}`
-                        : `🟢 Disponible`}
-                </span>
-            </div>
-        `).join("");
+        function dibujar() {
 
-        listaEl.querySelectorAll("[data-copiar]").forEach(btnCopiar => {
-            btnCopiar.addEventListener("click", () => copiarCodigoAlPortapapeles(btnCopiar));
-        });
+            const ordenados = ordenarCodigos(codigos);
+            const flechita = (campo) => ordenCampo === campo ? (ordenAsc ? " ▲" : " ▼") : "";
+            const disponibles = codigos.filter(c => !c.usado).length;
+
+            listaEl.innerHTML = `
+                <p style="font-size:13px; color:var(--texto-suave); margin-bottom:8px;">
+                    ${codigos.length} código(s) — ${disponibles} disponible(s), ${codigos.length - disponibles} usado(s)
+                </p>
+                <div style="overflow-x:auto;">
+                    <table class="tablaEstadisticas">
+                        <thead>
+                            <tr>
+                                <th style="cursor:pointer; user-select:none;" data-orden="codigo">Código${flechita("codigo")}</th>
+                                <th style="cursor:pointer; user-select:none;" data-orden="estado">Estado${flechita("estado")}</th>
+                                <th style="cursor:pointer; user-select:none;" data-orden="usadoPor">Usado por${flechita("usadoPor")}</th>
+                                <th style="cursor:pointer; user-select:none;" data-orden="usadoEn">Fecha de uso${flechita("usadoEn")}</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${ordenados.map(c => `
+                                <tr>
+                                    <td style="font-family:monospace; font-weight:700; letter-spacing:1px;">${c.codigo}</td>
+                                    <td>${c.usado ? "✅ Usado" : "🟢 Disponible"}</td>
+                                    <td>${c.usado ? esc(c._nombreUsuario) : "—"}</td>
+                                    <td>${(c.usado && c.usadoEn && c.usadoEn.toDate) ? c.usadoEn.toDate().toLocaleString("es") : "—"}</td>
+                                    <td><button type="button" class="botonAdminChico" data-copiar="${c.codigo}" title="Copiar código" style="padding:4px 8px; font-size:13px;">📋</button></td>
+                                </tr>
+                            `).join("")}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            listaEl.querySelectorAll("[data-orden]").forEach(th => {
+                th.addEventListener("click", () => {
+                    const campo = th.dataset.orden;
+                    if (ordenCampo === campo) {
+                        ordenAsc = !ordenAsc;
+                    } else {
+                        ordenCampo = campo;
+                        ordenAsc = true;
+                    }
+                    dibujar();
+                });
+            });
+
+            listaEl.querySelectorAll("[data-copiar]").forEach(btnCopiar => {
+                btnCopiar.addEventListener("click", () => copiarCodigoAlPortapapeles(btnCopiar));
+            });
+
+        }
+
+        dibujar();
 
     }
 
@@ -3645,7 +3903,48 @@ function abrirModalCodigosLectura(lectura) {
         }
 
         btn.disabled = false;
-        btn.textContent = "🔑 Generar código";
+        btn.textContent = "🔑 Generar 1 código";
+
+    });
+
+    overlay.querySelector("#btnGenerarLoteCodigos").addEventListener("click", async () => {
+
+        const inputCantidad = overlay.querySelector("#cantidadCodigosLote");
+        const cantidad = Math.floor(Number(inputCantidad.value));
+
+        if (!Number.isFinite(cantidad) || cantidad < 1) {
+            alert("Escribe cuántos códigos quieres generar (un número mayor a 0).");
+            return;
+        }
+        if (cantidad > 500) {
+            alert("Como mucho se pueden generar 500 códigos de una vez.");
+            return;
+        }
+
+        const btnGenerarUno = overlay.querySelector("#btnGenerarCodigoLectura");
+        const btn = overlay.querySelector("#btnGenerarLoteCodigos");
+        btn.disabled = true;
+        btnGenerarUno.disabled = true;
+
+        // Uno por uno (no en paralelo): así cada código se revisa contra los
+        // ya guardados en Firestore, incluidos los recién creados en este
+        // mismo lote, y no chocan dos códigos iguales entre sí.
+        let generados = 0;
+        try {
+            for (let i = 0; i < cantidad; i++) {
+                btn.textContent = `Generando ${i + 1}/${cantidad}...`;
+                await generarCodigoLecturaNuevo(lectura.id);
+                generados++;
+            }
+        } catch (error) {
+            console.error("No se pudieron generar todos los códigos del lote:", error);
+            alert(`Se generaron ${generados} de ${cantidad} códigos antes de un error. Vuelve a intentar para completar el resto.`);
+        }
+
+        btn.disabled = false;
+        btnGenerarUno.disabled = false;
+        btn.textContent = "Generar todas";
+        await render();
 
     });
 

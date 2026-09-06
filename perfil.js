@@ -18,15 +18,22 @@ if (btnCerrarSesionPerfil) {
 async function cargarBadgeRachaPerfil(user) {
 
     const badge = document.getElementById("badgeRachaPerfil");
-    if (!badge) return;
+    const avatarTitulo = document.getElementById("avatarPerfilTitulo");
+    if (!badge && !avatarTitulo) return;
 
     try {
         const doc = await db.collection("usuarios").doc(user.uid).get();
         const datos = doc.exists ? doc.data() : {};
-        const racha = typeof calcularRachaVigente === "function"
-            ? calcularRachaVigente(datos)
-            : (datos.rachaActual || 0);
-        badge.textContent = `🔥 ${racha}`;
+
+        if (badge) {
+            const racha = typeof calcularRachaVigente === "function"
+                ? calcularRachaVigente(datos)
+                : (datos.rachaActual || 0);
+            badge.textContent = `🔥 ${racha}`;
+        }
+
+        if (avatarTitulo && datos.avatar) avatarTitulo.textContent = datos.avatar;
+
     } catch (error) {
         console.error("No se pudo cargar la racha:", error);
     }
