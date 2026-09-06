@@ -525,11 +525,16 @@ function actualizarChipEsperaAhorcado(hastaMs) {
 
 // El selector "🎮 Jugar / 📖 Ver diccionario" NO se ve a media partida:
 // solo al inicio, al terminar la ronda (ganó o se agotaron los tokens)
-// y durante la espera.
+// y durante la espera. La ronda se arranca sola en segundo plano al
+// entrar a la pantalla (ver auth.onAuthStateChanged más abajo) — si
+// para cuando termina de cargar el usuario ya se cambió a la pestaña
+// "diccionario", ese chequeo de "vistaActualAhorcado" evita que se
+// esconda el selector debajo de sus pies (si no, quedaba atrapado en
+// el diccionario sin forma de volver a "Jugar").
 function actualizarVisibilidadSelectorVista() {
     const sel = document.getElementById("selectorVistaAhorcado");
     if (!sel) return;
-    const enPartida = !!palabraActual && !rondaTerminada;
+    const enPartida = vistaActualAhorcado === "jugar" && !!palabraActual && !rondaTerminada;
     sel.style.display = enPartida ? "none" : "flex";
 }
 
