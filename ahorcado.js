@@ -7,6 +7,14 @@
 // ya ADIVINADAS — solo esas entran al diccionario y dejan de salir al
 // azar. Una palabra que se pierde nunca se revela ni se guarda.
 //
+// "EL REY AHORCADO" (Etapa 34) — NO es un juego aparte: es la misma
+// mecánica de siempre, solo cambia qué se muestra al ganar (ver el
+// bloque "recompensaGanarHtml" en renderAhorcado): 👑 corona de oro si
+// no hubo NINGÚN error en el intento, 🎖️ si hubo alguno, y de paso un
+// ejemplo de uso al azar si la palabra tiene alguno cargado
+// (bancoPalabras/{id}.ejemplos, hasta 10, ver abrirFormularioPalabra en
+// admin.js). Nada de esto usa IA — el admin escribe los ejemplos a mano.
+//
 // OPORTUNIDADES = TOKEN COMPARTIDO
 // -------------------------------------------------------------------
 //   - El jugador tiene un pozo de "oportunidades" (tokens), editable
@@ -308,6 +316,41 @@ function renderAhorcado() {
 
     const jugando = !terminado && !esperandoDecisionAhorcado;
 
+    // Recompensa al ganar (Etapa 34, "El rey ahorcado" fusionado aquí —
+    // el juego es el mismo, solo cambia esto): 👑 corona de oro si la
+    // palabra se adivinó sin ningún error en todo el intento, o 🎖️ si
+    // hubo alguno. Además, un ejemplo de uso al azar si esta palabra
+    // tiene alguno cargado (bancoPalabras/{id}.ejemplos, ver el editor
+    // en admin.js) — si no tiene ninguno, esta parte no aparece.
+    let recompensaGanarHtml = "";
+    if (gano) {
+
+        recompensaGanarHtml = erroresActuales === 0
+            ? `
+                <p style="text-align:center; font-size:48px; margin:15px 0 5px;">👑</p>
+                <p style="text-align:center; font-weight:700; font-size:18px; margin-bottom:10px;">
+                    ¡Corona de oro! La adivinaste sin ningún error. Se agregó a tu diccionario 📖
+                </p>
+            `
+            : `
+                <p style="text-align:center; font-size:40px; margin:15px 0 5px;">🎖️</p>
+                <p style="text-align:center; font-weight:700; font-size:18px; margin-bottom:10px;">
+                    ¡Adivinaste la palabra! Se agregó a tu diccionario 📖
+                </p>
+            `;
+
+        const ejemplos = Array.isArray(palabraActual.ejemplos) ? palabraActual.ejemplos : [];
+        if (ejemplos.length > 0) {
+            const ejemplo = ejemplos[Math.floor(Math.random() * ejemplos.length)];
+            recompensaGanarHtml += `
+                <p style="text-align:center; color:var(--texto-suave); font-style:italic; margin:10px 0 15px;">
+                    💬 "${ejemplo}"
+                </p>
+            `;
+        }
+
+    }
+
     cont.innerHTML = `
         ${palabraActual.pista
             ? `<p style="text-align:center; color:var(--texto-suave); margin-bottom:15px;">💡 Pista: ${palabraActual.pista}</p>`
@@ -343,9 +386,7 @@ function renderAhorcado() {
         </div>
 
         ${gano ? `
-            <p style="text-align:center; font-weight:700; font-size:18px; margin-bottom:15px;">
-                🎉 ¡Adivinaste la palabra! Se agregó a tu diccionario 📖
-            </p>
+            ${recompensaGanarHtml}
             <button id="btnJugarOtraAhorcado" style="display:block; margin:0 auto;">🔄 Jugar otra</button>
         ` : ""}
     `;

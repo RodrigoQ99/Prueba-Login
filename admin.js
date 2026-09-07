@@ -2093,7 +2093,7 @@ async function abrirFormularioPalabra(palabraExistente, alGuardar) {
             <select id="campoPaisPalabra" style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);"></select>
 
             <label style="display:block; text-align:left;">
-                Ejemplos de uso (opcional, hasta 10) — se muestran en "El rey ahorcado" al completar la palabra
+                Ejemplos de uso (opcional, hasta 10) — se muestran en Ahorcado al completar esta palabra
             </label>
             <div id="listaEjemplosPalabra" style="margin-top:8px;"></div>
             <button type="button" id="btnAgregarEjemploPalabra" class="botonAdminChico" style="margin:6px 0 15px;">+ Agregar ejemplo</button>
