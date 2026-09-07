@@ -32,7 +32,10 @@ async function cargarBadgeRachaPerfil(user) {
             badge.textContent = `🔥 ${racha}`;
         }
 
-        if (avatarTitulo && datos.avatar) avatarTitulo.textContent = datos.avatar;
+        // Vacío hasta que se sepa el valor real (ver perfil.html) — así
+        // no hay un "flash" del 👤 genérico antes de mostrar el avatar
+        // elegido de verdad.
+        if (avatarTitulo) avatarTitulo.textContent = datos.avatar || "👤";
 
     } catch (error) {
         console.error("No se pudo cargar la racha:", error);
