@@ -678,6 +678,39 @@ function normalizarTextoRespuesta(s) {
         .replace(/\s+/g, " ");
 }
 
+// Mismo criterio que textoRespuestaCorrecta/mostrarRespuestaCorrecta en
+// motor.js — duplicado porque estas dos pantallas nunca coinciden en la
+// misma página (ver la nota de tipoDePregunta más arriba).
+function textoRespuestaCorrectaMejora(pregunta, tipo) {
+
+    if (tipo === "vf") return pregunta.correcta ? "Verdadero" : "Falso";
+
+    if (tipo === "completar" || tipo === "textoLibre") {
+        return (pregunta.respuestasValidas || []).join(" / ");
+    }
+
+    if (tipo === "ordenar") {
+        return (pregunta.partes || []).join(" → ");
+    }
+
+    const opcion = (pregunta.opciones || []).find(o => o.valor === pregunta.correcta);
+    return opcion ? opcion.texto : "";
+
+}
+
+function mostrarRespuestaCorrectaMejora(indice, pregunta, tipo, acerto) {
+
+    const contPregunta = listaPreguntasMejora.children[indice];
+    if (!contPregunta) return;
+
+    contPregunta.insertAdjacentHTML("beforeend", `
+        <p style="margin-top:8px; font-size:13px; ${acerto ? "color:#2e9e5b;" : "color:#c0392b;"}">
+            ${acerto ? "✅" : "❌"} Respuesta correcta: <strong>${textoRespuestaCorrectaMejora(pregunta, tipo)}</strong>
+        </p>
+    `);
+
+}
+
 function renderizarPreguntaOrdenarMejora(pregunta, indice) {
 
     if (!pregunta._ordenActual) {
@@ -765,6 +798,8 @@ async function calificarMejora() {
         }
 
         if (acerto) correctas++;
+
+        mostrarRespuestaCorrectaMejora(indice, pregunta, tipo, acerto);
 
     });
 

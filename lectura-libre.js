@@ -158,6 +158,8 @@ async function iniciarLecturaLibre() {
 
             if (acerto) correctas++;
 
+            mostrarRespuestaCorrectaLibre(pi, pregunta, tipo, acerto);
+
         });
 
         const resultado = document.getElementById("resultadoLecturaLibre");
@@ -187,6 +189,36 @@ function normalizarTextoLecturaLibre(s) {
         .toLowerCase()
         .normalize("NFD").replace(/[̀-ͯ]/g, "")
         .replace(/\s+/g, " ");
+}
+
+function textoRespuestaCorrectaLibre(pregunta, tipo) {
+
+    if (tipo === "vf") return pregunta.correcta ? "Verdadero" : "Falso";
+
+    if (tipo === "completar" || tipo === "textoLibre") {
+        return (pregunta.respuestasValidas || []).join(" / ");
+    }
+
+    if (tipo === "ordenar") {
+        return (pregunta.partes || []).join(" → ");
+    }
+
+    const opcion = (pregunta.opciones || []).find(o => o.valor === pregunta.correcta);
+    return opcion ? opcion.texto : "";
+
+}
+
+function mostrarRespuestaCorrectaLibre(pi, pregunta, tipo, acerto) {
+
+    const contPregunta = document.getElementById("preguntasLecturaLibre").children[pi];
+    if (!contPregunta) return;
+
+    contPregunta.insertAdjacentHTML("beforeend", `
+        <p style="margin-top:8px; font-size:13px; ${acerto ? "color:#2e9e5b;" : "color:#c0392b;"}">
+            ${acerto ? "✅" : "❌"} Respuesta correcta: <strong>${textoRespuestaCorrectaLibre(pregunta, tipo)}</strong>
+        </p>
+    `);
+
 }
 
 function renderizarOrdenarLecturaLibre(pregunta, pi) {

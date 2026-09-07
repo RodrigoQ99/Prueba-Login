@@ -521,6 +521,9 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
                 <label>País (vacío = visible para todos los países)</label>
                 <select id="campoPaisLectura" style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);"></select>
 
+                <label>Género (opcional — para el QR personalizado y Sugerencias)</label>
+                <div id="campoGeneroLectura" style="margin:6px 0 15px;"></div>
+
                 <label>Tiempo de lectura en segundos</label>
                 <input type="number" id="campoTiempoLectura" min="10" required
                        value="${(lecturaExistente && lecturaExistente.tiempoLectura) || 60}"
@@ -580,6 +583,14 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
 
     overlay.querySelector("#campoNivel").value = (lecturaExistente && lecturaExistente.nivel) || "facil";
     renderizarSelectorPaisConGlobal(overlay.querySelector("#campoPaisLectura"), (lecturaExistente && lecturaExistente.pais) || "");
+
+    // Género (opcional): mismo selector de un solo género que ya usa
+    // "Ser el protagonista" (ver protagonista.js / generos.js) — lo usan
+    // Sugerencias y el QR personalizado para elegir una lectura afín a
+    // los intereses del usuario.
+    cargarGenerosLectura().then(() => {
+        renderizarSelectorGeneroUnico(overlay.querySelector("#campoGeneroLectura"), (lecturaExistente && lecturaExistente.genero) || "");
+    });
 
     const editorPreguntas = construirEditorPreguntas(overlay.querySelector("#editorPreguntas"), preguntas);
 
@@ -709,16 +720,17 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
 
         // Si esta lectura viene de una propuesta de "Ser el protagonista de
         // la historia" (ver admin-lecturas.js), conserva quién la escribió —
-        // así "Mis publicaciones" en su perfil puede encontrarla después —
-        // y su género, para poder sugerirla luego a otros usuarios con ese
-        // mismo interés (ver inicio.js, "Sugerencias").
+        // así "Mis publicaciones" en su perfil puede encontrarla después.
         if (lecturaExistente && lecturaExistente.autorUid) {
             datos.autorUid = lecturaExistente.autorUid;
             datos.autorNombre = lecturaExistente.autorNombre || "";
         }
-        if (lecturaExistente && lecturaExistente.genero) {
-            datos.genero = lecturaExistente.genero;
-        }
+
+        // Género (opcional, editable aquí desde Etapa 35): lo usan
+        // Sugerencias y el QR personalizado para elegir una lectura afín
+        // a los intereses del usuario (ver sugerencias.js / qr-personalizado.js).
+        const generoElegido = leerGeneroUnicoSeleccionado(overlay.querySelector("#campoGeneroLectura"));
+        if (generoElegido) datos.genero = generoElegido;
 
         try {
             await db.collection("lecturas").doc(id).set(datos);
@@ -3149,6 +3161,7 @@ function inicializarAdminLecturasPremios() {
             <div class="seccionAdminBotones">
                 <button id="btnNuevaLectura">+ Agregar lectura nueva</button>
                 <button id="btnConfigLecturaPremios" style="background:white; color:var(--azul); border:2px solid var(--azul);">⚙️ Configuración</button>
+                <button id="btnQrPersonalizado" style="background:white; color:var(--azul); border:2px solid var(--azul);">📱 QR personalizado</button>
                 <button id="btnRepararPuntos" class="botonAdminContorno">Borrar puntos de lecturas eliminadas</button>
             </div>
             <div id="listaAdminLecturas"></div>
@@ -3162,6 +3175,10 @@ function inicializarAdminLecturasPremios() {
 
     document.getElementById("btnConfigLecturaPremios").addEventListener("click", () => {
         abrirFormularioConfigLecturaPremios();
+    });
+
+    document.getElementById("btnQrPersonalizado").addEventListener("click", () => {
+        abrirModalQrPersonalizado();
     });
 
     document.getElementById("btnRepararPuntos").addEventListener("click", async () => {
@@ -4001,6 +4018,55 @@ function abrirModalCodigoQR(lectura) {
     overlay.querySelector("#urlQrLectura").textContent = url;
 
     const contenedorQr = overlay.querySelector("#contenedorQrLectura");
+
+    if (typeof QRCode === "function") {
+        new QRCode(contenedorQr, { text: url, width: 200, height: 200 });
+    } else {
+        contenedorQr.innerHTML = "<p style='color:#c0392b;'>No se pudo cargar el generador de QR (revisa tu conexión y recarga la página).</p>";
+    }
+
+}
+
+
+// ==========================================================
+// QR PERSONALIZADO (Etapa 35)
+// ==========================================================
+// UN SOLO QR para TODO el catálogo (no uno por lectura): quien lo
+// escanee llega a qr-personalizado.html, que le elige y desbloquea una
+// lectura que todavía no tenga — de preferencia una afín a los géneros
+// marcados en su perfil, o al azar si no hay coincidencia — gastando de
+// verdad una llave de 8 caracteres de esa lectura (misma escasez que el
+// resto del sistema, ver elegirYCanjearLecturaPersonalizada en
+// qr-personalizado.js). Pensado para repartirse fuera de la app (un
+// afiche, redes sociales) en vez de una golosina específica.
+function abrirModalQrPersonalizado() {
+
+    const overlay = document.createElement("div");
+    overlay.className = "modalOverlay";
+    overlay.innerHTML = `
+        <div class="modalCaja modalCajaInfo" style="text-align:center;">
+            <h2>📱 QR personalizado</h2>
+            <p style="font-size:13px; color:var(--texto-suave); margin-bottom:15px;">
+                Un solo QR para todo el catálogo, para repartir fuera de la app (afiche, redes, etc.).
+                A quien lo escanee le elige una lectura que no tenga, de preferencia de sus géneros
+                favoritos, y le gasta una llave real de esa lectura — igual que el QR de una lectura específica.
+            </p>
+            <div id="contenedorQrPersonalizado" style="display:flex; justify-content:center; margin:15px 0; min-height:200px; align-items:center;"></div>
+            <p style="font-size:12px; word-break:break-all; color:var(--texto-suave); margin-bottom:15px;" id="urlQrPersonalizado"></p>
+            <button class="modalCerrar" style="background:white; border:1px solid var(--borde); color:var(--texto-suave);">Cerrar</button>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    overlay.querySelector(".modalCerrar").addEventListener("click", () => overlay.remove());
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+
+    const url = new URL("qr-personalizado.html", window.location.href).href;
+    overlay.querySelector("#urlQrPersonalizado").textContent = url;
+
+    const contenedorQr = overlay.querySelector("#contenedorQrPersonalizado");
 
     if (typeof QRCode === "function") {
         new QRCode(contenedorQr, { text: url, width: 200, height: 200 });

@@ -611,6 +611,43 @@ function normalizarTextoRespuesta(s) {
         .replace(/\s+/g, " ");
 }
 
+// Texto legible de la respuesta correcta de una pregunta, según su
+// tipo — usado al calificar para mostrarla junto a cada pregunta (ver
+// mostrarRespuestaCorrecta).
+function textoRespuestaCorrecta(pregunta, tipo) {
+
+    if (tipo === "vf") return pregunta.correcta ? "Verdadero" : "Falso";
+
+    if (tipo === "completar" || tipo === "textoLibre") {
+        return (pregunta.respuestasValidas || []).join(" / ");
+    }
+
+    if (tipo === "ordenar") {
+        return (pregunta.partes || []).join(" → ");
+    }
+
+    const opcion = (pregunta.opciones || []).find(o => o.valor === pregunta.correcta);
+    return opcion ? opcion.texto : "";
+
+}
+
+// Le agrega a la tarjeta de esa pregunta (ya dibujada en #listaPreguntas,
+// en el mismo orden que preguntasSeleccionadas) la respuesta correcta,
+// con ✅/❌ según si el usuario acertó — se llama una vez por pregunta
+// al calificar.
+function mostrarRespuestaCorrecta(indice, pregunta, tipo, acerto) {
+
+    const contPregunta = listaPreguntas.children[indice];
+    if (!contPregunta) return;
+
+    contPregunta.insertAdjacentHTML("beforeend", `
+        <p style="margin-top:8px; font-size:13px; ${acerto ? "color:#2e9e5b;" : "color:#c0392b;"}">
+            ${acerto ? "✅" : "❌"} Respuesta correcta: <strong>${textoRespuestaCorrecta(pregunta, tipo)}</strong>
+        </p>
+    `);
+
+}
+
 function renderizarPreguntaOrdenar(pregunta, indice) {
 
     // El orden que ve y reacomoda el usuario vive en _ordenActual (se
@@ -921,6 +958,8 @@ async function calificar(){
 
         if (acerto) estrellas++;
 
+        mostrarRespuestaCorrecta(indice, pregunta, tipo, acerto);
+
     });
 
     // Cuánto tardó en total este intento (lectura + cuestionario) — lo usa
@@ -970,9 +1009,10 @@ async function calificar(){
 
     if(resultadoGuardado && resultadoGuardado.aprobo){
 
-        document.getElementById("mensajeFinal").innerHTML =
-            `¡Bien hecho! Ganaste: ${resultadoGuardado.premio} 🎉 ` +
-            `(+${resultadoGuardado.puntosGanados} puntos). Ve a "Mis premios" para canjearlo.`;
+        document.getElementById("mensajeFinal").innerHTML = `
+            <p>¡Bien hecho! Ganaste: ${resultadoGuardado.premio} 🎉 (+${resultadoGuardado.puntosGanados} puntos).</p>
+            <a href="premios.html" class="menuLink" style="display:inline-block; max-width:220px; margin:10px auto 0;">🎁 Ir a Mis premios</a>
+        `;
 
     }else if(resultadoGuardado && resultadoGuardado.yaCompletada){
 
@@ -986,22 +1026,34 @@ async function calificar(){
 
     }
 
-    // Enlace opcional a un libro recomendado (lo carga el admin por
-    // lectura, ver el editor en admin.js). Solo aparece si esta lectura
-    // en particular tiene URL guardada.
-    const anteriorLibro = document.getElementById("libroRecomendadoFinal");
-    if (anteriorLibro) anteriorLibro.remove();
-    if (lecturaActual && lecturaActual.libroRecomendadoUrl) {
-        const escLibro = (s) => String(s == null ? "" : s)
-            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-        document.getElementById("mensajeFinal").insertAdjacentHTML("afterend", `
-            <p id="libroRecomendadoFinal" style="text-align:center; margin:12px 0;">
-                📚 <a href="${escLibro(lecturaActual.libroRecomendadoUrl)}" target="_blank" rel="noopener noreferrer">
-                    ${escLibro(lecturaActual.libroRecomendadoTexto || "¿Te gustó esta lectura? Conoce este libro")}
-                </a>
-            </p>
-        `);
-    }
+    // Bloques después del mensaje final, en un solo insertAdjacentHTML
+    // (así el orden en pantalla queda fijo sin importar el orden del
+    // código): el enlace a libro recomendado (opcional, por lectura) y
+    // la invitación a "Ser el protagonista" — esta última SIEMPRE
+    // aparece, sin importar el resultado, para dar a conocer esa función.
+    const anteriorExtras = document.getElementById("extrasFinalLectura");
+    if (anteriorExtras) anteriorExtras.remove();
+
+    const escLibro = (s) => String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+    const libroHtml = (lecturaActual && lecturaActual.libroRecomendadoUrl) ? `
+        <p style="text-align:center; margin:12px 0;">
+            📚 <a href="${escLibro(lecturaActual.libroRecomendadoUrl)}" target="_blank" rel="noopener noreferrer">
+                ${escLibro(lecturaActual.libroRecomendadoTexto || "¿Te gustó esta lectura? Conoce este libro")}
+            </a>
+        </p>
+    ` : "";
+
+    document.getElementById("mensajeFinal").insertAdjacentHTML("afterend", `
+        <div id="extrasFinalLectura">
+            ${libroHtml}
+            <div style="text-align:center; margin:16px 0; padding:14px; border:1px dashed var(--azul); border-radius:12px;">
+                <p style="margin:0 0 8px; font-weight:600;">✍️ Haznos saber qué te gustaría leer y gana increíbles premios</p>
+                <a href="perfil-protagonista.html" class="menuLink" style="display:inline-block; max-width:220px; margin:0 auto;">Ser el protagonista</a>
+            </div>
+        </div>
+    `);
 
     mostrarBotonVolver();
 
