@@ -109,21 +109,25 @@ function mostrarRankingPersonal(lista, uidActual) {
 
 let dejarDeEscucharPersonal = null;
 
-// Etapa 30 — "bases de datos separadas" por país: ya no existe un solo
-// documento "actual" con todo el mundo — hay uno POR PAÍS (ver
-// actualizarRankingPersonal en puntos.js). "_sin_pais" agrupa cuentas
-// de antes de que existiera este campo.
-function iniciarEscuchaRankingPersonal(uidActual, paisUsuario) {
+// Etapa 30 — "bases de datos separadas" por país: actualizarRankingPersonal()
+// (ver puntos.js) sigue guardando un documento POR país sin cambios
+// ("_sin_pais" agrupa cuentas de antes de que existiera ese campo). PERO
+// varias cuentas de Guatemala se estaban quedando fuera del ranking que
+// veían otras cuentas de Guatemala, por no tener el campo "país" bien
+// guardado (cuentas viejas) — así que, por ahora (Etapa 35), esta
+// pantalla los COMBINA TODOS en un solo ranking mostrado, en vez de leer
+// solo el documento del país del usuario. Si más adelante se separan
+// los países otra vez, basta con volver a escuchar un solo doc() aquí.
+function iniciarEscuchaRankingPersonal(uidActual) {
 
-    dejarDeEscucharPersonal = db.collection("rankingPersonal").doc(paisUsuario || "_sin_pais")
-        .onSnapshot(doc => {
+    dejarDeEscucharPersonal = db.collection("rankingPersonal")
+        .onSnapshot(snapshot => {
 
-            if (!doc.exists) {
-                mostrarRankingPersonal([], uidActual);
-                return;
-            }
+            const listaCombinada = [];
+            snapshot.forEach(doc => listaCombinada.push(...(doc.data().lista || [])));
+            listaCombinada.sort((a, b) => b.puntos - a.puntos);
 
-            mostrarRankingPersonal(doc.data().lista, uidActual);
+            mostrarRankingPersonal(listaCombinada, uidActual);
 
         }, error => {
             console.error("Error al escuchar el ranking personal:", error);
@@ -192,19 +196,19 @@ function mostrarRankingColegios(lista, colegioActual, gradoActual) {
 
 let dejarDeEscucharColegios = null;
 
-// Mismo criterio de país que iniciarEscuchaRankingPersonal() (ver esa
-// nota) — ver actualizarRankingActual() en puntos.js.
-function iniciarEscuchaRankingColegios(colegioActual, gradoActual, paisUsuario) {
+// Mismo criterio de "combinar todos los países por ahora" que
+// iniciarEscuchaRankingPersonal() (ver esa nota) — ver
+// actualizarRankingActual() en puntos.js.
+function iniciarEscuchaRankingColegios(colegioActual, gradoActual) {
 
-    dejarDeEscucharColegios = db.collection("rankingActual").doc(paisUsuario || "_sin_pais")
-        .onSnapshot(doc => {
+    dejarDeEscucharColegios = db.collection("rankingActual")
+        .onSnapshot(snapshot => {
 
-            if (!doc.exists) {
-                mostrarRankingColegios([], colegioActual, gradoActual);
-                return;
-            }
+            const listaCombinada = [];
+            snapshot.forEach(doc => listaCombinada.push(...(doc.data().lista || [])));
+            listaCombinada.sort((a, b) => b.puntos - a.puntos);
 
-            mostrarRankingColegios(doc.data().lista, colegioActual, gradoActual);
+            mostrarRankingColegios(listaCombinada, colegioActual, gradoActual);
 
         }, error => {
             console.error("Error al escuchar el ranking de colegios:", error);
@@ -227,9 +231,8 @@ auth.onAuthStateChanged(async (user) => {
         return;
     }
 
-    // Se necesita el país ANTES de escuchar cualquiera de los dos
-    // rankings (Etapa 30 — cada uno ahora es un documento por país, ver
-    // la nota en iniciarEscuchaRankingPersonal).
+    // Se necesita saber el tipo (particular/estudiante) antes de decidir
+    // qué secciones mostrar.
     let datos = null;
     try {
         const usuarioDoc = await db.collection("usuarios").doc(user.uid).get();
@@ -238,10 +241,8 @@ auth.onAuthStateChanged(async (user) => {
         console.error("Error al revisar el perfil del usuario:", error);
     }
 
-    const paisUsuario = datos ? (datos.pais || null) : null;
-
     // El ranking personal es para TODOS
-    iniciarEscuchaRankingPersonal(user.uid, paisUsuario);
+    iniciarEscuchaRankingPersonal(user.uid);
 
     // El ranking de colegios (y todo lo relacionado) solo se muestra
     // si el usuario es de tipo "estudiante". Un particular no ve nada
@@ -254,7 +255,7 @@ auth.onAuthStateChanged(async (user) => {
     if (tipo === "estudiante") {
         seccionColegios.style.display = "block";
         seccionSoloEstudiantes.style.display = "none";
-        iniciarEscuchaRankingColegios(datos.colegio, datos.grado, paisUsuario);
+        iniciarEscuchaRankingColegios(datos.colegio, datos.grado);
     } else {
         seccionColegios.style.display = "none";
         seccionSoloEstudiantes.style.display = "block";
