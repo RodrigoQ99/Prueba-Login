@@ -219,9 +219,15 @@ function construirEditorPreguntas(contenedor, preguntas) {
         }
 
         if (accion === "cambiar-tipo") {
-            const textoPreguntaActual = preguntas[pi].pregunta;
+            // A propósito NO se conserva el texto de la pregunta anterior:
+            // cada tipo tiene una forma de redactarla distinta (una
+            // pregunta con "?", una afirmación para V/F, una oración con
+            // "___" para completar...) — arrastrar el texto viejo dejaba
+            // una combinación que no tenía sentido (ej. una "completar"
+            // con una pregunta que no traía ningún "___"). Con el tipo
+            // vacío de verdad, el admin escribe el texto ya pensando en
+            // la forma correcta para ese tipo.
             preguntas[pi] = objetoPreguntaVacia(e.target.value);
-            preguntas[pi].pregunta = textoPreguntaActual;
             render();
         }
 

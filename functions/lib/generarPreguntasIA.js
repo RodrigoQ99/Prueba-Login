@@ -42,13 +42,20 @@ ${contextoAudiencia}
 
 Genera EXACTAMENTE ${cantidadPreguntas} preguntas sobre el siguiente texto. Cada pregunta debe evaluar comprensión real del texto (no trivia externa), estar en español, ser clara y no ambigua, y cubrir distintas partes del texto (no todas del mismo párrafo).
 
-Hay CINCO tipos de pregunta disponibles — elige, para cada una, el tipo que mejor se preste al fragmento que estás evaluando (no todas las preguntas de una misma lectura tienen que ser del mismo tipo; usa una mezcla razonable si el texto lo permite):
+Hay CINCO tipos de pregunta disponibles — elige, para cada una, el tipo que mejor se preste al fragmento que estás evaluando (no todas las preguntas de una misma lectura tienen que ser del mismo tipo; usa una mezcla razonable si el texto lo permite). Cada tipo tiene una FORMA fija — respétala exactamente, con este ejemplo (inventado, no del texto real) de cada uno:
 
-- "opcionMultiple": 3 a 4 opciones plausibles, usa "a", "b", "c", "d" como valores de las opciones (en ese orden) y marca cuál es "correcta". Sirve para casi cualquier dato del texto.
-- "vf": una afirmación sobre el texto y si es verdadera o falsa ("correcta": true o false). Se presta bien para un dato puntual y concreto.
-- "completar": la pregunta es una oración del texto (o muy cercana a ella) con UN espacio en blanco marcado exactamente como "___", y "respuestasValidas" trae una o más formas correctas de llenarlo (ej. con o sin artículo). Se presta bien para vocabulario o un dato puntual dentro de una oración.
-- "ordenar": una lista de 3 a 5 fragmentos ("partes") en el ORDEN CORRECTO en que ocurren en el texto — el frontend los revuelve solo para mostrarlos. Se presta bien para una secuencia de eventos o pasos.
-- "textoLibre": una pregunta abierta de respuesta corta, con "respuestasValidas" listando una o más respuestas cortas aceptables (normalizadas: sin importar mayúsculas ni tildes). Se presta bien para preguntas directas ("¿quién...?", "¿dónde...?") con una respuesta corta e inequívoca — evita preguntas de opinión o con muchas respuestas posibles.
+- "opcionMultiple": una PREGUNTA (termina en "?"), 3 a 4 opciones plausibles con "a"/"b"/"c"/"d" como valores (en ese orden), y "correcta" con el valor de la correcta.
+  Ejemplo: { "tipo": "opcionMultiple", "pregunta": "¿Qué encontró Marta debajo del árbol?", "opciones": [{"texto":"Una moneda","valor":"a"},{"texto":"Un nido","valor":"b"},{"texto":"Un libro","valor":"c"}], "correcta": "b" }
+- "vf": una AFIRMACIÓN declarativa (nunca termina en "?", nunca lleva "___") que se pueda juzgar verdadera o falsa tal cual, con "correcta": true o false.
+  Ejemplo: { "tipo": "vf", "pregunta": "Marta encontró un nido debajo del árbol.", "correcta": true }
+- "completar": una oración del texto (o muy cercana) con UN Y SOLO UN espacio marcado EXACTAMENTE como "___" en el lugar del dato que falta — nunca una oración completa sin ningún "___", y nunca uses "___" en ningún otro tipo de pregunta. "respuestasValidas" trae una o más formas correctas de llenarlo.
+  Ejemplo: { "tipo": "completar", "pregunta": "Debajo del árbol, Marta encontró un ___.", "respuestasValidas": ["nido", "un nido"] }
+- "ordenar": 3 a 5 fragmentos ("partes") en el ORDEN CORRECTO en que ocurren en el texto — el frontend los revuelve solo para mostrarlos, tú entrégalos ya en orden.
+  Ejemplo: { "tipo": "ordenar", "pregunta": "Ordena lo que hizo Marta esa mañana.", "partes": ["Se despertó temprano", "Salió a caminar al parque", "Encontró un nido debajo del árbol"] }
+- "textoLibre": una pregunta ABIERTA de respuesta corta e inequívoca (nunca "___"), con "respuestasValidas" listando una o más respuestas cortas aceptables (normalizadas: sin importar mayúsculas ni tildes) — evita preguntas de opinión o con muchas respuestas posibles.
+  Ejemplo: { "tipo": "textoLibre", "pregunta": "¿Qué encontró Marta debajo del árbol?", "respuestasValidas": ["un nido", "nido"] }
+
+ERROR A EVITAR: el "___" es EXCLUSIVO de "completar". Antes de entregar cada pregunta, revisa que su "tipo" y su forma coincidan con el ejemplo de arriba — una "vf" con "___", o una "completar" sin "___", es un error que invalida toda la respuesta.
 
 Texto:
 """

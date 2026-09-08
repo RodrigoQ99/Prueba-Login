@@ -69,6 +69,17 @@ const PreguntaSchema = z.discriminatedUnion("tipo", [
 ]).refine(
     (p) => p.tipo !== "opcionMultiple" || p.opciones.some(o => o.valor === p.correcta),
     { message: "\"correcta\" debe coincidir con el \"valor\" de una de las opciones." }
+).refine(
+    // El bug real que motivó esto: Claude a veces mete el "___" de
+    // "completar" en una pregunta de OTRO tipo (o al revés, arma una
+    // "completar" sin ningún "___" que llenar) — el resultado no tiene
+    // sentido para quien juega. Como esto no se puede expresar en el
+    // JSON Schema que restringe la generación (min/max/enum sí, un
+    // patrón de texto condicional no), se rechaza aquí: mejor que
+    // generarPreguntasIA.js falle con "intenta de nuevo" a que entregue
+    // una pregunta rota.
+    (p) => p.tipo === "completar" ? p.pregunta.includes("___") : !p.pregunta.includes("___"),
+    { message: "El \"___\" del espacio en blanco solo puede aparecer en preguntas de tipo \"completar\", y esas SIEMPRE deben traer uno." }
 );
 
 // Zod SDK helper (zodOutputFormat) espera un objeto raíz, no un arreglo
