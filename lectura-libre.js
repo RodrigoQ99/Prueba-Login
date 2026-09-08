@@ -93,12 +93,20 @@ async function iniciarLecturaLibre() {
             pregunta._ordenActual = pregunta._ordenActual || barajarArrayLecturaLibre(pregunta.partes);
             cuerpo = `<div id="ordenarLibre-${pi}">${renderizarOrdenarLecturaLibre(pregunta, pi)}</div>`;
         } else {
-            cuerpo = (pregunta.opciones || []).map(opcion => `
+
+            if (!pregunta._opcionesMostradas) {
+                const armadas = armarOpcionesOpcionMultiple(pregunta);
+                pregunta._opcionesMostradas = armadas.opciones;
+                pregunta._correctaMostrada = armadas.correcta;
+            }
+
+            cuerpo = pregunta._opcionesMostradas.map(opcion => `
                 <label style="display:block; margin-bottom:4px;">
                     <input type="radio" name="preguntaLibre${pi}" value="${opcion.valor}">
                     ${opcion.texto}
                 </label>
             `).join("");
+
         }
 
         return `
@@ -153,7 +161,8 @@ async function iniciarLecturaLibre() {
                     && actual.every((parte, i) => parte === pregunta.partes[i]);
             } else {
                 const marcada = document.querySelector(`input[name="preguntaLibre${pi}"]:checked`);
-                acerto = !!marcada && marcada.value === pregunta.correcta;
+                const correcta = pregunta._correctaMostrada || pregunta.correcta;
+                acerto = !!marcada && marcada.value === correcta;
             }
 
             if (acerto) correctas++;
@@ -203,7 +212,10 @@ function textoRespuestaCorrectaLibre(pregunta, tipo) {
         return (pregunta.partes || []).join(" → ");
     }
 
-    const opcion = (pregunta.opciones || []).find(o => o.valor === pregunta.correcta);
+    if (pregunta.respuestaCorrecta) return pregunta.respuestaCorrecta;
+
+    const opciones = pregunta._opcionesMostradas || pregunta.opciones || [];
+    const opcion = opciones.find(o => o.valor === (pregunta._correctaMostrada || pregunta.correcta));
     return opcion ? opcion.texto : "";
 
 }

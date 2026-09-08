@@ -9,15 +9,14 @@
 // de lectura de siempre (nunca se guarda solo).
 //
 // RANGOS DE PALABRAS / TIEMPO (ajuste Etapa 25) — SOLO para ESTA
-// función de "Inventar historia con IA". No tocan
-// determinarCantidadPreguntas ni protagonista.js: las lecturas que el
-// admin escribió a mano se quedan exactamente como están.
+// función de "Inventar historia con IA".
 //   - Fácil:      1 a 2 min  ->  180 a 360 palabras
 //   - Intermedio: 3 a 5 min  ->  540 a 900 palabras
 //   - Difícil:    6 a 7 min  -> 1080 a 1260 palabras
 // (a "palabras por minuto" configurable, 180 por defecto).
-// La CANTIDAD de preguntas por nivel NO cambia (5 / 8 / 11, sale de
-// BANDAS_PREGUNTAS_PREMIO).
+// La CANTIDAD de preguntas sale del banco multitipo por nivel (Etapa
+// 36): N de cada uno de los cinco tipos, ver determinarPreguntasPorTipo
+// en cantidadPreguntas.js.
 //
 // El "tiempoLectura" se calcula solo a partir de las palabras que
 // devuelve Claude:  palabras / ppm * 60, redondeado a los 10 s más
@@ -33,13 +32,13 @@ const { logger } = require("firebase-functions");
 const Anthropic = require("@anthropic-ai/sdk");
 const { betaZodOutputFormat } = require("@anthropic-ai/sdk/helpers/beta/zod");
 const { verificarAdmin } = require("./verificarAdmin");
-const { BANDAS_PREGUNTAS_PREMIO, PREGUNTAS_MEJORA_POR_DEFECTO, RANGO_PALABRAS_MEJORA } = require("./cantidadPreguntas");
+const { determinarPreguntasPorTipo, RANGO_PALABRAS_MEJORA } = require("./cantidadPreguntas");
+const { bloqueTiposDePregunta } = require("./generarPreguntasIA");
 const { LecturaExtraidaSchema } = require("./esquemaLecturaExtraida");
 const { registrarUsoIA } = require("./registrarUsoIA");
 const { db } = require("../admin-init");
 
 const NOMBRE_NIVEL = { facil: "fácil", intermedio: "intermedio", dificil: "difícil" };
-const ORDEN_NIVELES = ["facil", "intermedio", "dificil"];
 const MAXIMO_GENEROS = 5;
 
 // Rangos de palabras EXCLUSIVOS de "Inventar historia con IA".
@@ -97,7 +96,7 @@ async function leerConfiguracionTiempos() {
     return { ppm, esperaInicial };
 }
 
-function construirPrompt({ generos, tipo, nivel, edad, cantidadPreguntas, rangoPalabras }) {
+function construirPrompt({ generos, tipo, nivel, edad, porTipo, rangoPalabras }) {
 
     const listaGeneros = generos.length > 1
         ? `que combine estos géneros: ${generos.join(", ")}`
@@ -120,22 +119,9 @@ IMPORTANTÍSIMO — ORIGINALIDAD: la historia debe ser inventada por ti en este 
 Escribe:
 1. Un TÍTULO breve y atractivo para la historia (que tampoco sea el título de una obra existente).
 2. El TEXTO completo de la historia, dividido en párrafos coherentes, de alrededor de ${objetivo} palabras en total (mínimo ${rangoPalabras.min}, máximo ${rangoPalabras.max} palabras). Ajústate a ese conteo lo mejor que puedas: es importante para calcular el tiempo de lectura.
-3. EXACTAMENTE ${cantidadPreguntas} preguntas de comprensión lectora sobre la historia que acabas de escribir (no trivia externa).
+3. El BANCO de preguntas de comprensión lectora sobre la historia que acabas de escribir (no trivia externa), con estas reglas:
 
-Hay CINCO tipos de pregunta disponibles — elige, para cada una, el tipo que mejor se preste a lo que estás evaluando (no todas tienen que ser del mismo tipo; usa una mezcla razonable). Cada tipo tiene una FORMA fija — respétala exactamente, con este ejemplo (inventado, no de esta historia) de cada uno:
-
-- "opcionMultiple": una PREGUNTA (termina en "?"), 3 a 4 opciones plausibles con "a"/"b"/"c"/"d" como valores (en ese orden), y "correcta" con el valor de la correcta.
-  Ejemplo: { "tipo": "opcionMultiple", "pregunta": "¿Qué encontró Marta debajo del árbol?", "opciones": [{"texto":"Una moneda","valor":"a"},{"texto":"Un nido","valor":"b"},{"texto":"Un libro","valor":"c"}], "correcta": "b" }
-- "vf": una AFIRMACIÓN declarativa (nunca termina en "?", nunca lleva "___") que se pueda juzgar verdadera o falsa tal cual, con "correcta": true o false.
-  Ejemplo: { "tipo": "vf", "pregunta": "Marta encontró un nido debajo del árbol.", "correcta": true }
-- "completar": una oración de la historia (o muy cercana) con UN Y SOLO UN espacio marcado EXACTAMENTE como "___" en el lugar del dato que falta — nunca una oración completa sin ningún "___", y nunca uses "___" en ningún otro tipo de pregunta. "respuestasValidas" trae una o más formas correctas de llenarlo.
-  Ejemplo: { "tipo": "completar", "pregunta": "Debajo del árbol, Marta encontró un ___.", "respuestasValidas": ["nido", "un nido"] }
-- "ordenar": 3 a 5 fragmentos ("partes") en el ORDEN CORRECTO en que ocurren en la historia — el frontend los revuelve solo para mostrarlos, tú entrégalos ya en orden.
-  Ejemplo: { "tipo": "ordenar", "pregunta": "Ordena lo que hizo Marta esa mañana.", "partes": ["Se despertó temprano", "Salió a caminar al parque", "Encontró un nido debajo del árbol"] }
-- "textoLibre": una pregunta ABIERTA de respuesta corta e inequívoca (nunca "___"), con "respuestasValidas" listando una o más respuestas cortas aceptables — evita preguntas de opinión o con muchas respuestas posibles.
-  Ejemplo: { "tipo": "textoLibre", "pregunta": "¿Qué encontró Marta debajo del árbol?", "respuestasValidas": ["un nido", "nido"] }
-
-ERROR A EVITAR: el "___" es EXCLUSIVO de "completar". Antes de entregar cada pregunta, revisa que su "tipo" y su forma coincidan con el ejemplo de arriba — una "vf" con "___", o una "completar" sin "___", es un error que invalida toda la respuesta.`;
+${bloqueTiposDePregunta(porTipo)}`;
 
 }
 
@@ -163,18 +149,12 @@ const generarLecturaOriginalIA = onCall(
             throw new HttpsError("invalid-argument", "\"tipo\" debe ser \"premio\" o \"mejora\".");
         }
 
-        let cantidadPreguntas;
-        let rangoPalabras;
-
-        if (tipo === "mejora") {
-            cantidadPreguntas = PREGUNTAS_MEJORA_POR_DEFECTO;
-            rangoPalabras = RANGO_PALABRAS_MEJORA;
-        } else {
-            const indiceNivel = ORDEN_NIVELES.indexOf(nivel);
-            const banda = BANDAS_PREGUNTAS_PREMIO[indiceNivel] || BANDAS_PREGUNTAS_PREMIO[0];
-            cantidadPreguntas = banda.preguntas; // 5 / 8 / 11 — sin cambios
-            rangoPalabras = RANGOS_PALABRAS_INVENTAR[nivel] || RANGOS_PALABRAS_INVENTAR.facil;
-        }
+        // Banco multitipo (Etapa 36): N preguntas de cada uno de los
+        // cinco tipos, con N según el nivel — ver cantidadPreguntas.js.
+        const porTipo = determinarPreguntasPorTipo(tipo, nivel);
+        const rangoPalabras = tipo === "mejora"
+            ? RANGO_PALABRAS_MEJORA
+            : (RANGOS_PALABRAS_INVENTAR[nivel] || RANGOS_PALABRAS_INVENTAR.facil);
 
         const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -182,9 +162,11 @@ const generarLecturaOriginalIA = onCall(
         try {
             response = await client.beta.messages.parse({
                 model: "claude-opus-5",
-                max_tokens: 8000,
+                // La historia completa MÁS el banco multitipo con sus
+                // bancos de respuestas: bastante más salida que antes.
+                max_tokens: 16000,
                 messages: [
-                    { role: "user", content: construirPrompt({ generos, tipo, nivel, edad, cantidadPreguntas, rangoPalabras }) }
+                    { role: "user", content: construirPrompt({ generos, tipo, nivel, edad, porTipo, rangoPalabras }) }
                 ],
                 output_format: betaZodOutputFormat(LecturaExtraidaSchema)
             });

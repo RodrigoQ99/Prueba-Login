@@ -2,34 +2,41 @@
 // ESQUEMA (Zod) DEL BANCO DE PREGUNTAS
 // ==========================================================
 // Mismo "tipo" de discriminador que usa el frontend (ver
-// editor-preguntas.js / motor.js): una pregunta sin "tipo" se trata
+// editor-preguntas.js / motor.js). Una pregunta sin "tipo" se trata
 // como "opcionMultiple" en el resto del proyecto (retrocompatibilidad
 // con lecturas ya existentes), pero la IA SIEMPRE debe declararlo
 // explícito, así que aquí es obligatorio.
+//
+// BANCO DE RESPUESTAS (Etapa 36) — la opción múltiple ya no trae una
+// lista fija de opciones: trae la respuesta correcta y un BANCO de
+// distractores, y el frontend arma las opciones al azar al mostrar la
+// pregunta (ver armarOpcionesOpcionMultiple en admin-comun.js), para
+// que dos usuarios con la misma pregunta no vean siempre lo mismo.
+// "completar" y "textoLibre" traen varias respuestas válidas por la
+// misma razón (se acepta más de una forma de escribirla). "vf" y
+// "ordenar" no necesitan banco: su respuesta es una sola.
 //
 // Se le pasa a client.messages.parse() como output_config.format, así
 // Claude queda OBLIGADO a responder con alguna de estas formas exactas
 // — no hace falta (ni conviene) confiar solo en la instrucción de
 // texto "responde en JSON".
 //
-// El "refine" de opción múltiple (correcta === alguna opción) se
-// aplica DESPUÉS de armar el discriminatedUnion, no antes: Zod exige
-// que cada rama de un discriminatedUnion sea un ZodObject puro — un
-// .refine() ANTES lo envuelve en ZodEffects y deja de calificar.
+// Los "refine" van DESPUÉS de armar el discriminatedUnion, no antes:
+// Zod exige que cada rama de un discriminatedUnion sea un ZodObject
+// puro — un .refine() ANTES lo envuelve en ZodEffects y deja de
+// calificar.
 // ==========================================================
 
 const { z } = require("zod");
 
-const OpcionSchema = z.object({
-    texto: z.string().min(1),
-    valor: z.string().min(1)
-});
-
+// Opción múltiple: 1 respuesta correcta + un banco de distractores
+// (opciones incorrectas plausibles) del que se eligen unas cuantas al
+// mostrar la pregunta.
 const PreguntaOpcionMultipleSchema = z.object({
     tipo: z.literal("opcionMultiple"),
     pregunta: z.string().min(1),
-    opciones: z.array(OpcionSchema).min(2).max(5),
-    correcta: z.string().min(1)
+    respuestaCorrecta: z.string().min(1),
+    distractores: z.array(z.string().min(1)).min(4).max(8)
 });
 
 const PreguntaVfSchema = z.object({
@@ -43,7 +50,7 @@ const PreguntaVfSchema = z.object({
 const PreguntaCompletarSchema = z.object({
     tipo: z.literal("completar"),
     pregunta: z.string().min(1),
-    respuestasValidas: z.array(z.string().min(1)).min(1).max(5)
+    respuestasValidas: z.array(z.string().min(1)).min(1).max(6)
 });
 
 // "ordenar": "partes" ya viene en el ORDEN CORRECTO — el frontend la
@@ -57,7 +64,7 @@ const PreguntaOrdenarSchema = z.object({
 const PreguntaTextoLibreSchema = z.object({
     tipo: z.literal("textoLibre"),
     pregunta: z.string().min(1),
-    respuestasValidas: z.array(z.string().min(1)).min(1).max(5)
+    respuestasValidas: z.array(z.string().min(1)).min(1).max(6)
 });
 
 const PreguntaSchema = z.discriminatedUnion("tipo", [
@@ -67,9 +74,6 @@ const PreguntaSchema = z.discriminatedUnion("tipo", [
     PreguntaOrdenarSchema,
     PreguntaTextoLibreSchema
 ]).refine(
-    (p) => p.tipo !== "opcionMultiple" || p.opciones.some(o => o.valor === p.correcta),
-    { message: "\"correcta\" debe coincidir con el \"valor\" de una de las opciones." }
-).refine(
     // El bug real que motivó esto: Claude a veces mete el "___" de
     // "completar" en una pregunta de OTRO tipo (o al revés, arma una
     // "completar" sin ningún "___" que llenar) — el resultado no tiene
@@ -80,12 +84,21 @@ const PreguntaSchema = z.discriminatedUnion("tipo", [
     // una pregunta rota.
     (p) => p.tipo === "completar" ? p.pregunta.includes("___") : !p.pregunta.includes("___"),
     { message: "El \"___\" del espacio en blanco solo puede aparecer en preguntas de tipo \"completar\", y esas SIEMPRE deben traer uno." }
+).refine(
+    // Un distractor idéntico a la respuesta correcta haría la pregunta
+    // imposible de calificar (dos opciones correctas en pantalla).
+    (p) => p.tipo !== "opcionMultiple"
+        || !p.distractores.some(d => d.trim().toLowerCase() === p.respuestaCorrecta.trim().toLowerCase()),
+    { message: "Ningún distractor puede ser igual a la respuesta correcta." }
 );
 
 // Zod SDK helper (zodOutputFormat) espera un objeto raíz, no un arreglo
-// suelto — se envuelve en { preguntas: [...] } y se desenvuelve otra
-// vez del lado de generarPreguntasIA.js antes de devolverlo al cliente.
+// suelto — se envuelve en { genero, preguntas: [...] } y se desenvuelve
+// otra vez del lado de generarPreguntasIA.js antes de devolverlo al
+// cliente. "genero" es la clasificación automática del texto (Etapa 36,
+// reemplaza el campo manual que antes llenaba el admin).
 const BancoPreguntasSchema = z.object({
+    genero: z.string().min(1),
     preguntas: z.array(PreguntaSchema)
 });
 

@@ -626,7 +626,12 @@ function textoRespuestaCorrecta(pregunta, tipo) {
         return (pregunta.partes || []).join(" → ");
     }
 
-    const opcion = (pregunta.opciones || []).find(o => o.valor === pregunta.correcta);
+    // Opción múltiple: el formato nuevo guarda el texto correcto tal
+    // cual; el viejo, el "valor" de una de sus opciones fijas.
+    if (pregunta.respuestaCorrecta) return pregunta.respuestaCorrecta;
+
+    const opciones = pregunta._opcionesMostradas || pregunta.opciones || [];
+    const opcion = opciones.find(o => o.valor === (pregunta._correctaMostrada || pregunta.correcta));
     return opcion ? opcion.texto : "";
 
 }
@@ -691,14 +696,26 @@ function renderizarPreguntas(){
             } else if (tipo === "ordenar") {
                 cuerpo = `<div id="ordenarPregunta-${indice}">${renderizarPreguntaOrdenar(pregunta, indice)}</div>`;
             } else {
-                // opcionMultiple (por defecto)
-                cuerpo = pregunta.opciones.map(opcion => `
+
+                // opcionMultiple (por defecto): las opciones se arman al
+                // vuelo desde el banco de distractores (ver
+                // armarOpcionesOpcionMultiple en admin-comun.js) y se
+                // guardan en la pregunta para calificar contra LAS MISMAS
+                // que se mostraron.
+                if (!pregunta._opcionesMostradas) {
+                    const armadas = armarOpcionesOpcionMultiple(pregunta);
+                    pregunta._opcionesMostradas = armadas.opciones;
+                    pregunta._correctaMostrada = armadas.correcta;
+                }
+
+                cuerpo = pregunta._opcionesMostradas.map(opcion => `
                     <label>
                         <input type="radio" name="p${indice}" value="${opcion.valor}">
                         ${opcion.texto}
                     </label>
                     <br>
                 `).join("");
+
             }
 
             return `
@@ -950,9 +967,11 @@ async function calificar(){
 
         } else {
 
-            // opcionMultiple (por defecto)
+            // opcionMultiple (por defecto): se compara contra la correcta
+            // DE LAS OPCIONES QUE SE MOSTRARON (ver renderizarPreguntas).
             const respuesta = document.querySelector(`input[name="p${indice}"]:checked`);
-            acerto = !!respuesta && respuesta.value === pregunta.correcta;
+            const correcta = pregunta._correctaMostrada || pregunta.correcta;
+            acerto = !!respuesta && respuesta.value === correcta;
 
         }
 

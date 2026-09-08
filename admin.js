@@ -43,7 +43,7 @@
 // de insertar las preguntas que devolvió la IA, sin volver a llamar a
 // construirEditorPreguntas() (eso duplicaría los listeners de
 // input/change/click sobre el mismo contenedor).
-function activarBotonGenerarPreguntasIA(overlay, { campoTexto, editorPreguntas, preguntas, contexto }) {
+function activarBotonGenerarPreguntasIA(overlay, { campoTexto, editorPreguntas, preguntas, contexto, alDetectarGenero }) {
 
     const btn = overlay.querySelector("#btnGenerarPreguntasIA");
     if (!btn || typeof generarPreguntasConIA !== "function") return;
@@ -51,7 +51,10 @@ function activarBotonGenerarPreguntasIA(overlay, { campoTexto, editorPreguntas, 
     const estado = overlay.querySelector("#estadoGenerarPreguntasIA");
 
     function actualizarVisibilidad() {
-        btn.style.display = campoTexto.value.trim() ? "block" : "none";
+        // "modoPermitido = no" lo pone el modo IA (Etapa 36): ese botón
+        // es exclusivo del modo manual, así que ahí nunca se muestra.
+        const permitido = btn.dataset.modoPermitido !== "no";
+        btn.style.display = (permitido && campoTexto.value.trim()) ? "block" : "none";
     }
 
     actualizarVisibilidad();
@@ -84,16 +87,21 @@ function activarBotonGenerarPreguntasIA(overlay, { campoTexto, editorPreguntas, 
 
         try {
 
-            const generadas = await generarPreguntasConIA({ texto, ...contexto() });
+            const resultado = await generarPreguntasConIA({ texto, ...contexto() });
+            const generadas = (resultado && resultado.preguntas) || [];
 
-            if (!generadas || generadas.length === 0) {
+            if (generadas.length === 0) {
                 throw new Error("La IA no devolvió ninguna pregunta.");
             }
 
             preguntas.push(...generadas);
             editorPreguntas.refrescar();
 
-            estado.textContent = `✅ Se generaron ${generadas.length} pregunta(s) — revísalas, ajústalas o bórralas antes de guardar.`;
+            // Género detectado automáticamente en la misma llamada
+            // (Etapa 36) — reemplaza el campo que el admin llenaba a mano.
+            if (alDetectarGenero && resultado.genero) alDetectarGenero(resultado.genero);
+
+            estado.textContent = `✅ Se generaron ${generadas.length} pregunta(s) de todos los tipos — revísalas, ajústalas o bórralas antes de guardar.`;
             estado.style.color = "#2e9e5b";
             estado.style.display = "block";
 
@@ -127,13 +135,13 @@ function activarBotonGenerarPreguntasIA(overlay, { campoTexto, editorPreguntas, 
 // resto de los botones de IA: si generarLecturaOriginalConIA
 // (admin-ia.js) no existe en esta página, la sección entera queda
 // oculta.
-async function activarBotonInventarHistoriaIA(overlay, { campoTitulo, campoTexto, editorPreguntas, preguntas, contexto, alGenerar }) {
+async function activarBotonInventarHistoriaIA(overlay, { campoTitulo, campoTexto, editorPreguntas, preguntas, contexto, alGenerar, alDetectarGenero }) {
 
     const seccion = overlay.querySelector("#seccionInventarHistoriaIA");
-    if (!seccion || typeof generarLecturaOriginalConIA !== "function" || typeof renderizarCheckboxesGeneros !== "function") return;
+    if (!seccion || typeof generarLecturaOriginalConIA !== "function" || typeof renderizarCheckboxesGeneros !== "function") return false;
 
-    seccion.style.display = "block";
-
+    // La visibilidad la decide el MODO del formulario (ver aplicarModo en
+    // abrirFormularioLectura, Etapa 36) — aquí solo se deja listo.
     const contenedorGeneros = overlay.querySelector("#checkboxesGenerosInventar");
     await cargarGenerosLectura();
     renderizarCheckboxesGeneros(contenedorGeneros, []);
@@ -194,6 +202,10 @@ async function activarBotonInventarHistoriaIA(overlay, { campoTitulo, campoTexto
             preguntas.push(...resultado.preguntas);
             editorPreguntas.refrescar();
 
+            // El género de la lectura sale directo del que se eligió para
+            // inventarla (Etapa 36) — no hace falta clasificarla aparte.
+            if (alDetectarGenero) alDetectarGenero(generos[0]);
+
             // Marca el ORIGEN de esta lectura como "ia" (Etapa 32, ver
             // Biblioteca) — se guarda al hacer clic en "Crear lectura",
             // no aquí, por si el admin cancela sin llegar a guardar.
@@ -217,6 +229,8 @@ async function activarBotonInventarHistoriaIA(overlay, { campoTitulo, campoTexto
         btn.textContent = "🤖 Inventar historia con estos géneros";
 
     });
+
+    return true;
 
 }
 
@@ -455,7 +469,7 @@ function activarContadorPalabras(textarea, contador) {
 // siguiente lectura de la cola aunque el admin decida NO guardar esta
 // en particular; el resto de los llamados (ej. "+ Agregar lectura
 // nueva") simplemente no la pasan y todo sigue igual que siempre.
-function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
+async function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
 
     // "esNueva" depende de si YA TIENE ID, no de si el objeto vino vacío:
     // así, "Ser el protagonista de la historia" (ver protagonista.js /
@@ -481,10 +495,25 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
     overlay.innerHTML = `
         <div class="modalCaja modalCajaInfo modalCajaAdmin">
             <h2>${esNueva ? "➕ Nueva lectura" : "✏️ Editar lectura"}${(lecturaExistente && lecturaExistente._notaProgreso) ? " " + lecturaExistente._notaProgreso : ""}</h2>
-            <form id="formLecturaAdmin">
 
+            <div id="selectorModoLectura" style="display:${esNueva ? "block" : "none"}; margin-bottom:10px;">
+                <p style="color:var(--texto-suave); margin-bottom:12px;">¿Cómo quieres crear esta lectura?</p>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button type="button" id="btnModoManual" style="flex:1; min-width:180px;">✍️ Lectura manual</button>
+                    <button type="button" id="btnModoIA" style="flex:1; min-width:180px; background:white; color:var(--azul); border:2px solid var(--azul);">🤖 Lectura con IA</button>
+                </div>
+                <p style="font-size:13px; color:var(--texto-suave); margin-top:12px;">
+                    <strong>Manual:</strong> tú escribes la lectura y, si quieres, la IA te genera el banco de preguntas al final.<br>
+                    <strong>Con IA:</strong> eliges los géneros y la IA inventa la historia completa con su banco de preguntas.
+                </p>
+            </div>
+
+            <form id="formLecturaAdmin" style="display:${esNueva ? "none" : "block"};">
+
+                <!-- SOLO MODO IA: los géneros van primero, antes del resto
+                     de la configuración (ver punto 3 de la Etapa 36). -->
                 <div id="seccionInventarHistoriaIA" style="display:none; padding:12px; border:1px dashed var(--borde); border-radius:10px; margin-bottom:15px;">
-                    <label style="font-weight:600;">🤖 O inventa una historia original con IA según el género</label>
+                    <label style="font-weight:600;">🤖 Géneros de la historia que va a inventar la IA</label>
                     <div id="checkboxesGenerosInventar" style="margin:8px 0;"></div>
 
                     <label style="display:block; font-size:13px; font-weight:600; margin-top:8px;">Palabras por minuto (velocidad de lectura)</label>
@@ -494,11 +523,6 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
                         La IA calcula sola las palabras, las preguntas y el tiempo de lectura según el nivel elegido.
                         Este valor (se guarda para todas las historias) ajusta la dificultad general de lectura.
                     </p>
-
-                    <button type="button" id="btnInventarHistoriaIA" class="botonAdminContorno" style="width:100%;">
-                        🤖 Inventar historia con estos géneros
-                    </button>
-                    <p id="estadoInventarHistoriaIA" style="display:none; font-size:13px; margin:8px 0 0;"></p>
                 </div>
 
                 <label>ID de la lectura</label>
@@ -520,9 +544,6 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
 
                 <label>País (vacío = visible para todos los países)</label>
                 <select id="campoPaisLectura" style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);"></select>
-
-                <label>Género (opcional — para el QR personalizado y Sugerencias)</label>
-                <div id="campoGeneroLectura" style="margin:6px 0 15px;"></div>
 
                 <label>Tiempo de lectura en segundos</label>
                 <input type="number" id="campoTiempoLectura" min="10" required
@@ -558,17 +579,27 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
                 <label>Cuántas preguntas se muestran por sesión</label>
                 <input type="number" id="campoPreguntasAMostrar" min="1"
                        value="${(lecturaExistente && lecturaExistente.preguntasAMostrar) || ""}"
-                       style="width:100%; padding:10px; margin:6px 0 15px; border-radius:8px; border:1px solid var(--borde);">
+                       style="width:100%; padding:10px; margin:6px 0 4px; border-radius:8px; border:1px solid var(--borde);">
+                <p style="font-size:12px; color:var(--texto-suave); margin:0 0 15px;">
+                    Se llena solo según el nivel (Fácil 4 · Intermedio 6 · Difícil 8). Cámbialo si quieres otra cantidad.
+                </p>
 
                 <h3 style="margin-top:10px;">Banco de preguntas</h3>
                 <p style="font-size:13px; color:var(--texto-suave); margin-bottom:10px;">
-                    Marca con el círculo cuál opción es la correcta de cada pregunta.
+                    El banco trae preguntas de los cinco tipos; al jugar se eligen al azar mezclando tipos distintos.
                 </p>
-                <button type="button" id="btnGenerarPreguntasIA" class="botonAdminContorno" style="display:none; width:100%; margin-bottom:8px;">
+                <p id="estadoGenerarPreguntasIA" style="display:none; font-size:13px; margin:-4px 0 12px;"></p>
+                <p id="estadoInventarHistoriaIA" style="display:none; font-size:13px; margin:-4px 0 12px;"></p>
+                <div id="editorPreguntas"></div>
+
+                <!-- Botones de IA: cada uno EXCLUSIVO de su modo (punto 3
+                     de la Etapa 36), al final del formulario. -->
+                <button type="button" id="btnGenerarPreguntasIA" class="botonAdminContorno" style="display:none; width:100%; margin-top:12px;">
                     🤖 Generar preguntas con IA
                 </button>
-                <p id="estadoGenerarPreguntasIA" style="display:none; font-size:13px; margin:-4px 0 12px;"></p>
-                <div id="editorPreguntas"></div>
+                <button type="button" id="btnInventarHistoriaIA" class="botonAdminContorno" style="display:none; width:100%; margin-top:12px;">
+                    🤖 Inventar historia con estos géneros
+                </button>
 
                 <div style="display:flex; gap:10px; margin-top:20px;">
                     <button type="submit" style="flex:1;">${esNueva ? "Crear lectura" : "Guardar cambios"}</button>
@@ -581,16 +612,33 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
 
     document.body.appendChild(overlay);
 
-    overlay.querySelector("#campoNivel").value = (lecturaExistente && lecturaExistente.nivel) || "facil";
+    const campoNivel = overlay.querySelector("#campoNivel");
+    campoNivel.value = (lecturaExistente && lecturaExistente.nivel) || "facil";
     renderizarSelectorPaisConGlobal(overlay.querySelector("#campoPaisLectura"), (lecturaExistente && lecturaExistente.pais) || "");
 
-    // Género (opcional): mismo selector de un solo género que ya usa
-    // "Ser el protagonista" (ver protagonista.js / generos.js) — lo usan
-    // Sugerencias y el QR personalizado para elegir una lectura afín a
-    // los intereses del usuario.
-    cargarGenerosLectura().then(() => {
-        renderizarSelectorGeneroUnico(overlay.querySelector("#campoGeneroLectura"), (lecturaExistente && lecturaExistente.genero) || "");
-    });
+    // Género: ya NO se marca a mano (Etapa 36) — lo detecta la IA al
+    // generar las preguntas, o sale del género elegido para inventar la
+    // historia. Lo usan Sugerencias y el QR personalizado.
+    let generoDetectado = (lecturaExistente && lecturaExistente.genero) || null;
+
+    // "Cuántas preguntas se muestran" se pre-llena según el nivel
+    // (4 / 6 / 8) y se actualiza al cambiar de nivel — salvo que el
+    // admin ya lo haya escrito él mismo, ahí se respeta lo suyo.
+    const campoPreguntasAMostrar = overlay.querySelector("#campoPreguntasAMostrar");
+    let preguntasAMostrarTocadoPorAdmin = !!(lecturaExistente && lecturaExistente.preguntasAMostrar);
+
+    function preguntasAMostrarSegunNivel() {
+        return { facil: 4, intermedio: 6, dificil: 8 }[campoNivel.value] || 4;
+    }
+
+    function sincronizarPreguntasAMostrar() {
+        if (preguntasAMostrarTocadoPorAdmin) return;
+        campoPreguntasAMostrar.value = preguntasAMostrarSegunNivel();
+    }
+
+    campoPreguntasAMostrar.addEventListener("input", () => { preguntasAMostrarTocadoPorAdmin = true; });
+    campoNivel.addEventListener("change", sincronizarPreguntasAMostrar);
+    sincronizarPreguntasAMostrar();
 
     const editorPreguntas = construirEditorPreguntas(overlay.querySelector("#editorPreguntas"), preguntas);
 
@@ -598,17 +646,54 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
         campoTexto: overlay.querySelector("#campoTexto"),
         editorPreguntas,
         preguntas,
-        contexto: () => ({ tipo: "premio", nivel: overlay.querySelector("#campoNivel").value })
+        contexto: () => ({ tipo: "premio", nivel: campoNivel.value }),
+        alDetectarGenero: (genero) => { generoDetectado = genero; }
     });
 
-    activarBotonInventarHistoriaIA(overlay, {
+    const inventarDisponible = await activarBotonInventarHistoriaIA(overlay, {
         campoTitulo: overlay.querySelector("#campoTitulo"),
         campoTexto: overlay.querySelector("#campoTexto"),
         editorPreguntas,
         preguntas,
-        contexto: () => ({ tipo: "premio", nivel: overlay.querySelector("#campoNivel").value }),
-        alGenerar: () => { origenLectura = "ia"; }
+        contexto: () => ({ tipo: "premio", nivel: campoNivel.value }),
+        alGenerar: () => { origenLectura = "ia"; },
+        alDetectarGenero: (genero) => { generoDetectado = genero; }
     });
+
+    // ---- Modo manual vs modo IA (Etapa 36, punto 3) ----
+    // Cada modo enseña SOLO sus campos y su botón de IA. Al editar una
+    // lectura que ya existe no se pregunta el modo: se abre el
+    // formulario completo en modo manual (el contenido ya está escrito).
+    const seccionGenerosIA = overlay.querySelector("#seccionInventarHistoriaIA");
+    const btnGenerarPreguntas = overlay.querySelector("#btnGenerarPreguntasIA");
+    const btnInventarHistoria = overlay.querySelector("#btnInventarHistoriaIA");
+    const formulario = overlay.querySelector("#formLecturaAdmin");
+    const selectorModo = overlay.querySelector("#selectorModoLectura");
+
+    function aplicarModo(modo) {
+
+        selectorModo.style.display = "none";
+        formulario.style.display = "block";
+
+        const esModoIA = modo === "ia";
+
+        seccionGenerosIA.style.display = (esModoIA && inventarDisponible) ? "block" : "none";
+        btnInventarHistoria.style.display = (esModoIA && inventarDisponible) ? "block" : "none";
+
+        // "Generar preguntas con IA" es exclusivo del modo manual, y
+        // dentro de ese modo solo aparece cuando ya hay texto escrito
+        // (de eso se encarga activarBotonGenerarPreguntasIA).
+        btnGenerarPreguntas.dataset.modoPermitido = esModoIA ? "no" : "si";
+        if (esModoIA) btnGenerarPreguntas.style.display = "none";
+
+    }
+
+    if (esNueva) {
+        overlay.querySelector("#btnModoManual").addEventListener("click", () => aplicarModo("manual"));
+        overlay.querySelector("#btnModoIA").addEventListener("click", () => aplicarModo("ia"));
+    } else {
+        aplicarModo("manual");
+    }
 
     // Contador de palabras en vivo + "palabras por minuto" configurable +
     // botón para calcular el tiempo de lectura desde el conteo actual.
@@ -687,6 +772,7 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
         }
 
         const preguntasAMostrarInput = Number(overlay.querySelector("#campoPreguntasAMostrar").value) || preguntas.length;
+        const bancoLimpio = limpiarPreguntasParaGuardar(preguntas);
 
         const datos = {
             titulo: overlay.querySelector("#campoTitulo").value.trim(),
@@ -697,8 +783,8 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
             tiempoLectura: Number(overlay.querySelector("#campoTiempoLectura").value),
             tiempoCuestionario: Number(overlay.querySelector("#campoTiempoCuestionario").value),
             texto: texto,
-            bancoPreguntas: preguntas,
-            preguntasAMostrar: Math.min(preguntasAMostrarInput, preguntas.length),
+            bancoPreguntas: bancoLimpio,
+            preguntasAMostrar: Math.min(preguntasAMostrarInput, bancoLimpio.length),
             // Ya no lo escribe el admin a mano: una nueva se agrega al final
             // (conteo automático); una que ya existía conserva el suyo — se
             // vuelve a numerar sin huecos solo al eliminar (ver eliminarLectura).
@@ -726,11 +812,12 @@ function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
             datos.autorNombre = lecturaExistente.autorNombre || "";
         }
 
-        // Género (opcional, editable aquí desde Etapa 35): lo usan
-        // Sugerencias y el QR personalizado para elegir una lectura afín
-        // a los intereses del usuario (ver sugerencias.js / qr-personalizado.js).
-        const generoElegido = leerGeneroUnicoSeleccionado(overlay.querySelector("#campoGeneroLectura"));
-        if (generoElegido) datos.genero = generoElegido;
+        // Género DETECTADO automáticamente (Etapa 36): lo clasifica la IA
+        // al generar las preguntas, o sale del género elegido para
+        // inventar la historia. Ya no hay campo manual. Lo usan
+        // Sugerencias y el QR personalizado para recomendar la lectura a
+        // quien le interese ese género.
+        if (generoDetectado) datos.genero = generoDetectado;
 
         try {
             await db.collection("lecturas").doc(id).set(datos);
@@ -905,6 +992,9 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar, alCa
         contexto: () => ({ tipo: "mejora", edad: Number(overlay.querySelector("#campoEdad").value) })
     });
 
+    // "Mejorar la lectura" conserva el formulario de siempre (los dos
+    // modos separados de la Etapa 36 son solo para Lecturas de premios),
+    // así que aquí la sección de géneros se muestra tal cual como antes.
     activarBotonInventarHistoriaIA(overlay, {
         campoTitulo: overlay.querySelector("#campoTitulo"),
         campoTexto: overlay.querySelector("#campoTexto"),
@@ -912,6 +1002,11 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar, alCa
         preguntas,
         contexto: () => ({ tipo: "mejora", edad: Number(overlay.querySelector("#campoEdad").value) }),
         alGenerar: () => { origenLectura = "ia"; }
+    }).then(disponible => {
+        if (disponible) {
+            overlay.querySelector("#seccionInventarHistoriaIA").style.display = "block";
+            overlay.querySelector("#btnInventarHistoriaIA").style.display = "block";
+        }
     });
 
     // Contador de palabras en vivo (Mejorar la lectura no calcula el
@@ -971,6 +1066,7 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar, alCa
         }
 
         const preguntasAMostrarInput = Number(overlay.querySelector("#campoPreguntasAMostrar").value) || preguntas.length;
+        const bancoLimpio = limpiarPreguntasParaGuardar(preguntas);
 
         const datos = {
             edad: edad,
@@ -979,8 +1075,8 @@ function abrirFormularioMejora(lecturaExistente, edadPorDefecto, alGuardar, alCa
             // visible para cualquier país (ver filtrarPorPais en lecturas.js).
             pais: overlay.querySelector("#campoPaisMejora").value || null,
             texto: texto,
-            bancoPreguntas: preguntas,
-            preguntasAMostrar: Math.min(preguntasAMostrarInput, preguntas.length),
+            bancoPreguntas: bancoLimpio,
+            preguntasAMostrar: Math.min(preguntasAMostrarInput, bancoLimpio.length),
             // Ver la misma nota en abrirFormularioLectura: ya no es manual.
             // Si además cambió de edad al editarla, también se va al final
             // de la lista de la edad NUEVA (su "orden" viejo era relativo a
@@ -3473,12 +3569,20 @@ function abrirVistaPreviaLectura(lectura) {
             pregunta._ordenActual = pregunta._ordenActual || barajarArrayVistaPrevia(pregunta.partes);
             cuerpo = `<div id="previaOrdenar-${pi}">${renderizarOrdenarVistaPrevia(pregunta, pi)}</div>`;
         } else {
-            cuerpo = (pregunta.opciones || []).map(opcion => `
+
+            if (!pregunta._opcionesMostradas) {
+                const armadas = armarOpcionesOpcionMultiple(pregunta);
+                pregunta._opcionesMostradas = armadas.opciones;
+                pregunta._correctaMostrada = armadas.correcta;
+            }
+
+            cuerpo = pregunta._opcionesMostradas.map(opcion => `
                 <label style="display:block; margin-bottom:4px;">
                     <input type="radio" name="previaPregunta${pi}" value="${opcion.valor}">
                     ${opcion.texto}
                 </label>
             `).join("");
+
         }
 
         return `
@@ -3533,7 +3637,8 @@ function abrirVistaPreviaLectura(lectura) {
                     && actual.every((parte, i) => parte === pregunta.partes[i]);
             } else {
                 const marcada = overlay.querySelector(`input[name="previaPregunta${pi}"]:checked`);
-                acerto = !!marcada && marcada.value === pregunta.correcta;
+                const correcta = pregunta._correctaMostrada || pregunta.correcta;
+                acerto = !!marcada && marcada.value === correcta;
             }
 
             if (acerto) correctas++;

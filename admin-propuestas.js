@@ -41,6 +41,18 @@ function vistaPreviaRespuestaPropuesta(pregunta) {
         `).join("");
     }
 
+    // Opción múltiple, formato nuevo: respuesta correcta + banco de
+    // distractores (ver esquemaPreguntas.js).
+    if (pregunta.respuestaCorrecta) {
+        return `
+            <p style="margin:2px 0 2px 15px; font-weight:700; color:#2e9e5b;">✓ ${pregunta.respuestaCorrecta}</p>
+            ${(pregunta.distractores || []).map(d => `
+                <p style="margin:2px 0 2px 15px; color:var(--texto-suave);">— ${d}</p>
+            `).join("")}
+        `;
+    }
+
+    // Formato viejo: opciones fijas con "correcta" apuntando a un valor.
     return (pregunta.opciones || []).map(opcion => `
         <p style="margin:2px 0 2px 15px; ${opcion.valor === pregunta.correcta ? "font-weight:700; color:#2e9e5b;" : ""}">
             ${opcion.valor === pregunta.correcta ? "✓ " : "— "}${opcion.texto}

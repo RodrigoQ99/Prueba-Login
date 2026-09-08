@@ -26,14 +26,15 @@ const functionsIA = firebase.functions();
  * @param {"premio"|"mejora"} tipo
  * @param {string} [nivel] - "facil"|"intermedio"|"dificil", solo si tipo === "premio".
  * @param {number} [edad] - solo si tipo === "mejora".
- * @returns {Promise<Array>} el arreglo de preguntas generadas (mismo
- *   formato que usa construirEditorPreguntas — editables, nada se
- *   guarda todavía).
+ * @returns {Promise<{preguntas:Array, genero:string|null}>} el banco
+ *   multitipo generado (mismo formato que usa construirEditorPreguntas
+ *   — editable, nada se guarda todavía) y el género con el que la IA
+ *   clasificó el texto (Etapa 36, reemplaza el campo manual).
  */
 async function generarPreguntasConIA({ texto, tipo, nivel, edad }) {
     const llamar = functionsIA.httpsCallable("generarPreguntasIA");
     const resultado = await llamar({ texto, tipo, nivel: nivel || null, edad: edad ?? null });
-    return resultado.data.preguntas;
+    return resultado.data;
 }
 
 /**

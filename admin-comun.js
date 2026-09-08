@@ -90,16 +90,95 @@ function esAdmin() {
 // solo lo muestran en la consola) y por eso nunca corría el cronómetro,
 // nunca aparecía el cuestionario, y como el texto tampoco alcanzaba a
 // engancharse al scroll bloqueado, quedaba con navegación libre.
-function elegirPreguntasAlAzar(banco, cantidad) {
-
-    const copia = [...(banco || [])];
-
+//
+// BALANCE POR TIPO (Etapa 36): el banco ahora es multitipo (N preguntas
+// de cada uno de los cinco tipos, ver cantidadPreguntas.js), así que
+// elegir "4 al azar" a secas podía darle a alguien las 4 del mismo
+// tipo. Se reparte por rondas: en cada ronda se toma como máximo UNA
+// pregunta de cada tipo (en orden de tipos revuelto), y solo cuando ya
+// tocó a todos los tipos se empieza otra ronda. Así, con 4 preguntas
+// salen 4 tipos distintos, con 8 salen los 5 tipos + 3 repetidos.
+function barajar(arreglo) {
+    const copia = [...arreglo];
     for (let i = copia.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [copia[i], copia[j]] = [copia[j], copia[i]];
     }
+    return copia;
+}
 
-    const n = Math.min(cantidad || copia.length, copia.length);
-    return copia.slice(0, n);
+function elegirPreguntasAlAzar(banco, cantidad) {
+
+    const todas = barajar(banco || []);
+    const n = Math.min(cantidad || todas.length, todas.length);
+    if (n === 0) return [];
+
+    // Agrupar por tipo (una pregunta sin "tipo" es de opción múltiple,
+    // igual que en el resto del proyecto).
+    const porTipo = {};
+    todas.forEach(pregunta => {
+        const tipo = pregunta.tipo || "opcionMultiple";
+        if (!porTipo[tipo]) porTipo[tipo] = [];
+        porTipo[tipo].push(pregunta);
+    });
+
+    const elegidas = [];
+
+    // Rondas: en cada una se recorre cada tipo (en orden distinto cada
+    // vez) tomando una pregunta suya, hasta llegar a la cantidad pedida.
+    while (elegidas.length < n) {
+
+        const tiposConStock = barajar(Object.keys(porTipo).filter(t => porTipo[t].length > 0));
+        if (tiposConStock.length === 0) break;
+
+        for (const tipo of tiposConStock) {
+            if (elegidas.length >= n) break;
+            elegidas.push(porTipo[tipo].shift());
+        }
+
+    }
+
+    // Se vuelven a revolver para que el cuestionario no salga siempre
+    // en el mismo orden de tipos (opción múltiple, luego V/F, etc.).
+    return barajar(elegidas);
+
+}
+
+
+// ==========================================================
+// OPCIÓN MÚLTIPLE: ARMAR LAS OPCIONES DEL MOMENTO (Etapa 36)
+// ==========================================================
+// Las preguntas nuevas guardan la respuesta correcta y un BANCO de
+// distractores; las opciones que ve el usuario se arman al vuelo:
+// la correcta + unos distractores al azar, todo revuelto. Así dos
+// usuarios con la misma pregunta pueden ver opciones distintas.
+//
+// Las preguntas VIEJAS (con "opciones" fijas y "correcta" como valor)
+// se siguen respetando tal cual — no hay migración de datos.
+//
+// Devuelve siempre { opciones: [{ texto, valor }], correcta } con la
+// misma forma que ya usaban motor.js y compañía.
+const OPCIONES_A_MOSTRAR_CUESTIONARIO = 4;
+
+function armarOpcionesOpcionMultiple(pregunta) {
+
+    // Formato viejo: ya trae sus opciones fijas.
+    if (Array.isArray(pregunta.opciones) && pregunta.opciones.length > 0) {
+        return { opciones: pregunta.opciones, correcta: pregunta.correcta };
+    }
+
+    const distractores = Array.isArray(pregunta.distractores) ? pregunta.distractores : [];
+    const cuantosDistractores = Math.max(0, OPCIONES_A_MOSTRAR_CUESTIONARIO - 1);
+
+    const textos = barajar([
+        pregunta.respuestaCorrecta,
+        ...barajar(distractores).slice(0, cuantosDistractores)
+    ].filter(t => typeof t === "string" && t.trim().length > 0));
+
+    const letras = "abcdefghij";
+    const opciones = textos.map((texto, i) => ({ texto, valor: letras[i] || `x${i}` }));
+    const correcta = (opciones.find(o => o.texto === pregunta.respuestaCorrecta) || {}).valor || "";
+
+    return { opciones, correcta };
 
 }

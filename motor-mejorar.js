@@ -630,14 +630,24 @@ function avanzarAlCuestionario() {
             } else if (tipo === "ordenar") {
                 cuerpo = `<div id="ordenarPreguntaMejora-${indice}">${renderizarPreguntaOrdenarMejora(pregunta, indice)}</div>`;
             } else {
-                // opcionMultiple (por defecto)
-                cuerpo = pregunta.opciones.map(opcion => `
+
+                // opcionMultiple: opciones armadas al vuelo desde el
+                // banco de distractores (ver admin-comun.js), guardadas
+                // en la pregunta para calificar contra las mismas.
+                if (!pregunta._opcionesMostradas) {
+                    const armadas = armarOpcionesOpcionMultiple(pregunta);
+                    pregunta._opcionesMostradas = armadas.opciones;
+                    pregunta._correctaMostrada = armadas.correcta;
+                }
+
+                cuerpo = pregunta._opcionesMostradas.map(opcion => `
                     <label>
                         <input type="radio" name="mp${indice}" value="${opcion.valor}">
                         ${opcion.texto}
                     </label>
                     <br>
                 `).join("");
+
             }
 
             return `
@@ -693,7 +703,10 @@ function textoRespuestaCorrectaMejora(pregunta, tipo) {
         return (pregunta.partes || []).join(" → ");
     }
 
-    const opcion = (pregunta.opciones || []).find(o => o.valor === pregunta.correcta);
+    if (pregunta.respuestaCorrecta) return pregunta.respuestaCorrecta;
+
+    const opciones = pregunta._opcionesMostradas || pregunta.opciones || [];
+    const opcion = opciones.find(o => o.valor === (pregunta._correctaMostrada || pregunta.correcta));
     return opcion ? opcion.texto : "";
 
 }
@@ -793,7 +806,8 @@ async function calificarMejora() {
         } else {
 
             const respuesta = document.querySelector(`input[name="mp${indice}"]:checked`);
-            acerto = !!respuesta && respuesta.value === pregunta.correcta;
+            const correcta = pregunta._correctaMostrada || pregunta.correcta;
+            acerto = !!respuesta && respuesta.value === correcta;
 
         }
 

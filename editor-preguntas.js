@@ -1,5 +1,5 @@
 // ==========================================================
-// EDITOR DE BANCO DE PREGUNTAS
+// EDITOR DE BANCO DE PREGUNTAS (Etapa 36)
 // ==========================================================
 // Compartido por el panel de administrador (admin.js, al crear/editar
 // una lectura de premios o de Mejorar la lectura) y por "Ser el
@@ -10,34 +10,45 @@
 // "preguntas" es un arreglo que se modifica EN SITIO (mismo patrón que
 // el resto del proyecto usa para no complicar el manejo de estado).
 //
-// TIPOS DE PREGUNTA (Etapa 34): cada pregunta trae un campo "tipo" —
-// "opcionMultiple" (por defecto, incluso si falta el campo — así las
-// preguntas de ANTES de esta etapa se siguen viendo y calificando
-// igual, sin ninguna migración), "vf", "completar", "ordenar" o
-// "textoLibre". Ver motor.js (renderizarPreguntas/calificar) para cómo
-// se presentan y califican cada uno, y esquemaPreguntas.js (Cloud
-// Functions) para la forma exacta que también puede devolver la IA.
+// BANCO MULTITIPO: el banco trae preguntas de los CINCO tipos a la vez
+// (la IA genera N de cada uno según el nivel, ver cantidadPreguntas.js
+// en las Cloud Functions). Como ahora son muchas, se muestran en
+// desplegables de tres niveles, TODOS CERRADOS por defecto:
+//   1. un <details> por tipo, con cuántas hay de ese tipo
+//   2. dentro, un <details> por pregunta, con su enunciado
+//   3. dentro, las respuestas / opciones / banco de respuestas
+//
+// BANCO DE RESPUESTAS por pregunta:
+//   - opción múltiple: 1 respuesta correcta + varios distractores; al
+//     jugar se arman las opciones al azar (ver
+//     armarOpcionesOpcionMultiple en admin-comun.js).
+//   - completar / pregunta directa: varias respuestas válidas.
+//   - verdadero/falso y ordenar: respuesta única, sin banco.
 //
 // Devuelve { refrescar } — quien llame a construirEditorPreguntas puede
 // seguir modificando "preguntas" desde AFUERA (ej. admin-ia.js, al
 // insertar las preguntas que devolvió la IA) y llamar a refrescar()
 // para que el editor las vuelva a dibujar. A propósito NO se vuelve a
 // llamar construirEditorPreguntas() para esto — haría que se agreguen
-// un segundo juego de listeners de input/change/click sobre el mismo
-// contenedor (cada clic terminaría disparando el manejador dos veces).
+// un segundo juego de listeners sobre el mismo contenedor (cada clic
+// terminaría disparando el manejador dos veces).
 // ==========================================================
 
 const TIPOS_PREGUNTA = [
-    { valor: "opcionMultiple", etiqueta: "Opción múltiple" },
-    { valor: "vf", etiqueta: "Verdadero o falso" },
-    { valor: "completar", etiqueta: "Completar la oración" },
-    { valor: "ordenar", etiqueta: "Ordenar partes" },
-    { valor: "textoLibre", etiqueta: "Pregunta directa (texto corto)" }
+    { valor: "opcionMultiple", etiqueta: "Opción múltiple", plural: "Preguntas de opción múltiple" },
+    { valor: "vf", etiqueta: "Verdadero o falso", plural: "Preguntas de verdadero o falso" },
+    { valor: "completar", etiqueta: "Completar la oración", plural: "Preguntas de completar la oración" },
+    { valor: "ordenar", etiqueta: "Ordenar partes", plural: "Preguntas de ordenar partes" },
+    { valor: "textoLibre", etiqueta: "Pregunta directa", plural: "Preguntas directas" }
 ];
 
-// Pregunta nueva y vacía de cada tipo — se usa tanto para "+ Agregar
-// pregunta" (siempre opción múltiple, mismo comportamiento de antes)
-// como al cambiar el tipo de una pregunta ya existente.
+const DISTRACTORES_POR_DEFECTO = 6;
+
+function tipoDePregunta(pregunta) {
+    return pregunta.tipo || "opcionMultiple";
+}
+
+// Pregunta nueva y vacía de cada tipo.
 function objetoPreguntaVacia(tipo) {
 
     switch (tipo) {
@@ -59,30 +70,100 @@ function objetoPreguntaVacia(tipo) {
             return {
                 tipo: "opcionMultiple",
                 pregunta: "",
-                opciones: [
-                    { texto: "", valor: "a" },
-                    { texto: "", valor: "b" },
-                    { texto: "", valor: "c" }
-                ],
-                correcta: "a"
+                respuestaCorrecta: "",
+                distractores: new Array(DISTRACTORES_POR_DEFECTO).fill("")
             };
 
     }
 
 }
 
+/**
+ * Pasa una pregunta del formato VIEJO de opción múltiple (opciones
+ * fijas + "correcta" con el valor de una de ellas) al nuevo (respuesta
+ * correcta + banco de distractores). Se hace en memoria al abrir el
+ * editor: una lectura vieja que se vuelva a guardar queda ya migrada,
+ * y una que nunca se edite se sigue jugando igual (ver
+ * armarOpcionesOpcionMultiple en admin-comun.js, que respeta ambos).
+ */
+function migrarOpcionMultipleSiHaceFalta(pregunta) {
+
+    if (tipoDePregunta(pregunta) !== "opcionMultiple") return pregunta;
+    if (!Array.isArray(pregunta.opciones) || pregunta.respuestaCorrecta) return pregunta;
+
+    const correcta = pregunta.opciones.find(o => o.valor === pregunta.correcta);
+
+    return {
+        tipo: "opcionMultiple",
+        pregunta: pregunta.pregunta || "",
+        respuestaCorrecta: correcta ? correcta.texto : "",
+        distractores: pregunta.opciones
+            .filter(o => !correcta || o.valor !== correcta.valor)
+            .map(o => o.texto)
+    };
+
+}
+
+/**
+ * Copia del banco lista para guardar en Firestore: sin los campos
+ * internos del editor/motor (los que empiezan con "_", ej. la clave de
+ * los desplegables o el orden barajado de una pregunta de ordenar) y
+ * sin respuestas/distractores/partes vacías.
+ */
+function limpiarPreguntasParaGuardar(preguntas) {
+
+    return (preguntas || []).map(pregunta => {
+
+        const limpia = {};
+
+        Object.keys(pregunta).forEach(clave => {
+            if (!clave.startsWith("_")) limpia[clave] = pregunta[clave];
+        });
+
+        if (Array.isArray(limpia.distractores)) {
+            limpia.distractores = limpia.distractores.map(d => String(d || "").trim()).filter(d => d);
+        }
+        if (Array.isArray(limpia.respuestasValidas)) {
+            limpia.respuestasValidas = limpia.respuestasValidas.map(r => String(r || "").trim()).filter(r => r);
+        }
+        if (Array.isArray(limpia.partes)) {
+            limpia.partes = limpia.partes.map(p => String(p || "").trim()).filter(p => p);
+        }
+
+        return limpia;
+
+    });
+
+}
+
 function construirEditorPreguntas(contenedor, preguntas) {
 
-    function tipoDe(pregunta) {
-        return pregunta.tipo || "opcionMultiple";
-    }
+    const esc = (s) => String(s == null ? "" : s).replace(/"/g, "&quot;");
 
-    function subeditorHtml(pregunta, pi) {
+    // Migra en memoria las de formato viejo la primera vez que se dibuja.
+    preguntas.forEach((pregunta, i) => {
+        preguntas[i] = migrarOpcionMultipleSiHaceFalta(pregunta);
+    });
 
-        const tipo = tipoDe(pregunta);
+    // ---- Nivel 3: el cuerpo editable de UNA pregunta ----
+    function cuerpoPregunta(pregunta, pi) {
+
+        const tipo = tipoDePregunta(pregunta);
+
+        const textoEnunciado = `
+            <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">Enunciado</label>
+            <textarea data-accion="texto-pregunta" data-pi="${pi}" rows="2"
+                      placeholder="${tipo === "completar" ? "Usa ___ donde va el espacio en blanco" : "Escribe la pregunta"}"
+                      style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--borde); margin-bottom:10px; font-family:inherit;"
+            >${pregunta.pregunta || ""}</textarea>
+        `;
+
+        let especifico = "";
 
         if (tipo === "vf") {
-            return `
+
+            especifico = `
+                <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">Respuesta correcta</label>
                 <label style="display:inline-flex; align-items:center; gap:6px; margin-right:15px;">
                     <input type="radio" name="vf-${pi}" data-accion="marcar-vf" data-pi="${pi}" value="true" ${pregunta.correcta === true ? "checked" : ""}>
                     Verdadero
@@ -92,35 +173,32 @@ function construirEditorPreguntas(contenedor, preguntas) {
                     Falso
                 </label>
             `;
-        }
 
-        if (tipo === "completar" || tipo === "textoLibre") {
+        } else if (tipo === "completar" || tipo === "textoLibre") {
+
             const respuestas = pregunta.respuestasValidas || [];
-            return `
-                ${tipo === "completar" ? `
-                    <p style="font-size:12px; color:var(--texto-suave); margin:-4px 0 8px;">
-                        Escribe el espacio en blanco como <code>___</code> dentro de la pregunta de arriba.
-                    </p>
-                ` : ""}
+            especifico = `
                 <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">
-                    Respuesta${respuestas.length === 1 ? "" : "s"} válida${respuestas.length === 1 ? "" : "s"} (una por línea, cualquiera cuenta como correcta)
+                    Banco de respuestas válidas (cualquiera cuenta como correcta)
                 </label>
+                <p style="font-size:12px; color:var(--texto-suave); margin:0 0 8px;">
+                    Se comparan sin importar mayúsculas ni tildes. Agrega variantes: con y sin artículo, singular/plural, sinónimos.
+                </p>
                 ${respuestas.map((resp, ri) => `
                     <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
                         <input type="text" data-accion="texto-respuesta" data-pi="${pi}" data-ri="${ri}"
-                               value="${(resp || "").replace(/"/g, "&quot;")}"
-                               placeholder="Ej. río Amazonas"
+                               value="${esc(resp)}" placeholder="Ej. río Amazonas"
                                style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--borde);">
                         <button type="button" class="botonAdminChico botonPeligro" data-accion="quitar-respuesta" data-pi="${pi}" data-ri="${ri}">✕</button>
                     </div>
                 `).join("")}
                 <button type="button" class="botonAdminChico" data-accion="agregar-respuesta" data-pi="${pi}">+ Agregar respuesta válida</button>
             `;
-        }
 
-        if (tipo === "ordenar") {
+        } else if (tipo === "ordenar") {
+
             const partes = pregunta.partes || [];
-            return `
+            especifico = `
                 <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">
                     Partes, EN EL ORDEN CORRECTO (se revuelven solas al jugar)
                 </label>
@@ -128,53 +206,112 @@ function construirEditorPreguntas(contenedor, preguntas) {
                     <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
                         <span style="font-weight:700; color:var(--texto-suave); width:18px;">${oi + 1}.</span>
                         <input type="text" data-accion="texto-parte" data-pi="${pi}" data-oi="${oi}"
-                               value="${(parte || "").replace(/"/g, "&quot;")}"
-                               placeholder="Ej. Primero el sol salió por el este"
+                               value="${esc(parte)}" placeholder="Ej. Primero el sol salió por el este"
                                style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--borde);">
                         <button type="button" class="botonAdminChico botonPeligro" data-accion="quitar-parte" data-pi="${pi}" data-oi="${oi}">✕</button>
                     </div>
                 `).join("")}
                 <button type="button" class="botonAdminChico" data-accion="agregar-parte" data-pi="${pi}">+ Agregar parte</button>
             `;
+
+        } else {
+
+            const distractores = pregunta.distractores || [];
+            especifico = `
+                <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">Respuesta correcta</label>
+                <input type="text" data-accion="texto-correcta" data-pi="${pi}"
+                       value="${esc(pregunta.respuestaCorrecta)}" placeholder="La opción correcta"
+                       style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--borde); margin-bottom:12px;">
+
+                <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">
+                    Banco de distractores (opciones incorrectas)
+                </label>
+                <p style="font-size:12px; color:var(--texto-suave); margin:0 0 8px;">
+                    Al jugar se muestran la correcta + 3 de estos al azar, así no todos ven las mismas opciones.
+                </p>
+                ${distractores.map((distractor, di) => `
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                        <input type="text" data-accion="texto-distractor" data-pi="${pi}" data-di="${di}"
+                               value="${esc(distractor)}" placeholder="Una opción incorrecta pero creíble"
+                               style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--borde);">
+                        <button type="button" class="botonAdminChico botonPeligro" data-accion="quitar-distractor" data-pi="${pi}" data-di="${di}">✕</button>
+                    </div>
+                `).join("")}
+                <button type="button" class="botonAdminChico" data-accion="agregar-distractor" data-pi="${pi}">+ Agregar distractor</button>
+            `;
+
         }
 
-        // opcionMultiple (por defecto)
-        const opciones = pregunta.opciones || [];
         return `
-            ${opciones.map((opcion, oi) => `
-                <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-                    <input type="radio" name="correcta-${pi}" data-accion="marcar-correcta" data-pi="${pi}" data-oi="${oi}"
-                           ${pregunta.correcta === opcion.valor ? "checked" : ""}>
-                    <input type="text" data-accion="texto-opcion" data-pi="${pi}" data-oi="${oi}"
-                           value="${(opcion.texto || "").replace(/"/g, "&quot;")}"
-                           placeholder="Texto de esta opción"
-                           style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--borde);">
-                    <button type="button" class="botonAdminChico botonPeligro" data-accion="quitar-opcion" data-pi="${pi}" data-oi="${oi}">✕</button>
-                </div>
-            `).join("")}
-            <button type="button" class="botonAdminChico" data-accion="agregar-opcion" data-pi="${pi}" style="margin-top:4px;">+ Agregar opción</button>
+            ${textoEnunciado}
+            ${especifico}
+            <div style="margin-top:12px; text-align:right;">
+                <button type="button" class="botonAdminChico botonPeligro" data-accion="quitar-pregunta" data-pi="${pi}">🗑️ Quitar esta pregunta</button>
+            </div>
         `;
 
     }
 
+    // ---- Nivel 2: una pregunta, colapsada, dentro de su tipo ----
+    function detallePregunta(pregunta, pi, numeroEnTipo) {
+
+        const enunciado = (pregunta.pregunta || "").trim();
+        const resumen = enunciado
+            ? (enunciado.length > 70 ? enunciado.slice(0, 70) + "…" : enunciado)
+            : "(sin enunciado todavía)";
+
+        return `
+            <details data-clave="p-${pi}" class="grupoNivelAdmin" style="margin-bottom:8px;">
+                <summary style="cursor:pointer;">
+                    ${numeroEnTipo}. <span style="font-weight:400;">${resumen}</span>
+                </summary>
+                <div style="padding:12px 4px 4px;">
+                    ${cuerpoPregunta(pregunta, pi)}
+                </div>
+            </details>
+        `;
+
+    }
+
+    // ---- Nivel 1: un desplegable por tipo ----
     function render() {
 
-        contenedor.innerHTML = preguntas.map((pregunta, pi) => `
-            <div style="border:1px solid var(--borde); border-radius:10px; padding:15px; margin-bottom:15px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap;">
-                    <strong>Pregunta ${pi + 1}</strong>
-                    <select data-accion="cambiar-tipo" data-pi="${pi}" style="padding:6px; border-radius:8px; border:1px solid var(--borde);">
-                        ${TIPOS_PREGUNTA.map(t => `<option value="${t.valor}" ${tipoDe(pregunta) === t.valor ? "selected" : ""}>${t.etiqueta}</option>`).join("")}
-                    </select>
-                    <button type="button" class="botonAdminChico botonPeligro" data-accion="quitar-pregunta" data-pi="${pi}">🗑️ Quitar</button>
-                </div>
-                <textarea data-accion="texto-pregunta" data-pi="${pi}" rows="2"
-                          placeholder="Escribe la pregunta"
-                          style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--borde); margin-bottom:10px; font-family:inherit;"
-                >${pregunta.pregunta || ""}</textarea>
-                ${subeditorHtml(pregunta, pi)}
-            </div>
-        `).join("") + `<button type="button" data-accion="agregar-pregunta" style="width:100%;">+ Agregar pregunta</button>`;
+        // Qué desplegables estaban abiertos, para no cerrarlos todos
+        // cada vez que se agrega o quita algo.
+        const abiertos = new Set(
+            [...contenedor.querySelectorAll("details[data-clave]")]
+                .filter(d => d.open)
+                .map(d => d.dataset.clave)
+        );
+
+        contenedor.innerHTML = TIPOS_PREGUNTA.map(tipo => {
+
+            // Índice GLOBAL en "preguntas" (no el de dentro del grupo):
+            // es el que usan todos los data-pi de los controles.
+            const delTipo = preguntas
+                .map((pregunta, pi) => ({ pregunta, pi }))
+                .filter(({ pregunta }) => tipoDePregunta(pregunta) === tipo.valor);
+
+            return `
+                <details data-clave="t-${tipo.valor}" class="grupoNivelAdmin" style="margin-bottom:10px;">
+                    <summary style="cursor:pointer; font-weight:600;">
+                        ${tipo.plural} (${delTipo.length})
+                    </summary>
+                    <div style="padding:10px 4px 4px;">
+                        ${delTipo.map(({ pregunta, pi }, i) => detallePregunta(pregunta, pi, i + 1)).join("")
+                            || `<p style="color:var(--texto-suave); font-size:13px; margin:0 0 10px;">Todavía no hay preguntas de este tipo.</p>`}
+                        <button type="button" class="botonAdminChico" data-accion="agregar-pregunta-tipo" data-tipo="${tipo.valor}">
+                            + Agregar pregunta de este tipo
+                        </button>
+                    </div>
+                </details>
+            `;
+
+        }).join("");
+
+        contenedor.querySelectorAll("details[data-clave]").forEach(d => {
+            if (abiertos.has(d.dataset.clave)) d.open = true;
+        });
 
     }
 
@@ -182,115 +319,84 @@ function construirEditorPreguntas(contenedor, preguntas) {
 
         const pi = Number(e.target.dataset.pi);
         const accion = e.target.dataset.accion;
+        if (!accion || Number.isNaN(pi) || !preguntas[pi]) return;
 
         if (accion === "texto-pregunta") {
             preguntas[pi].pregunta = e.target.value;
         }
 
-        if (accion === "texto-opcion") {
-            const oi = Number(e.target.dataset.oi);
-            preguntas[pi].opciones[oi].texto = e.target.value;
+        if (accion === "texto-correcta") {
+            preguntas[pi].respuestaCorrecta = e.target.value;
+        }
+
+        if (accion === "texto-distractor") {
+            preguntas[pi].distractores[Number(e.target.dataset.di)] = e.target.value;
         }
 
         if (accion === "texto-respuesta") {
-            const ri = Number(e.target.dataset.ri);
-            preguntas[pi].respuestasValidas[ri] = e.target.value;
+            preguntas[pi].respuestasValidas[Number(e.target.dataset.ri)] = e.target.value;
         }
 
         if (accion === "texto-parte") {
-            const oi = Number(e.target.dataset.oi);
-            preguntas[pi].partes[oi] = e.target.value;
+            preguntas[pi].partes[Number(e.target.dataset.oi)] = e.target.value;
         }
 
     });
 
     contenedor.addEventListener("change", (e) => {
 
+        if (e.target.dataset.accion !== "marcar-vf") return;
+
         const pi = Number(e.target.dataset.pi);
-        const accion = e.target.dataset.accion;
+        if (!preguntas[pi]) return;
 
-        if (accion === "marcar-correcta") {
-            const oi = Number(e.target.dataset.oi);
-            preguntas[pi].correcta = preguntas[pi].opciones[oi].valor;
-        }
-
-        if (accion === "marcar-vf") {
-            preguntas[pi].correcta = e.target.value === "true";
-        }
-
-        if (accion === "cambiar-tipo") {
-            // A propósito NO se conserva el texto de la pregunta anterior:
-            // cada tipo tiene una forma de redactarla distinta (una
-            // pregunta con "?", una afirmación para V/F, una oración con
-            // "___" para completar...) — arrastrar el texto viejo dejaba
-            // una combinación que no tenía sentido (ej. una "completar"
-            // con una pregunta que no traía ningún "___"). Con el tipo
-            // vacío de verdad, el admin escribe el texto ya pensando en
-            // la forma correcta para ese tipo.
-            preguntas[pi] = objetoPreguntaVacia(e.target.value);
-            render();
-        }
+        preguntas[pi].correcta = e.target.value === "true";
 
     });
 
     contenedor.addEventListener("click", (e) => {
 
-        const accion = e.target.dataset.accion;
-        if (!accion) return;
+        const boton = e.target.closest("[data-accion]");
+        if (!boton || !contenedor.contains(boton)) return;
 
-        const letras = "abcdefghij";
+        const accion = boton.dataset.accion;
+        const pi = Number(boton.dataset.pi);
 
-        if (accion === "agregar-pregunta") {
+        if (accion === "agregar-pregunta-tipo") {
 
-            preguntas.push(objetoPreguntaVacia("opcionMultiple"));
+            preguntas.push(objetoPreguntaVacia(boton.dataset.tipo));
 
         } else if (accion === "quitar-pregunta") {
 
-            preguntas.splice(Number(e.target.dataset.pi), 1);
+            preguntas.splice(pi, 1);
 
-        } else if (accion === "agregar-opcion") {
+        } else if (accion === "agregar-distractor") {
 
-            const pi = Number(e.target.dataset.pi);
-            const letra = letras[preguntas[pi].opciones.length] || `x${preguntas[pi].opciones.length}`;
-            preguntas[pi].opciones.push({ texto: "", valor: letra });
+            preguntas[pi].distractores.push("");
 
-        } else if (accion === "quitar-opcion") {
+        } else if (accion === "quitar-distractor") {
 
-            const pi = Number(e.target.dataset.pi);
-            const oi = Number(e.target.dataset.oi);
-            const eraCorrecta = preguntas[pi].opciones[oi].valor === preguntas[pi].correcta;
-
-            preguntas[pi].opciones.splice(oi, 1);
-
-            if (eraCorrecta && preguntas[pi].opciones[0]) {
-                preguntas[pi].correcta = preguntas[pi].opciones[0].valor;
-            }
+            preguntas[pi].distractores.splice(Number(boton.dataset.di), 1);
 
         } else if (accion === "agregar-respuesta") {
 
-            const pi = Number(e.target.dataset.pi);
             preguntas[pi].respuestasValidas.push("");
 
         } else if (accion === "quitar-respuesta") {
 
-            const pi = Number(e.target.dataset.pi);
-            const ri = Number(e.target.dataset.ri);
-            preguntas[pi].respuestasValidas.splice(ri, 1);
+            preguntas[pi].respuestasValidas.splice(Number(boton.dataset.ri), 1);
 
         } else if (accion === "agregar-parte") {
 
-            const pi = Number(e.target.dataset.pi);
             preguntas[pi].partes.push("");
 
         } else if (accion === "quitar-parte") {
 
-            const pi = Number(e.target.dataset.pi);
-            const oi = Number(e.target.dataset.oi);
-            preguntas[pi].partes.splice(oi, 1);
+            preguntas[pi].partes.splice(Number(boton.dataset.oi), 1);
 
         } else {
 
-            return; // clic en algo sin acción (ej. una opción de texto), no re-renderizar
+            return; // clic en un campo de texto u otra cosa sin acción
 
         }
 

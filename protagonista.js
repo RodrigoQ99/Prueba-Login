@@ -199,7 +199,9 @@ async function inicializarProtagonista() {
                 titulo: titulo,
                 texto: texto,
                 genero: genero,
-                bancoPreguntas: _preguntasProtagonista,
+                // Sin los campos internos del editor (ver
+                // limpiarPreguntasParaGuardar en editor-preguntas.js).
+                bancoPreguntas: limpiarPreguntasParaGuardar(_preguntasProtagonista),
                 cantidadPalabras: cantidadPalabras,
                 nivelSugerido: sugerencia.etiqueta,
                 preguntasSugeridas: sugerencia.preguntas,
