@@ -38,6 +38,11 @@ const OCUPACIONES = [
     { valor: "otro", etiqueta: "Otro" }
 ];
 
+// Cuántos temas de interés se pueden marcar: ni uno solo (deja muy poco
+// con qué recomendar) ni la lista entera (deja de decir nada).
+const MIN_TEMAS = 2;
+const MAX_TEMAS = 3;
+
 const PROPOSITOS = [
     { valor: "habito", etiqueta: "Sembrar el hábito de la lectura" },
     { valor: "descubrir", etiqueta: "Descubrir temas nuevos" },
@@ -191,10 +196,12 @@ function construirCompletarPerfil(contenedor, datos, { alTerminar }) {
                             <input type="radio" name="institucionTipoCompletar" value="universidad"> Universidad
                         </label>
 
-                        <label style="display:block; font-weight:600; margin:12px 0 6px;">Nombre de la institución</label>
-                        <input type="text" id="campoInstitucionCompletar" value="${esc(datos.colegio || "")}"
-                               placeholder="Escríbelo completo"
-                               style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--borde);">
+                        <div id="cajaInstitucionCompletar" style="display:none; margin-top:12px;">
+                            <label style="display:block; font-weight:600; margin-bottom:6px;">Nombre de la institución</label>
+                            <input type="text" id="campoInstitucionCompletar" value="${esc(datos.colegio || "")}"
+                                   placeholder="Escríbelo completo"
+                                   style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--borde);">
+                        </div>
 
                         <div id="cajaGradoCompletar" style="display:none; margin-top:12px;">
                             <label style="display:block; font-weight:600; margin-bottom:6px;">Grado</label>
@@ -295,6 +302,7 @@ function construirCompletarPerfil(contenedor, datos, { alTerminar }) {
             const tipoInst = (contenedor.querySelector('input[name="institucionTipoCompletar"]:checked') || {}).value || null;
             estado.institucionTipo = tipoInst;
             contenedor.querySelector("#cajaGradoCompletar").style.display = tipoInst === "colegio" ? "block" : "none";
+            contenedor.querySelector("#cajaInstitucionCompletar").style.display = tipoInst === "universidad" ? "block" : "none";
             contenedor.querySelector("#cajaCarreraCompletar").style.display = tipoInst === "universidad" ? "block" : "none";
         }
 
@@ -347,20 +355,23 @@ function construirCompletarPerfil(contenedor, datos, { alTerminar }) {
                 if (!tipoInst) faltantes.push("si estudias en colegio o universidad");
                 estado.institucionTipo = tipoInst || null;
 
-                const campoInst = contenedor.querySelector("#campoInstitucionCompletar");
-                marcarFaltante(campoInst, !campoInst.value.trim());
-                if (campoInst.value.trim()) estado.institucion = campoInst.value.trim(); else faltantes.push("el nombre de tu institución");
-
                 if (tipoInst === "colegio") {
+                    estado.institucion = "";
                     const campoGrado = contenedor.querySelector("#campoGradoCompletar");
                     marcarFaltante(campoGrado, !campoGrado.value);
                     if (campoGrado.value) estado.grado = campoGrado.value; else faltantes.push("tu grado");
                 }
 
                 if (tipoInst === "universidad") {
+
+                    const campoInst = contenedor.querySelector("#campoInstitucionCompletar");
+                    marcarFaltante(campoInst, !campoInst.value.trim());
+                    if (campoInst.value.trim()) estado.institucion = campoInst.value.trim(); else faltantes.push("el nombre de tu universidad");
+
                     const campoCarrera = contenedor.querySelector("#campoCarreraCompletar");
                     marcarFaltante(campoCarrera, !campoCarrera.value.trim());
                     if (campoCarrera.value.trim()) estado.carrera = campoCarrera.value.trim(); else faltantes.push("tu carrera");
+
                 }
 
             }
@@ -410,19 +421,25 @@ function construirCompletarPerfil(contenedor, datos, { alTerminar }) {
 
             if (esEstudiante) {
                 ocupacion.institucionTipo = estado.institucionTipo;
-                ocupacion.institucion = estado.institucion;
-                if (estado.institucionTipo === "colegio") ocupacion.grado = estado.grado;
-                if (estado.institucionTipo === "universidad") ocupacion.carrera = estado.carrera;
+                if (estado.institucionTipo === "colegio") {
+                    ocupacion.grado = estado.grado;
+                } else {
+                    ocupacion.institucion = estado.institucion;
+                    ocupacion.carrera = estado.carrera;
+                }
             }
             if (estado.ocupacion === "otro") ocupacion.detalle = estado.ocupacionOtro;
 
             cambios.ocupacion = ocupacion;
 
-            // Mismos campos de compatibilidad que en el registro nuevo:
-            // de ellos depende el ranking de colegios (ver puntos.js).
+            // Mismos campos de compatibilidad que en el registro nuevo
+            // (ver la nota sobre el ranking de colegios allá). Aquí, a
+            // una cuenta vieja de colegio se le CONSERVA el nombre que ya
+            // tenía guardado: sería peor borrárselo y sacarla del grupo
+            // donde ya venía compitiendo.
             cambios.tipo = esEstudiante ? "estudiante" : "particular";
             if (esEstudiante) {
-                cambios.colegio = estado.institucion;
+                cambios.colegio = estado.institucion || datos.colegio || "";
                 cambios.grado = estado.institucionTipo === "colegio" ? estado.grado : estado.carrera;
             }
 
@@ -472,8 +489,7 @@ function construirFormularioRegistro(contenedor, { alTerminar }) {
 
     contenedor.innerHTML = `
         <div class="cajaAuth" style="max-width:520px;">
-            <h1 style="margin-bottom:4px;">Un último paso</h1>
-            <p id="subtituloRegistro" style="margin-bottom:6px;"></p>
+            <h1 id="subtituloRegistro" style="font-size:24px; margin-bottom:6px;"></h1>
             <div style="height:6px; background:var(--borde); border-radius:999px; margin:14px 0 20px; overflow:hidden;">
                 <div id="barraProgresoRegistro" style="height:100%; width:25%; background:var(--azul); border-radius:999px; transition:width .25s ease;"></div>
             </div>
@@ -512,12 +528,13 @@ function construirFormularioRegistro(contenedor, { alTerminar }) {
     // ---------------- PASO 1: TEMAS ----------------
     function pintarPaso1() {
 
-        subtitulo.textContent = "¿Qué temas te gusta leer? Elige los que quieras.";
+        subtitulo.textContent = `¿Qué temas te gusta leer? Elige ${MIN_TEMAS} o ${MAX_TEMAS}.`;
 
         cuerpo.innerHTML = `
-            <div id="listaTemasRegistro" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;">
+            <div id="listaTemasRegistro" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
                 <p style="color:var(--texto-suave); font-size:13px; margin:0;">Cargando temas…</p>
             </div>
+            <p id="contadorTemasElegidos" style="font-size:13px; color:var(--texto-suave); margin:0 0 16px;">0 de ${MAX_TEMAS} elegidos</p>
 
             <label style="display:block; font-weight:600; margin-bottom:6px;">¿No está el tuyo? Propón uno</label>
             <div style="display:flex; gap:8px;">
@@ -557,13 +574,33 @@ function construirFormularioRegistro(contenedor, { alTerminar }) {
 
         lista.querySelectorAll("[data-tema]").forEach(chip => {
             chip.addEventListener("click", () => {
+
                 const tema = chip.dataset.tema;
                 const i = estado.temas.indexOf(tema);
-                if (i === -1) estado.temas.push(tema); else estado.temas.splice(i, 1);
+
+                if (i !== -1) {
+                    estado.temas.splice(i, 1);
+                } else if (estado.temas.length >= MAX_TEMAS) {
+                    // Tope alcanzado: en vez de ignorar el clic en silencio
+                    // (que se siente como que la app no responde), se dice
+                    // qué hacer.
+                    mostrarAviso(`Puedes elegir máximo ${MAX_TEMAS} temas. Quita uno para cambiarlo.`);
+                    return;
+                } else {
+                    estado.temas.push(tema);
+                }
+
                 pintarChipsTemas();
                 mostrarAviso("");
+
             });
         });
+
+        // Contador de cuántos lleva, para que el tope no sorprenda.
+        const contador = contenedor.querySelector("#contadorTemasElegidos");
+        if (contador) {
+            contador.textContent = `${estado.temas.length} de ${MAX_TEMAS} elegidos`;
+        }
 
     }
 
@@ -602,9 +639,16 @@ function construirFormularioRegistro(contenedor, { alTerminar }) {
                 // Aprobado: entra a la lista global (lo hizo la función) y
                 // queda marcado de una vez para este usuario.
                 if (!GENEROS_LECTURA.includes(data.tema)) GENEROS_LECTURA.push(data.tema);
-                if (!estado.temas.includes(data.tema)) estado.temas.push(data.tema);
+
+                // Solo se marca solo si todavía cabe dentro del tope;
+                // si no, se agrega a la lista pero lo elige a mano.
+                const cabe = estado.temas.length < MAX_TEMAS;
+                if (cabe && !estado.temas.includes(data.tema)) estado.temas.push(data.tema);
+
                 campo.value = "";
-                estadoTema.textContent = `✅ "${data.tema}" se agregó a la lista y quedó marcado como tuyo.`;
+                estadoTema.textContent = cabe
+                    ? `✅ "${data.tema}" se agregó a la lista y quedó marcado como tuyo.`
+                    : `✅ "${data.tema}" se agregó a la lista. Ya llevas ${MAX_TEMAS} temas: quita uno si quieres marcarlo.`;
                 estadoTema.style.color = "#2e9e5b";
                 pintarChipsTemas();
             }
@@ -715,13 +759,18 @@ function construirFormularioRegistro(contenedor, { alTerminar }) {
                     <input type="radio" name="institucionTipo" value="universidad" ${estado.institucionTipo === "universidad" ? "checked" : ""}> Universidad
                 </label>
 
-                <label style="display:block; font-weight:600; margin:12px 0 6px;">Nombre de la institución</label>
-                <input type="text" id="campoInstitucion" value="${esc(estado.institucion)}"
-                       placeholder="Escríbelo completo, igual que tus compañeros"
-                       style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--borde);">
-                <small style="display:block; color:#888; margin-top:4px;">
-                    Escríbelo igual que tus compañeros para que sus puntos se sumen juntos en el ranking.
-                </small>
+                <!-- El nombre de la institución solo se pide a
+                     universitarios: a quien está en colegio se le pregunta
+                     únicamente el grado. -->
+                <div id="cajaInstitucion" style="display:none; margin-top:12px;">
+                    <label style="display:block; font-weight:600; margin-bottom:6px;">Nombre de la institución</label>
+                    <input type="text" id="campoInstitucion" value="${esc(estado.institucion)}"
+                           placeholder="Escríbelo completo, igual que tus compañeros"
+                           style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--borde);">
+                    <small style="display:block; color:#888; margin-top:4px;">
+                        Escríbelo igual que tus compañeros para que sus puntos se sumen juntos en el ranking.
+                    </small>
+                </div>
 
                 <div id="cajaGrado" style="display:none; margin-top:12px;">
                     <label style="display:block; font-weight:600; margin-bottom:6px;">Grado</label>
@@ -795,6 +844,7 @@ function construirFormularioRegistro(contenedor, { alTerminar }) {
             const tipoInstitucion = (cuerpo.querySelector('input[name="institucionTipo"]:checked') || {}).value || null;
             estado.institucionTipo = tipoInstitucion;
             cuerpo.querySelector("#cajaGrado").style.display = tipoInstitucion === "colegio" ? "block" : "none";
+            cuerpo.querySelector("#cajaInstitucion").style.display = tipoInstitucion === "universidad" ? "block" : "none";
             cuerpo.querySelector("#cajaCarrera").style.display = tipoInstitucion === "universidad" ? "block" : "none";
 
         }
@@ -821,7 +871,10 @@ function construirFormularioRegistro(contenedor, { alTerminar }) {
         const faltantes = [];
 
         if (pasoActual === 1) {
-            if (estado.temas.length === 0) faltantes.push("al menos un tema de interés");
+            if (estado.temas.length < MIN_TEMAS) {
+                mostrarAviso(`Elige al menos ${MIN_TEMAS} temas (llevas ${estado.temas.length}).`);
+                return false;
+            }
         }
 
         if (pasoActual === 2) {
@@ -862,13 +915,11 @@ function construirFormularioRegistro(contenedor, { alTerminar }) {
                 if (!tipoInst) faltantes.push("si estudias en colegio o universidad");
                 estado.institucionTipo = tipoInst || null;
 
-                const campoInst = cuerpo.querySelector("#campoInstitucion");
-                const faltaInst = !campoInst.value.trim();
-                marcarFaltante(campoInst, faltaInst);
-                if (faltaInst) faltantes.push("el nombre de tu institución");
-                else estado.institucion = campoInst.value.trim();
-
+                // A quien está en colegio solo se le pide el grado; el
+                // nombre de la institución se le pide únicamente a
+                // universitarios.
                 if (tipoInst === "colegio") {
+                    estado.institucion = "";
                     const campoGrado = cuerpo.querySelector("#campoGradoRegistro");
                     const faltaGrado = !campoGrado.value;
                     marcarFaltante(campoGrado, faltaGrado);
@@ -877,11 +928,19 @@ function construirFormularioRegistro(contenedor, { alTerminar }) {
                 }
 
                 if (tipoInst === "universidad") {
+
+                    const campoInst = cuerpo.querySelector("#campoInstitucion");
+                    const faltaInst = !campoInst.value.trim();
+                    marcarFaltante(campoInst, faltaInst);
+                    if (faltaInst) faltantes.push("el nombre de tu universidad");
+                    else estado.institucion = campoInst.value.trim();
+
                     const campoCarrera = cuerpo.querySelector("#campoCarrera");
                     const faltaCarrera = !campoCarrera.value.trim();
                     marcarFaltante(campoCarrera, faltaCarrera);
                     if (faltaCarrera) faltantes.push("tu carrera");
                     else estado.carrera = campoCarrera.value.trim();
+
                 }
 
             }
@@ -975,9 +1034,12 @@ function construirFormularioRegistro(contenedor, { alTerminar }) {
         const ocupacion = { tipo: estado.ocupacion };
         if (esEstudiante) {
             ocupacion.institucionTipo = estado.institucionTipo;
-            ocupacion.institucion = estado.institucion;
-            if (estado.institucionTipo === "colegio") ocupacion.grado = estado.grado;
-            if (estado.institucionTipo === "universidad") ocupacion.carrera = estado.carrera;
+            if (estado.institucionTipo === "colegio") {
+                ocupacion.grado = estado.grado;
+            } else {
+                ocupacion.institucion = estado.institucion;
+                ocupacion.carrera = estado.carrera;
+            }
         }
         if (estado.ocupacion === "otro") ocupacion.detalle = estado.ocupacionOtro;
 
@@ -1022,7 +1084,13 @@ function construirFormularioRegistro(contenedor, { alTerminar }) {
         };
 
         if (esEstudiante) {
-            datosUsuario.colegio = estado.institucion;
+            // OJO — el ranking de colegios agrupa por "colegio" + "grado"
+            // (ver actualizarRankingActual en puntos.js). Desde que a los
+            // de colegio ya no se les pregunta el nombre de la
+            // institución, ese campo queda vacío para ellos y todos
+            // terminan agrupados juntos por grado. Los universitarios sí
+            // siguen trayendo nombre (su universidad) y carrera.
+            datosUsuario.colegio = estado.institucion || "";
             datosUsuario.grado = estado.institucionTipo === "colegio" ? estado.grado : estado.carrera;
         }
 

@@ -370,11 +370,13 @@ button:active{
 
 .cajaAuth{
     background:white;
-    border-radius:10px;
-    padding:35px;
-    max-width:420px;
+    border-radius:18px;
+    padding:44px 38px;
+    max-width:440px;
     width:100%;
     text-align:center;
+    border:1px solid var(--borde);
+    box-shadow:var(--sombra);
 }
 
 .cajaAuth h1{
@@ -384,6 +386,38 @@ button:active{
 .cajaAuth p{
     margin-bottom:25px;
     color:#555;
+}
+
+/* Nombre de la app en la pantalla de entrada. */
+.marcaAuth{
+    font-size:44px;
+    letter-spacing:-0.02em;
+    margin-bottom:22px;
+}
+
+/* La cita que recibe a quien todavía no inició sesión: es lo único que
+   se lee ahí, así que se le da aire y jerarquía propia en vez de
+   dejarla como un párrafo suelto. */
+.citaAuth{
+    margin:0 0 30px;
+    padding:0 0 0 16px;
+    border-left:3px solid var(--azul);
+    text-align:left;
+}
+
+.citaAuth p{
+    margin:0 0 10px;
+    font-size:17px;
+    line-height:1.55;
+    font-style:italic;
+    color:var(--texto);
+}
+
+.citaAuth cite{
+    font-style:normal;
+    font-size:14px;
+    font-weight:600;
+    color:var(--texto-suave);
 }
 
 .botonGoogle{
