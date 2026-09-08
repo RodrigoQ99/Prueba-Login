@@ -11,6 +11,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-functions-compat.js"></script>
 
 </head>
 
@@ -70,55 +71,8 @@
 <!-- ==========================
      PANTALLA DE REGISTRO (solo primera vez)
 =========================== -->
-<div id="pantallaRegistro" class="pantallaAuth" style="display:none;">
-    <div class="cajaAuth">
-        <h1>Un último paso</h1>
-        <p>Cuéntanos cómo vas a participar:</p>
-
-        <form id="formRegistro">
-
-            <label class="opcionTipo">
-                <input type="radio" name="tipoUsuario" value="particular" checked>
-                Participante particular
-            </label>
-            <br>
-            <label class="opcionTipo">
-                <input type="radio" name="tipoUsuario" value="estudiante">
-                Estudiante (compito por mi colegio)
-            </label>
-
-            <div id="camposEstudiante" style="display:none; margin-top:15px;">
-                <input type="text" id="inputColegio" placeholder="Nombre completo del colegio (ej. Colegio Unis)">
-                <small style="display:block; color:#888; margin:-8px 0 10px;">
-                    Escribe el nombre completo, igual que tus compañeros, para que sus puntos se sumen juntos.
-                </small>
-                <label style="display:block; text-align:left; color:#555; font-size:13px; margin:8px 0 4px;">Grado</label>
-                <select id="inputGrado"></select>
-            </div>
-
-            <div id="datosPerfilRegistro" style="margin-top:15px;">
-                <label style="display:block; text-align:left; color:#555; font-size:13px; margin-bottom:4px;">Fecha de nacimiento</label>
-                <input type="date" id="inputFechaNacimiento">
-                <label style="display:block; text-align:left; color:#555; font-size:13px; margin:10px 0 4px;">País</label>
-                <select id="inputPais" required></select>
-                <input type="text" id="inputLenguaMaterna" placeholder="Lengua materna">
-                <label style="display:block; text-align:left; color:#555; font-size:13px; margin:10px 0 4px;">Género</label>
-                <label class="opcionTipo" style="display:inline-flex; align-items:center; gap:6px; width:auto; margin-right:15px;">
-                    <input type="radio" name="generoRegistro" value="hombre"> Hombre
-                </label>
-                <label class="opcionTipo" style="display:inline-flex; align-items:center; gap:6px; width:auto;">
-                    <input type="radio" name="generoRegistro" value="mujer"> Mujer
-                </label>
-            </div>
-
-            <p style="font-weight:600; margin:15px 0 8px;">¿Qué géneros de lectura te gustan?</p>
-            <div id="contenedorGenerosRegistro"></div>
-
-            <button type="submit" style="margin-top:15px;">Continuar</button>
-
-        </form>
-    </div>
-</div>
+<div id="pantallaRegistro" class="pantallaAuth" style="display:none;"></div>
+<!-- El formulario de registro (4 pasos) lo arma registro.js -->
 
 
 <div id="contenedor" style="display:none; max-width:560px; margin:0 auto; padding:30px 20px 80px;">
@@ -165,6 +119,8 @@
 <script src="lecturas.js"></script>
 <script src="perfil.js"></script>
 <script src="racha.js"></script>
+<script src="niveles-lectura.js"></script>
+<script src="registro.js"></script>
 <script src="auth.js"></script>
 <script src="menu.js"></script>
 

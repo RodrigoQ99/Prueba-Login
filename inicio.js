@@ -77,6 +77,10 @@ async function iniciarLectura() {
         console.error("No se pudieron cargar los datos del usuario:", error);
     }
 
+    // Avatar elegido en Perfil → Información (o 👤 si todavía no eligió).
+    const avatarInicio = document.getElementById("avatarInicio");
+    if (avatarInicio) avatarInicio.textContent = datos.avatar || "👤";
+
     // Badge de racha 🔥
     const badge = document.getElementById("badgeRachaInicio");
     if (badge) {

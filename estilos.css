@@ -411,6 +411,49 @@ button:active{
     cursor:pointer;
 }
 
+/* Chips de "temas de interés" del registro (ver registro.js): cada uno
+   trae, dentro, cuánta gente eligió ese tema. */
+.chipTema{
+    width:auto;
+    margin:0;
+    padding:8px 12px;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background:white;
+    color:var(--texto);
+    border:2px solid var(--borde);
+    border-radius:999px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+}
+
+.chipTema:hover{
+    border-color:var(--azul);
+}
+
+.chipTemaElegido{
+    background:var(--azul);
+    color:white;
+    border-color:var(--azul);
+}
+
+.chipTemaConteo{
+    font-size:12px;
+    font-weight:700;
+    padding:1px 7px;
+    border-radius:999px;
+    background:var(--fondo);
+    color:var(--texto-suave);
+    font-variant-numeric:tabular-nums;
+}
+
+.chipTemaElegido .chipTemaConteo{
+    background:rgba(255,255,255,0.25);
+    color:white;
+}
+
 /* Selector de avatar (perfil-informacion.html): un emoji por botón,
    el elegido queda resaltado con el borde azul. */
 .opcionAvatar{
@@ -565,6 +608,21 @@ button:active{
     font-size:22px;
     width:35px;
     text-align:center;
+}
+
+/* Avatar elegido por cada usuario en Perfil → Información (emoji, ver
+   perfil-informacion.js). Círculo del mismo tamaño en toda la lista para
+   que los nombres queden alineados aunque el emoji cambie de ancho. */
+.avatarRanking{
+    width:38px;
+    height:38px;
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+    background:var(--fondo);
+    border-radius:50%;
 }
 
 .infoRanking{
@@ -1570,4 +1628,83 @@ button.menuLink{
 .respuestaIA th:not(:first-child){
     text-align:right;
     font-variant-numeric:tabular-nums;
+}
+
+
+/* ==========================
+   AJUSTES DEL LECTOR (Etapa 37)
+   Barra de brillo / tamaño / tipografía que lector-ajustes.js inyecta
+   encima del recuadro de lectura.
+========================== */
+
+#barraAjustesLector{
+    max-width:100%;
+    margin:0 0 10px;
+}
+
+.botonAjustesLector{
+    width:auto;
+    margin:0;
+    padding:8px 14px;
+    font-size:14px;
+    font-weight:600;
+    background:white;
+    color:var(--texto);
+    border:1px solid var(--borde);
+    border-radius:12px;
+    cursor:pointer;
+}
+
+.panelAjustesLector{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    margin-top:10px;
+    padding:14px 16px;
+    background:white;
+    border:1px solid var(--borde);
+    border-radius:12px;
+    box-shadow:var(--sombra);
+}
+
+.filaAjusteLector{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    font-size:14px;
+    font-weight:600;
+    color:var(--texto);
+}
+
+.filaAjusteLector > span{
+    width:80px;
+    flex-shrink:0;
+}
+
+.filaAjusteLector input[type="range"]{
+    flex:1;
+    accent-color:var(--azul);
+}
+
+.opcionesTipografia{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+}
+
+.botonTipografia{
+    width:auto;
+    margin:0;
+    padding:6px 12px;
+    font-size:14px;
+    background:white;
+    color:var(--texto);
+    border:2px solid var(--borde);
+    border-radius:10px;
+    cursor:pointer;
+}
+
+.botonTipografiaElegida{
+    border-color:var(--azul);
+    color:var(--azul);
 }

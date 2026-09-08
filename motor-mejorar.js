@@ -164,6 +164,9 @@ async function iniciarLectura() {
     const textoAsistido = prepararTextoAsistido(lectura.texto);
     textoLecturaMejora.innerHTML = textoAsistido.html;
 
+    // Controles de brillo / tamaño / tipografía (ver lector-ajustes.js).
+    if (typeof activarAjustesLector === "function") activarAjustesLector("textoLecturaMejora");
+
     spansPalabrasMejora = Array.from(textoLecturaMejora.querySelectorAll(".palabraMejora"));
     tiemposInicioAsistidos = calcularIniciosAsistidos(textoAsistido.palabras);
 

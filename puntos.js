@@ -141,6 +141,10 @@ async function actualizarRankingPersonal() {
         porPais[clavePais].push({
             uid: doc.id,
             nombre: nombreAMostrar,
+            // Avatar elegido en Perfil → Información, para mostrarlo junto
+            // al nombre en el ranking (ver ranking.js). Las listas viejas
+            // no lo traen: ahí se cae al 👤 genérico.
+            avatar: data.avatar || null,
             tipo: data.tipo || "particular",
             puntos: data.puntosTotales
         });

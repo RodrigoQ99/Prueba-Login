@@ -561,6 +561,12 @@ function arrancarLecturaCronometrada(){
         .map(parrafo => `<p>${parrafo}</p>`)
         .join("");
 
+    // Controles de brillo / tamaño / tipografía encima del recuadro
+    // (ver lector-ajustes.js). Se activan ANTES de calcular el
+    // movimiento automático, porque cambiar el tamaño de letra cambia
+    // la altura del texto y con ella la distancia a recorrer.
+    if (typeof activarAjustesLector === "function") activarAjustesLector("lectura");
+
     // Elegir al azar las preguntas de esta sesión, del banco de la lectura
     // (así cada usuario ve una combinación distinta y es más difícil copiarse)
     preguntasSeleccionadas = elegirPreguntasAlAzar(
@@ -843,13 +849,23 @@ function moverTextoLectura(){
     // pero bloquea cualquier intento de regresar hacia arriba.
     lectura.addEventListener("scroll", ()=>{
 
-        if(lectura.scrollTop < posicionMinima){
+        const actual = lectura.scrollTop;
+
+        // Menos de 1px de diferencia = es el REDONDEO de nuestro propio
+        // scroll automático, no un gesto del usuario. Antes se escribía
+        // ese valor redondeado de vuelta en los acumuladores, y como el
+        // avance por cuadro suele ser una fracción de píxel, el
+        // movimiento quedaba cuantizado: se veía a saltitos en vez de
+        // fluido. Ignorarlo deja que el acumulador siga en decimales.
+        if(Math.abs(actual - posicionMinima) < 1) return;
+
+        if(actual < posicionMinima){
 
             lectura.scrollTop = posicionMinima;
 
         }else{
 
-            posicionMinima = lectura.scrollTop;
+            posicionMinima = actual;
             posicionAutomatica = Math.max(posicionAutomatica, posicionMinima);
 
             if(!botonMostrado && posicionMinima >= distancia && btnIrCuestionario){

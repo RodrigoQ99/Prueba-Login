@@ -52,10 +52,16 @@ function cargarGenerosLectura(forzarRecarga) {
  * arreglo de géneros ya guardados (usuarios/{uid}.generosLectura) — los
  * que coincidan con la lista quedan marcados, y cualquier otro valor
  * (texto libre de una edición anterior) se precarga en el campo "Otro".
+ *
+ * "opciones.conOtro" (por defecto true) permite ocultar ese campo: en el
+ * generador de historias del panel de administrador los géneros son solo
+ * para decirle a la IA qué inventar, y ahí abajo va un cuadro de
+ * instrucciones detalladas en su lugar (ver abrirFormularioLectura).
  */
-function renderizarCheckboxesGeneros(contenedor, seleccionActual) {
+function renderizarCheckboxesGeneros(contenedor, seleccionActual, opciones) {
 
     const seleccion = seleccionActual || [];
+    const conOtro = !opciones || opciones.conOtro !== false;
     const otroPrevio = seleccion.find(g => !GENEROS_LECTURA.includes(g)) || "";
 
     contenedor.innerHTML = `
@@ -68,10 +74,12 @@ function renderizarCheckboxesGeneros(contenedor, seleccionActual) {
                 </label>
             `).join("")}
         </div>
-        <label style="display:block; font-weight:600; margin-bottom:6px;">Otro (opcional)</label>
-        <input type="text" id="campoGeneroOtro" placeholder="Escribe otro género que te guste"
-               value="${otroPrevio.replace(/"/g, "&quot;")}"
-               style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--borde);">
+        ${conOtro ? `
+            <label style="display:block; font-weight:600; margin-bottom:6px;">Otro (opcional)</label>
+            <input type="text" id="campoGeneroOtro" placeholder="Escribe otro género que te guste"
+                   value="${otroPrevio.replace(/"/g, "&quot;")}"
+                   style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--borde);">
+        ` : ""}
     `;
 
 }

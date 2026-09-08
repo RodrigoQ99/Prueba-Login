@@ -133,6 +133,21 @@ service cloud.firestore {
       allow write: if esAdmin();
     }
 
+    // Cuántos usuarios eligieron cada tema de interés (Etapa 37) — se
+    // muestra como contador en vivo junto a cada tema en el registro
+    // (ver registro.js). Un documento por tema, con un solo campo
+    // "conteo" que cada usuario incrementa al registrarse o al cambiar
+    // sus temas desde Perfil. Mismo criterio que rankingPersonal: es un
+    // dato derivado y público, no algo que haya que proteger por
+    // usuario, así que cualquiera logueado puede sumarle.
+    // La LISTA de temas válidos NO se toca desde aquí: vive en
+    // configuracion/generosLectura y solo la escriben el admin o la
+    // Cloud Function que modera los temas nuevos (ver moderarTemaIA.js).
+    match /temasContadores/{tema} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
     // "El Hilo del día": el contenido de cada día (5 fragmentos en su
     // orden correcto) lo administra solo el admin, igual que /lecturas.
     match /elHiloDelDia/{fecha} {

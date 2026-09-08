@@ -57,7 +57,7 @@ async function iniciarLecturaLibre() {
 
     cont.innerHTML = `
         ${lectura.autorNombre ? `<p style="text-align:center; color:var(--texto-suave); margin-bottom:15px;">✍️ Por ${lectura.autorNombre}</p>` : ""}
-        <div style="text-align:left; margin-bottom:25px;">
+        <div id="textoLecturaLibre" style="text-align:left; margin-bottom:25px;">
             ${(lectura.texto || []).map(p => `<p style="margin-bottom:14px;">${p}</p>`).join("")}
         </div>
         ${preguntas.length > 0 ? `
@@ -70,6 +70,9 @@ async function iniciarLecturaLibre() {
             <p id="resultadoLecturaLibre" style="display:none; text-align:center; font-weight:700; margin-top:15px;"></p>
         ` : ""}
     `;
+
+    // Controles de brillo / tamaño / tipografía (ver lector-ajustes.js).
+    if (typeof activarAjustesLector === "function") activarAjustesLector("textoLecturaLibre");
 
     if (preguntas.length === 0) return;
 

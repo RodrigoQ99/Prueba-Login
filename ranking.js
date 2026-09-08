@@ -76,6 +76,7 @@ function mostrarRankingPersonal(lista, uidActual) {
         return `
             <div class="filaRanking ${esYo ? "filaRankingPropia" : ""}">
                 <span class="lugarRanking">${medallas[i] || (i + 1) + "."}</span>
+                <span class="avatarRanking">${item.avatar || "👤"}</span>
                 <span class="infoRanking">
                     <strong>${item.nombre}${esYo ? " (tú)" : ""}</strong>
                 </span>

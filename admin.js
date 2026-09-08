@@ -144,7 +144,9 @@ async function activarBotonInventarHistoriaIA(overlay, { campoTitulo, campoTexto
     // abrirFormularioLectura, Etapa 36) — aquí solo se deja listo.
     const contenedorGeneros = overlay.querySelector("#checkboxesGenerosInventar");
     await cargarGenerosLectura();
-    renderizarCheckboxesGeneros(contenedorGeneros, []);
+    // Sin el campo "Otro (opcional)": aquí los géneros solo le dicen a la
+    // IA qué inventar, y debajo va el cuadro de instrucciones detalladas.
+    renderizarCheckboxesGeneros(contenedorGeneros, [], { conOtro: false });
 
     const btn = overlay.querySelector("#btnInventarHistoriaIA");
     const estado = overlay.querySelector("#estadoInventarHistoriaIA");
@@ -176,9 +178,12 @@ async function activarBotonInventarHistoriaIA(overlay, { campoTitulo, campoTexto
 
         try {
 
+            const campoInstrucciones = overlay.querySelector("#campoInstruccionesIA");
+
             const resultado = await generarLecturaOriginalConIA({
                 generos,
                 ...contexto(),
+                instrucciones: campoInstrucciones ? campoInstrucciones.value.trim() : "",
                 palabrasPorMinuto: ppmElegido >= 1 ? ppmElegido : undefined
             });
 
@@ -515,6 +520,14 @@ async function abrirFormularioLectura(lecturaExistente, alGuardar, alCancelar) {
                 <div id="seccionInventarHistoriaIA" style="display:none; padding:12px; border:1px dashed var(--borde); border-radius:10px; margin-bottom:15px;">
                     <label style="font-weight:600;">🤖 Géneros de la historia que va a inventar la IA</label>
                     <div id="checkboxesGenerosInventar" style="margin:8px 0;"></div>
+
+                    <label style="display:block; font-size:13px; font-weight:600; margin-top:8px;">Instrucciones detalladas o idea clave de la lectura</label>
+                    <textarea id="campoInstruccionesIA" rows="4"
+                              placeholder="Ej. Que trate de una niña que descubre una biblioteca secreta en su escuela; que el final deje una lección sobre la constancia; evita personajes con nombres extranjeros."
+                              style="width:100%; box-sizing:border-box; padding:10px; border-radius:8px; border:1px solid var(--borde); margin:4px 0 2px; font-family:inherit;"></textarea>
+                    <p style="font-size:12px; color:var(--texto-suave); margin:0 0 10px;">
+                        Opcional. Entre más específico seas (personajes, escenario, tono, qué debe enseñar), más se acerca la historia a lo que tienes en mente.
+                    </p>
 
                     <label style="display:block; font-size:13px; font-weight:600; margin-top:8px;">Palabras por minuto (velocidad de lectura)</label>
                     <input type="number" id="campoPalabrasPorMinuto" min="60" max="600" value="180"

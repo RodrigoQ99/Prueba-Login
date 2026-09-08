@@ -96,7 +96,7 @@ async function leerConfiguracionTiempos() {
     return { ppm, esperaInicial };
 }
 
-function construirPrompt({ generos, tipo, nivel, edad, porTipo, rangoPalabras }) {
+function construirPrompt({ generos, tipo, nivel, edad, porTipo, rangoPalabras, instrucciones }) {
 
     const listaGeneros = generos.length > 1
         ? `que combine estos géneros: ${generos.join(", ")}`
@@ -113,7 +113,12 @@ function construirPrompt({ generos, tipo, nivel, edad, porTipo, rangoPalabras })
 ${contextoAudiencia}
 
 Inventa una historia completamente NUEVA ${listaGeneros}.
-
+${instrucciones ? `
+INSTRUCCIONES DEL ADMINISTRADOR (respétalas al pie de la letra, mandan sobre cualquier otra preferencia de estilo, siempre que no contradigan las reglas de originalidad y de formato de abajo):
+"""
+${instrucciones}
+"""
+` : ""}
 IMPORTANTÍSIMO — ORIGINALIDAD: la historia debe ser inventada por ti en este momento, desde cero. NUNCA copies, resumas, adaptes ni te bases en un cuento, libro, película, fábula, leyenda o cualquier otra obra ya existente — ni aunque le cambies los nombres a los personajes o el escenario. No debe ser reconocible como ninguna obra conocida. Los personajes, el escenario y la trama deben ser completamente tuyos.
 
 Escribe:
@@ -138,6 +143,10 @@ const generarLecturaOriginalIA = onCall(
         const tipo = datos.tipo;
         const nivel = datos.nivel || null;
         const edad = typeof datos.edad === "number" ? datos.edad : null;
+        // Instrucciones libres del admin (idea clave, personajes, tono...).
+        // Se recortan por si acaso: son parte del prompt, no un texto sin
+        // límite que pueda inflar la llamada.
+        const instrucciones = String(datos.instrucciones || "").trim().slice(0, 2000);
 
         if (generos.length === 0) {
             throw new HttpsError("invalid-argument", "Elige al menos un género.");
@@ -166,7 +175,7 @@ const generarLecturaOriginalIA = onCall(
                 // bancos de respuestas: bastante más salida que antes.
                 max_tokens: 16000,
                 messages: [
-                    { role: "user", content: construirPrompt({ generos, tipo, nivel, edad, porTipo, rangoPalabras }) }
+                    { role: "user", content: construirPrompt({ generos, tipo, nivel, edad, porTipo, rangoPalabras, instrucciones }) }
                 ],
                 output_format: betaZodOutputFormat(LecturaExtraidaSchema)
             });

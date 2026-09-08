@@ -22,8 +22,17 @@ const LISTA_GRADOS = [
  */
 function renderizarSelectorGrado(select, gradoActual) {
 
+    // Si "gradoActual" no está en la lista (una cuenta vieja con texto
+    // libre, ej. "4to bachillerato"), NINGUNA opción queda marcada y el
+    // navegador selecciona sola la primera — "Primaria 1ro". Guardar así
+    // le cambiaba el grado a esa persona sin que se diera cuenta, y con
+    // ello su grupo en el ranking de colegios. Por eso, cuando no
+    // coincide, se deja seleccionado el texto de "Selecciona tu grado":
+    // que lo elija a conciencia.
+    const coincide = LISTA_GRADOS.includes(gradoActual);
+
     select.innerHTML = `
-        <option value="" disabled ${!gradoActual ? "selected" : ""}>Selecciona tu grado</option>
+        <option value="" disabled ${coincide ? "" : "selected"}>Selecciona tu grado</option>
         ${LISTA_GRADOS.map(grado => `
             <option value="${grado}" ${grado === gradoActual ? "selected" : ""}>${grado}</option>
         `).join("")}
