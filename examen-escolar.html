@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaluación</title>
+    <link rel="stylesheet" href="estilos.css">
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<div id="pantallaLoginExamen" class="pantallaAuth" style="display:none;">
+    <div class="cajaAuth">
+        <h1>Evaluación</h1>
+        <p>Inicia sesión para realizar tu evaluación.</p>
+        <button id="btnLoginGoogle" class="botonGoogle">Iniciar sesión con Google</button>
+    </div>
+</div>
+
+<!-- El examen se renderiza dinámicamente -->
+<div id="contenedorExamen" style="display:none;"></div>
+
+<script src="firebase-init.js"></script>
+<script src="admin-comun.js"></script>
+<script src="examen-escolar.js"></script>
+
+</body>
+</html>

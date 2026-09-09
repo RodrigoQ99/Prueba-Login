@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centros Educativos</title>
+    <link rel="stylesheet" href="estilos.css">
+
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
+</head>
+
+
+<body>
+
+
+<!-- ==========================
+     PANTALLA DE LOGIN
+=========================== -->
+<div id="pantallaLoginAdmin" class="pantallaAuth" style="display:none;">
+    <div class="cajaAuth">
+        <h1>Centros Educativos</h1>
+        <p>Inicia sesión con la cuenta autorizada para administrar el contenido.</p>
+        <button id="btnLoginGoogleAdmin" class="botonGoogle">
+            Iniciar sesión con Google
+        </button>
+    </div>
+</div>
+
+
+<!-- ==========================
+     SIN PERMISO
+=========================== -->
+<div id="pantallaSinPermiso" class="pantallaAuth" style="display:none;">
+    <div class="cajaAuth">
+        <h1>Sin permiso</h1>
+        <p>Esta cuenta no está autorizada para administrar el contenido.</p>
+        <button id="btnCerrarSesionAdminSinPermiso">Cerrar sesión</button>
+    </div>
+</div>
+
+
+<!-- ==========================
+     CONTENIDO PRINCIPAL
+=========================== -->
+<div id="contenedorAdminColegios" style="display:none;" class="panelRol">
+
+    <h1>🏫 Centros Educativos</h1>
+    <p class="subtituloPanelRol">Administra los colegios y asigna coordinadores</p>
+
+    <!-- Botón agregar -->
+    <button type="button" id="btnAgregarColegio" class="botonAdminChico"
+            style="width:100%; margin-bottom:20px; padding:14px; font-size:15px;">
+        + Agregar centro educativo
+    </button>
+
+    <!-- Formulario nuevo colegio (oculto por defecto) -->
+    <div id="formularioNuevoColegio" style="display:none; margin-bottom:24px;">
+        <div class="tarjetaSeccion">
+            <h3 style="margin-bottom:14px;">Nuevo centro educativo</h3>
+            <div class="formularioTarea">
+                <div>
+                    <label for="inputNombreColegio">Nombre del colegio</label>
+                    <input type="text" id="inputNombreColegio" placeholder="Ej. Colegio San Juan">
+                </div>
+                <div>
+                    <label for="inputCorreoCoordinador">Correo del Coordinador</label>
+                    <input type="email" id="inputCorreoCoordinador" placeholder="coordinador@colegio.edu">
+                    <p class="nota">Este correo recibirá permisos para administrar la estructura del colegio.</p>
+                </div>
+                <p id="errorNuevoColegio" class="errorAuth"></p>
+                <div style="display:flex; gap:10px;">
+                    <button type="button" id="btnGuardarColegio" class="botonAdminChico" style="flex:1;">Guardar</button>
+                    <button type="button" id="btnCancelarColegio" class="botonAdminContorno" style="flex:1;">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de colegios -->
+    <div id="listaColegios">
+        <p style="text-align:center; color:var(--texto-suave);">Cargando colegios…</p>
+    </div>
+
+    <div style="text-align:center; margin-top:40px;">
+        <a href="admin-panel.html" class="botonAdminContorno"
+           style="display:inline-block; padding:12px 22px; border-radius:12px; font-weight:600; text-decoration:none;">
+            ← Volver al panel
+        </a>
+    </div>
+
+    <button id="btnCerrarSesionAdmin"
+            style="display:block; margin:30px auto 10px; padding:10px 20px; background:none; border:none; color:#c0392b; font-weight:600; cursor:pointer;">
+        Cerrar sesión
+    </button>
+
+</div>
+
+
+<script src="firebase-init.js"></script>
+<script src="admin-comun.js"></script>
+<script src="admin-colegios.js"></script>
+
+
+</body>
+
+
+</html>

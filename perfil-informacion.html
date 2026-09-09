@@ -160,6 +160,20 @@
 
         <hr style="margin:28px 0 16px; border:none; border-top:1px solid var(--borde);">
 
+    <!-- Vincular contraseña local (para cuentas de Google) -->
+    <div id="seccionVincularPassword" class="seccionVincularPassword" style="display:none;">
+        <h3>🔒 Vincular contraseña local</h3>
+        <p style="font-size:13px; color:var(--texto-suave); margin-bottom:12px;">
+            Tu cuenta usa Google para iniciar sesión. Puedes agregar una contraseña
+            para acceder también con correo y contraseña.
+        </p>
+        <input type="password" id="inputNuevaPassword" placeholder="Nueva contraseña (mínimo 6 caracteres)">
+        <input type="password" id="inputConfirmarPassword" placeholder="Confirmar contraseña">
+        <p id="errorVincularPassword" class="errorAuth"></p>
+        <p id="mensajeVincularPassword" style="font-size:13px; color:#27ae60; min-height:18px;"></p>
+        <button type="button" id="btnVincularPassword" class="botonAdminChico" style="width:100%;">Vincular contraseña</button>
+    </div>
+
         <details>
             <summary style="cursor:pointer; color:#c0392b; font-weight:600; font-size:14px;">Eliminar mi cuenta</summary>
             <p style="font-size:13px; color:var(--texto-suave); margin:10px 0;">

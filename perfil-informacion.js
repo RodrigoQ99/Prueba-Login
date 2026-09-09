@@ -368,3 +368,109 @@ if (btnEliminarCuenta) {
         }
     });
 }
+
+// ==========================================================
+// VINCULAR CONTRASEÑA LOCAL (cuentas de Google)
+// ==========================================================
+// Permite que usuarios que se registraron con Google establezcan
+// una contraseña local para poder iniciar sesión también con
+// correo + contraseña (sin depender de Google cada vez).
+
+function inicializarVincularPassword() {
+
+    const seccion = document.getElementById("seccionVincularPassword");
+    const btnVincular = document.getElementById("btnVincularPassword");
+    if (!seccion || !btnVincular) return;
+
+    const user = auth.currentUser;
+    if (!user) return;
+
+    // Solo mostrar si el usuario NO tiene ya un proveedor de password.
+    // user.providerData es un array con los proveedores vinculados.
+    const tienePassword = user.providerData.some(p => p.providerId === "password");
+    const tieneGoogle = user.providerData.some(p => p.providerId === "google.com");
+
+    if (tienePassword) {
+        // Ya tiene contraseña: mostrar mensaje informativo
+        seccion.style.display = "block";
+        seccion.innerHTML = `
+            <h3>🔒 Contraseña local</h3>
+            <p style="font-size:13px; color:#27ae60;">✅ Ya tienes una contraseña vinculada. Puedes iniciar sesión con correo y contraseña.</p>
+        `;
+        return;
+    }
+
+    if (!tieneGoogle) return; // No es cuenta de Google, no aplica
+
+    seccion.style.display = "block";
+
+    btnVincular.addEventListener("click", async () => {
+
+        const password = (document.getElementById("inputNuevaPassword").value || "");
+        const confirm = (document.getElementById("inputConfirmarPassword").value || "");
+        const errorEl = document.getElementById("errorVincularPassword");
+        const mensajeEl = document.getElementById("mensajeVincularPassword");
+
+        errorEl.textContent = "";
+        mensajeEl.textContent = "";
+
+        if (!password || !confirm) {
+            errorEl.textContent = "Completa ambos campos.";
+            return;
+        }
+
+        if (password.length < 6) {
+            errorEl.textContent = "La contraseña debe tener al menos 6 caracteres.";
+            return;
+        }
+
+        if (password !== confirm) {
+            errorEl.textContent = "Las contraseñas no coinciden.";
+            return;
+        }
+
+        btnVincular.disabled = true;
+        btnVincular.textContent = "Vinculando…";
+
+        try {
+
+            const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
+            await user.linkWithCredential(credential);
+
+            // Marcar en Firestore que tiene contraseña vinculada
+            await db.collection("usuarios").doc(user.uid).update({
+                passwordVinculada: true
+            });
+
+            mensajeEl.textContent = "✅ ¡Contraseña vinculada! Ahora puedes iniciar sesión con correo y contraseña.";
+            seccion.querySelector("input")?.remove();
+            seccion.querySelectorAll("input").forEach(i => i.remove());
+            btnVincular.style.display = "none";
+
+        } catch (error) {
+            console.error("Error al vincular contraseña:", error);
+            if (error.code === "auth/requires-recent-login") {
+                errorEl.textContent = "Por seguridad, cierra sesión y vuelve a iniciar antes de vincular.";
+            } else if (error.code === "auth/provider-already-linked") {
+                errorEl.textContent = "Ya tienes una contraseña vinculada.";
+            } else {
+                errorEl.textContent = "No se pudo vincular. Intenta de nuevo.";
+            }
+        }
+
+        btnVincular.disabled = false;
+        btnVincular.textContent = "Vincular contraseña";
+
+    });
+
+}
+
+// Se llama cuando el perfil ya cargó (el auth.onAuthStateChanged
+// de más arriba dispara cargarPerfil, y al terminar se puede
+// inicializar esto).
+const _observadorPerfilPassword = auth.onAuthStateChanged((user) => {
+    if (user) {
+        // Esperar un tick para que cargarPerfil() haya terminado
+        setTimeout(() => inicializarVincularPassword(), 500);
+    }
+});

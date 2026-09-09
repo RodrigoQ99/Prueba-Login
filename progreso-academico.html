@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progreso Académico</title>
+    <link rel="stylesheet" href="estilos.css">
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<div id="pantallaLoginAlumno" class="pantallaAuth" style="display:none;">
+    <div class="cajaAuth">
+        <h1>Progreso Académico</h1>
+        <p>Inicia sesión para ver tus tareas y progreso escolar.</p>
+        <button id="btnLoginGoogle" class="botonGoogle">Iniciar sesión con Google</button>
+    </div>
+</div>
+
+<div id="contenedorProgreso" style="display:none;" class="panelRol">
+
+    <h1>🎓 Progreso Académico</h1>
+    <p class="subtituloPanelRol" id="subtituloProgreso"></p>
+
+    <!-- Resumen -->
+    <div class="tarjetaSeccion" id="resumenProgreso" style="margin-bottom:20px;">
+        <h3>Mi resumen</h3>
+        <div id="datosResumen">
+            <p style="text-align:center; color:var(--texto-suave);">Cargando…</p>
+        </div>
+    </div>
+
+    <!-- Tareas -->
+    <h2 style="font-size:18px; margin-bottom:14px;">📝 Mis tareas</h2>
+    <div id="listaTareasAlumno">
+        <p style="text-align:center; color:var(--texto-suave);">Cargando tareas…</p>
+    </div>
+
+    <div style="text-align:center; margin-top:40px;">
+        <a href="index.html" class="botonAdminContorno"
+           style="display:inline-block; padding:12px 22px; border-radius:12px; font-weight:600; text-decoration:none;">
+            ← Volver al inicio
+        </a>
+    </div>
+
+</div>
+
+<script src="firebase-init.js"></script>
+<script src="admin-comun.js"></script>
+<script src="progreso-academico.js"></script>
+
+</body>
+</html>

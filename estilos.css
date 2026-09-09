@@ -1742,3 +1742,587 @@ button.menuLink{
     border-color:var(--azul);
     color:var(--azul);
 }
+
+/* ==========================
+   SELECTOR DE TIPO DE ACCESO (Login)
+========================== */
+
+.pantallaSeleccionAcceso {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    min-height: 100vh;
+    padding: 30px 20px;
+}
+
+.botonTipoAcceso {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    max-width: 380px;
+    padding: 20px 24px;
+    border: 2px solid var(--borde);
+    border-radius: 16px;
+    background: white;
+    color: var(--texto);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+    box-shadow: var(--sombra);
+    text-align: left;
+}
+
+.botonTipoAcceso:hover {
+    border-color: var(--azul);
+    box-shadow: 0 6px 20px rgba(26, 95, 180, 0.15);
+    transform: translateY(-2px);
+}
+
+.botonTipoAcceso .iconoAcceso {
+    font-size: 28px;
+    flex-shrink: 0;
+}
+
+.botonTipoAcceso .textoAcceso {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.botonTipoAcceso .tituloAcceso {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.botonTipoAcceso .subtituloAcceso {
+    font-size: 12px;
+    color: var(--texto-suave);
+    font-weight: 400;
+}
+
+
+/* ==========================
+   FORMULARIO EMAIL / PASSWORD
+========================== */
+
+.formularioEmailPassword {
+    width: 100%;
+    max-width: 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 10px;
+}
+
+.formularioEmailPassword input[type="email"],
+.formularioEmailPassword input[type="password"] {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid var(--borde);
+    border-radius: 12px;
+    font-size: 15px;
+    color: var(--texto);
+    background: white;
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.formularioEmailPassword input:focus {
+    border-color: var(--azul);
+}
+
+.formularioEmailPassword .botonPrimario {
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    background: var(--azul);
+    color: white;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.formularioEmailPassword .botonPrimario:hover {
+    background: var(--azul-oscuro);
+}
+
+.formularioEmailPassword .botonPrimario:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.separadorAuth {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--texto-suave);
+    font-size: 13px;
+    margin: 6px 0;
+}
+
+.separadorAuth::before,
+.separadorAuth::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--borde);
+}
+
+.enlaceAuth {
+    text-align: center;
+    font-size: 13px;
+    color: var(--azul);
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.enlaceAuth:hover {
+    color: var(--azul-oscuro);
+}
+
+.errorAuth {
+    color: #c0392b;
+    font-size: 13px;
+    text-align: center;
+    min-height: 18px;
+}
+
+
+/* ==========================
+   PANELES COORDINADOR / MAESTRO
+========================== */
+
+.panelRol {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 30px 20px;
+}
+
+.panelRol h1 {
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.panelRol .subtituloPanelRol {
+    text-align: center;
+    color: var(--texto-suave);
+    font-size: 14px;
+    margin-bottom: 24px;
+}
+
+.tarjetaSeccion {
+    background: white;
+    border: 1px solid var(--borde);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 14px;
+    box-shadow: var(--sombra);
+}
+
+.tarjetaSeccion h3 {
+    font-size: 16px;
+    margin-bottom: 8px;
+}
+
+.tarjetaSeccion .metaSeccion {
+    font-size: 13px;
+    color: var(--texto-suave);
+    margin-bottom: 10px;
+}
+
+.listaAlumnos {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.listaAlumnos li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--borde);
+    font-size: 14px;
+}
+
+.listaAlumnos li:last-child {
+    border-bottom: none;
+}
+
+.botonQuitarAlumno {
+    background: none;
+    border: none;
+    color: #c0392b;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: background 0.15s;
+}
+
+.botonQuitarAlumno:hover {
+    background: rgba(192, 57, 43, 0.1);
+}
+
+
+/* ==========================
+   TARJETAS DE TAREA
+========================== */
+
+.listaTareas {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.tarjetaTarea {
+    background: white;
+    border: 1px solid var(--borde);
+    border-radius: 14px;
+    padding: 18px;
+    box-shadow: var(--sombra);
+    transition: border-color 0.2s;
+}
+
+.tarjetaTarea.tareaActiva {
+    border-left: 4px solid var(--azul);
+}
+
+.tarjetaTarea.tareaCerrada {
+    border-left: 4px solid var(--texto-suave);
+    opacity: 0.7;
+}
+
+.tarjetaTarea .tituloTarea {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.tarjetaTarea .metaTarea {
+    font-size: 13px;
+    color: var(--texto-suave);
+    margin-bottom: 4px;
+}
+
+.tarjetaTarea .estadoTarea {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 8px;
+}
+
+.estadoPendiente   { background: #ffeaa7; color: #856404; }
+.estadoDisponible  { background: #dfe6e9; color: var(--azul); }
+.estadoCompletada  { background: #d4efdf; color: #1e8449; }
+.estadoAnulada     { background: #fadbd8; color: #c0392b; }
+.estadoSospechosa  { background: #fdebd0; color: #e67e22; }
+
+
+/* ==========================
+   PROGRESO / DASHBOARD DEL MAESTRO
+========================== */
+
+.tarjetaAlumno {
+    background: white;
+    border: 1px solid var(--borde);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: var(--sombra);
+}
+
+.tarjetaAlumno .nombreAlumno {
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 6px;
+}
+
+.tarjetaAlumno .datosAlumno {
+    font-size: 13px;
+    color: var(--texto-suave);
+    margin-bottom: 4px;
+}
+
+.barraProgreso {
+    width: 100%;
+    height: 10px;
+    background: var(--borde);
+    border-radius: 5px;
+    overflow: hidden;
+    margin: 6px 0;
+}
+
+.barraProgreso .relleno {
+    height: 100%;
+    border-radius: 5px;
+    transition: width 0.4s ease;
+}
+
+.barraProgreso .relleno.verde  { background: #27ae60; }
+.barraProgreso .relleno.amarillo { background: #f39c12; }
+.barraProgreso .relleno.rojo   { background: #e74c3c; }
+
+.alertaAntiTrampas {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    background: #fadbd8;
+    color: #c0392b;
+}
+
+
+/* ==========================
+   EXAMEN ESCOLAR (fullscreen)
+========================== */
+
+.examenFullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: var(--fondo);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.examenFullscreen .cabeceraExamen {
+    position: sticky;
+    top: 0;
+    background: var(--azul);
+    color: white;
+    padding: 14px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.temporizadorExamen {
+    font-size: clamp(20px, 3vw, 28px);
+    font-weight: 800;
+    letter-spacing: 1px;
+    font-variant-numeric: tabular-nums;
+}
+
+.temporizadorExamen.advertencia {
+    color: #ffeaa7;
+    animation: parpadeoTemporizador 1s ease-in-out infinite;
+}
+
+@keyframes parpadeoTemporizador {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.cuerpoExamen {
+    flex: 1;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 24px 20px 40px;
+    width: 100%;
+}
+
+.preguntaExamen {
+    background: white;
+    border: 1px solid var(--borde);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 18px;
+    box-shadow: var(--sombra);
+}
+
+.preguntaExamen .numeroPregunta {
+    font-size: 12px;
+    color: var(--texto-suave);
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.preguntaExamen .textoPregunta {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    line-height: 1.5;
+}
+
+.preguntaExamen .opcionesExamen {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.preguntaExamen .opcionExamen {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 2px solid var(--borde);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    font-size: 14px;
+}
+
+.preguntaExamen .opcionExamen:hover {
+    border-color: var(--azul);
+    background: rgba(26, 95, 180, 0.04);
+}
+
+.preguntaExamen .opcionExamen.seleccionada {
+    border-color: var(--azul);
+    background: rgba(26, 95, 180, 0.08);
+    font-weight: 600;
+}
+
+.preguntaExamen .opcionExamen input[type="radio"] {
+    accent-color: var(--azul);
+}
+
+
+/* ==========================
+   BIBLIOTECA ESCOLAR
+========================== */
+
+.listaBiblioteca {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.tarjetaMaterial {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: white;
+    border: 1px solid var(--borde);
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: var(--sombra);
+}
+
+.tarjetaMaterial .iconoMaterial {
+    font-size: 28px;
+    flex-shrink: 0;
+}
+
+.tarjetaMaterial .infoMaterial {
+    flex: 1;
+    min-width: 0;
+}
+
+.tarjetaMaterial .nombreMaterial {
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tarjetaMaterial .tipoMaterial {
+    font-size: 12px;
+    color: var(--texto-suave);
+}
+
+
+/* ==========================
+   SECCIÓN VINCULAR CONTRASEÑA (Perfil)
+========================== */
+
+.seccionVincularPassword {
+    background: white;
+    border: 1px solid var(--borde);
+    border-radius: 14px;
+    padding: 18px;
+    margin-top: 16px;
+}
+
+.seccionVincularPassword h3 {
+    font-size: 15px;
+    margin-bottom: 10px;
+}
+
+.seccionVincularPassword input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid var(--borde);
+    border-radius: 10px;
+    font-size: 14px;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+}
+
+.seccionVincularPassword input:focus {
+    outline: none;
+    border-color: var(--azul);
+}
+
+
+/* ==========================
+   FORMULARIO CREAR TAREA
+========================== */
+
+.formularioTarea {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.formularioTarea label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--texto);
+    margin-bottom: 2px;
+}
+
+.formularioTarea input,
+.formularioTarea select,
+.formularioTarea textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid var(--borde);
+    border-radius: 10px;
+    font-size: 14px;
+    color: var(--texto);
+    background: white;
+    box-sizing: border-box;
+}
+
+.formularioTarea input:focus,
+.formularioTarea select:focus,
+.formularioTarea textarea:focus {
+    outline: none;
+    border-color: var(--azul);
+}
+
+.formularioTarea .grupoInline {
+    display: flex;
+    gap: 12px;
+}
+
+.formularioTarea .grupoInline > * {
+    flex: 1;
+}
+
+.formularioTarea .nota {
+    font-size: 12px;
+    color: var(--texto-suave);
+    margin-top: -8px;
+}

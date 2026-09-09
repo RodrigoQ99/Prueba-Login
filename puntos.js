@@ -332,6 +332,33 @@ async function guardarProgreso(lecturaId, nivel, estrellas, totalPreguntas, dura
         await registrarActividadRacha();
     }
 
+    // Sincronizar progreso libre con el apartado escolar: si el alumno
+    // pertenece a un colegio, se registra su actividad para que el
+    // maestro vea su nivel real de lectura (PPM y comprensión).
+    try {
+        const datosSync = (await db.collection("usuarios").doc(user.uid).get()).data() || {};
+        if (datosSync.colegioId && datosSync.seccionId) {
+            const idSync = `${user.uid}_libre_${lecturaId}`;
+            await db.collection("progresoEscolar").doc(idSync).set({
+                uid: user.uid,
+                tareaId: "libre_" + lecturaId,
+                colegioId: datosSync.colegioId,
+                seccionId: datosSync.seccionId,
+                correctas: estrellas,
+                totalPreguntas: totalPreguntas,
+                comprensionPorcentaje: totalPreguntas > 0 ? Math.round((estrellas / totalPreguntas) * 100) : 0,
+                tiempoSegundos: (typeof duracionSegundos === "number") ? duracionSegundos : null,
+                estado: "completada",
+                motivoEstado: null,
+                penalizacionAplicada: 0,
+                fechaEntrega: firebase.firestore.FieldValue.serverTimestamp(),
+                esProgresoLibre: true
+            }, { merge: true });
+        }
+    } catch (errorSync) {
+        console.error("No se pudo sincronizar con progreso escolar:", errorSync);
+    }
+
     // "El premio gordo": cualquier intento (apruebe o no) de una lectura
     // DIFÍCIL puede cambiar la racha de ese usuario — un fallo la
     // reinicia igual que un acierto la hace avanzar, así que se

@@ -120,6 +120,20 @@ service firebase.storage {
     //                    );
     // }
 
+    // PDFs y materiales escolares subidos por maestros. Cualquier
+    // usuario autenticado puede leerlos (los alumnos necesitan
+    // descargar). Solo usuarios autenticados pueden subir, con
+    // límite de 50 MB y tipo PDF. El borrado lo puede hacer
+    // cualquier autenticado (el frontend restringe al maestro
+    // que lo subió o al admin).
+    match /bibliotecaEscolar/{colegioId}/{archivoId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.size < 50 * 1024 * 1024
+                    && request.resource.contentType == 'application/pdf';
+      allow delete: if request.auth != null;
+    }
+
     // Por defecto, cualquier otra ruta del bucket queda cerrada — se
     // van agregando carpetas específicas (con su propia regla) según
     // se necesiten, nunca un "allow read, write: if true" general.

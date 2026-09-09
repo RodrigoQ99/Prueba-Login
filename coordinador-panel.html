@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Coordinador</title>
+    <link rel="stylesheet" href="estilos.css">
+
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
+</head>
+
+
+<body>
+
+
+<!-- ==========================
+     PANTALLA DE LOGIN
+=========================== -->
+<div id="pantallaLoginCoord" class="pantallaAuth" style="display:none;">
+    <div class="cajaAuth">
+        <h1>Panel de Coordinador</h1>
+        <p>Inicia sesión con la cuenta asignada como coordinador de tu centro educativo.</p>
+        <button id="btnLoginGoogleCoord" class="botonGoogle">
+            Iniciar sesión con Google
+        </button>
+        <div id="formularioLoginCoordEmail" style="margin-top:14px;">
+            <div class="formularioEmailPassword">
+                <input type="email" id="inputEmailCoord" placeholder="Correo electrónico" autocomplete="email">
+                <input type="password" id="inputPasswordCoord" placeholder="Contraseña" autocomplete="current-password">
+                <p id="errorLoginCoord" class="errorAuth"></p>
+                <button type="button" id="btnLoginEmailCoord" class="botonPrimario">Iniciar sesión</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ==========================
+     SIN PERMISO
+=========================== -->
+<div id="pantallaSinPermisoCoord" class="pantallaAuth" style="display:none;">
+    <div class="cajaAuth">
+        <h1>Sin permiso</h1>
+        <p>Esta cuenta no está asignada como coordinador de ningún centro educativo.</p>
+        <button id="btnCerrarSesionCoordSinPermiso">Cerrar sesión</button>
+    </div>
+</div>
+
+
+<!-- ==========================
+     CONTENIDO PRINCIPAL
+=========================== -->
+<div id="contenedorCoordinador" style="display:none;" class="panelRol">
+
+    <h1>🏫 <span id="nombreColegioCoord"></span></h1>
+    <p class="subtituloPanelRol">Panel de Coordinador</p>
+
+    <!-- Botón agregar grado -->
+    <button type="button" id="btnAgregarGrado" class="botonAdminChico"
+            style="width:100%; margin-bottom:20px; padding:14px; font-size:15px;">
+        + Agregar grado
+    </button>
+
+    <!-- Formulario nuevo grado (oculto) -->
+    <div id="formularioNuevoGrado" style="display:none; margin-bottom:24px;">
+        <div class="tarjetaSeccion">
+            <h3 style="margin-bottom:14px;">Nuevo grado</h3>
+            <div class="formularioTarea">
+                <div>
+                    <label for="selectGradoCoord">Grado</label>
+                    <select id="selectGradoCoord"></select>
+                </div>
+                <p id="errorNuevoGrado" class="errorAuth"></p>
+                <div style="display:flex; gap:10px;">
+                    <button type="button" id="btnGuardarGrado" class="botonAdminChico" style="flex:1;">Guardar grado</button>
+                    <button type="button" id="btnCancelarGrado" class="botonAdminContorno" style="flex:1;">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de grados con sus secciones -->
+    <div id="listaGrados">
+        <p style="text-align:center; color:var(--texto-suave);">Cargando estructura académica…</p>
+    </div>
+
+    <!-- Formulario nueva sección (oculto, se muestra al hacer clic en "+ Sección") -->
+    <div id="formularioNuevaSeccion" style="display:none; margin-top:16px;">
+        <div class="tarjetaSeccion" style="border-color:var(--azul);">
+            <h3 style="margin-bottom:14px;">Nueva sección</h3>
+            <div class="formularioTarea">
+                <div>
+                    <label for="inputNombreSeccion">Nombre de la sección</label>
+                    <input type="text" id="inputNombreSeccion" placeholder='Ej. Sección A'>
+                </div>
+                <div>
+                    <label for="inputCorreoMaestro">Correo del maestro encargado</label>
+                    <input type="email" id="inputCorreoMaestro" placeholder="maestra@colegio.edu">
+                </div>
+                <p id="errorNuevaSeccion" class="errorAuth"></p>
+                <div style="display:flex; gap:10px;">
+                    <button type="button" id="btnGuardarSeccion" class="botonAdminChico" style="flex:1;">Guardar sección</button>
+                    <button type="button" id="btnCancelarSeccion" class="botonAdminContorno" style="flex:1;">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="text-align:center; margin-top:40px;">
+        <a href="index.html" class="botonAdminContorno"
+           style="display:inline-block; padding:12px 22px; border-radius:12px; font-weight:600; text-decoration:none;">
+            👤 Ir a la página de inicio
+        </a>
+    </div>
+
+    <button id="btnCerrarSesionCoord"
+            style="display:block; margin:30px auto 10px; padding:10px 20px; background:none; border:none; color:#c0392b; font-weight:600; cursor:pointer;">
+        Cerrar sesión
+    </button>
+
+</div>
+
+
+<script src="firebase-init.js"></script>
+<script src="grados.js"></script>
+<script src="coordinador-panel.js"></script>
+
+
+</body>
+
+
+</html>

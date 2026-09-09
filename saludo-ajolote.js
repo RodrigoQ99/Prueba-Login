@@ -294,8 +294,6 @@
                 position: absolute;
                 top: 20px;
                 left: 150px;
-                background: #fff;
-                color: #1c1f26;
                 font-size: 13px;
                 font-weight: 600;
                 padding: 8px 14px;

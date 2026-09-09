@@ -18,6 +18,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-functions-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js"></script>
 
 
 </head>
@@ -45,9 +46,54 @@
             <p>Un lector vive mil vidas antes de morir. El hombre que nunca lee vive solo una.</p>
             <cite>— George R.R. Martin</cite>
         </blockquote>
-        <button id="btnLoginGoogle" class="botonGoogle">
-            Iniciar sesión con Google
-        </button>
+
+        <!-- Selector de tipo de acceso -->
+        <div id="selectorTipoAcceso">
+            <button type="button" class="botonTipoAcceso" id="btnAccesoInstitucion">
+                <span class="iconoAcceso">🏫</span>
+                <span class="textoAcceso">
+                    <span class="tituloAcceso">Iniciar sesión como Institución</span>
+                    <span class="subtituloAcceso">Administradores, Coordinadores, Maestros</span>
+                </span>
+            </button>
+            <button type="button" class="botonTipoAcceso" id="btnAccesoParticipante">
+                <span class="iconoAcceso">📚</span>
+                <span class="textoAcceso">
+                    <span class="tituloAcceso">Iniciar sesión como Participante / Alumno</span>
+                    <span class="subtituloAcceso">Lectores, estudiantes vinculados</span>
+                </span>
+            </button>
+        </div>
+
+        <!-- Formulario de login (se muestra al elegir un tipo) -->
+        <div id="formularioLoginEmail" style="display:none;">
+            <p id="etiquetaTipoAcceso" style="text-align:center; font-weight:600; margin-bottom:14px; color:var(--texto-suave);"></p>
+            <div class="formularioEmailPassword">
+                <input type="email" id="inputEmailLogin" placeholder="Correo electrónico" autocomplete="email">
+                <input type="password" id="inputPasswordLogin" placeholder="Contraseña" autocomplete="current-password">
+                <p id="errorLoginEmail" class="errorAuth"></p>
+                <button type="button" id="btnLoginEmail" class="botonPrimario">Iniciar sesión</button>
+                <div class="separadorAuth">o</div>
+                <button type="button" id="btnLoginGoogle" class="botonGoogle">
+                    Iniciar sesión con Google
+                </button>
+                <p class="enlaceAuth" id="btnMostrarRegistroEmail">¿No tienes cuenta? Crear una</p>
+                <p class="enlaceAuth" id="btnVolverTipoAcceso" style="margin-top:6px;">← Cambiar tipo de acceso</p>
+            </div>
+        </div>
+
+        <!-- Formulario de registro con email (se muestra al hacer clic en "Crear una") -->
+        <div id="formularioRegistroEmail" style="display:none;">
+            <p style="text-align:center; font-weight:600; margin-bottom:14px;">Crear cuenta</p>
+            <div class="formularioEmailPassword">
+                <input type="email" id="inputEmailRegistro" placeholder="Correo electrónico" autocomplete="email">
+                <input type="password" id="inputPasswordRegistro" placeholder="Contraseña (mínimo 6 caracteres)" autocomplete="new-password">
+                <input type="password" id="inputPasswordRegistroConfirm" placeholder="Confirmar contraseña" autocomplete="new-password">
+                <p id="errorRegistroEmail" class="errorAuth"></p>
+                <button type="button" id="btnRegistroEmail" class="botonPrimario">Crear cuenta</button>
+                <p class="enlaceAuth" id="btnVolverLoginEmail">← Ya tengo cuenta</p>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -108,6 +154,11 @@
         <a href="premios.html" class="botonCuadrado" data-tipo-actividad="individual">
             <span class="iconoBotonCuadrado">🎁</span>
             <span>Premios</span>
+        </a>
+
+        <a href="progreso-academico.html" class="botonCuadrado" data-tipo-actividad="individual" id="botonProgresoAcademico" style="display:none;">
+            <span class="iconoBotonCuadrado">🎓</span>
+            <span>Progreso Académico</span>
         </a>
 
     </div>

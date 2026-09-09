@@ -90,6 +90,12 @@ async function iniciarLectura() {
         badge.textContent = `🔥 ${racha}`;
     }
 
+    // Progreso Académico: solo visible si el alumno está vinculado a un colegio
+    const botonProgreso = document.getElementById("botonProgresoAcademico");
+    if (botonProgreso) {
+        botonProgreso.style.display = datos.colegioId ? "" : "none";
+    }
+
     // Saludo del ajolote: con nombre y datos contextuales.
     if (typeof mostrarSaludoAjoloteConSesion === "function") {
         mostrarSaludoAjoloteConSesion(datos);

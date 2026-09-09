@@ -6,9 +6,20 @@ const pantallaLogin = document.getElementById("pantallaLogin");
 const pantallaRegistro = document.getElementById("pantallaRegistro");
 const appContenido = document.getElementById("contenedor");
 
+// Botones de tipo de acceso
+const selectorTipoAcceso = document.getElementById("selectorTipoAcceso");
+const formularioLoginEmail = document.getElementById("formularioLoginEmail");
+const formularioRegistroEmail = document.getElementById("formularioRegistroEmail");
+const btnAccesoInstitucion = document.getElementById("btnAccesoInstitucion");
+const btnAccesoParticipante = document.getElementById("btnAccesoParticipante");
+
+// Botones de login
 const btnLoginGoogle = document.getElementById("btnLoginGoogle");
+const btnLoginEmail = document.getElementById("btnLoginEmail");
+const btnRegistroEmail = document.getElementById("btnRegistroEmail");
 
 let usuarioActual = null; // guarda el objeto del documento de Firestore del usuario
+let _tipoAccesoElegido = null; // "institucion" o "participante"
 
 /**
  * Calcula la edad en años cumplidos a partir de una fecha de nacimiento
@@ -30,17 +41,213 @@ function calcularEdadDesdeFecha(fechaTexto) {
 
 }
 
-// Botón de login con Google
-btnLoginGoogle.addEventListener("click", () => {
-    const proveedor = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(proveedor).catch(error => {
-        console.error("Error al iniciar sesión:", error);
-        alert("No se pudo iniciar sesión. Intenta de nuevo.");
-    });
-});
 
+// ==========================================================
+// SELECTOR DE TIPO DE ACCESO
+// ==========================================================
+
+function mostrarFormularioLogin(tipoAcceso) {
+
+    _tipoAccesoElegido = tipoAcceso;
+    sessionStorage.setItem("tipoAccesoTrifle", tipoAcceso);
+
+    if (selectorTipoAcceso) selectorTipoAcceso.style.display = "none";
+    if (formularioLoginEmail) formularioLoginEmail.style.display = "block";
+    if (formularioRegistroEmail) formularioRegistroEmail.style.display = "none";
+
+    const etiqueta = document.getElementById("etiquetaTipoAcceso");
+    if (etiqueta) {
+        etiqueta.textContent = tipoAcceso === "institucion"
+            ? "🏫 Acceso Institución"
+            : "📚 Acceso Participante / Alumno";
+    }
+
+}
+
+if (btnAccesoInstitucion) {
+    btnAccesoInstitucion.addEventListener("click", () => mostrarFormularioLogin("institucion"));
+}
+if (btnAccesoParticipante) {
+    btnAccesoParticipante.addEventListener("click", () => mostrarFormularioLogin("participante"));
+}
+
+// Volver al selector de tipo de acceso
+const btnVolverTipoAcceso = document.getElementById("btnVolverTipoAcceso");
+if (btnVolverTipoAcceso) {
+    btnVolverTipoAcceso.addEventListener("click", () => {
+        if (selectorTipoAcceso) selectorTipoAcceso.style.display = "";
+        if (formularioLoginEmail) formularioLoginEmail.style.display = "none";
+        if (formularioRegistroEmail) formularioRegistroEmail.style.display = "none";
+    });
+}
+
+// Alternar entre login y registro con email
+const btnMostrarRegistroEmail = document.getElementById("btnMostrarRegistroEmail");
+const btnVolverLoginEmail = document.getElementById("btnVolverLoginEmail");
+
+if (btnMostrarRegistroEmail) {
+    btnMostrarRegistroEmail.addEventListener("click", () => {
+        if (formularioLoginEmail) formularioLoginEmail.style.display = "none";
+        if (formularioRegistroEmail) formularioRegistroEmail.style.display = "block";
+    });
+}
+if (btnVolverLoginEmail) {
+    btnVolverLoginEmail.addEventListener("click", () => {
+        if (formularioRegistroEmail) formularioRegistroEmail.style.display = "none";
+        if (formularioLoginEmail) formularioLoginEmail.style.display = "block";
+    });
+}
+
+
+// ==========================================================
+// LOGIN CON GOOGLE
+// ==========================================================
+
+if (btnLoginGoogle) {
+    btnLoginGoogle.addEventListener("click", () => {
+        const proveedor = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(proveedor).catch(error => {
+            console.error("Error al iniciar sesión:", error);
+            alert("No se pudo iniciar sesión. Intenta de nuevo.");
+        });
+    });
+}
+
+
+// ==========================================================
+// LOGIN CON EMAIL Y CONTRASEÑA
+// ==========================================================
+
+if (btnLoginEmail) {
+    btnLoginEmail.addEventListener("click", async () => {
+
+        const email = (document.getElementById("inputEmailLogin").value || "").trim();
+        const password = document.getElementById("inputPasswordLogin").value || "";
+        const errorEl = document.getElementById("errorLoginEmail");
+
+        errorEl.textContent = "";
+
+        if (!email || !password) {
+            errorEl.textContent = "Escribe tu correo y contraseña.";
+            return;
+        }
+
+        btnLoginEmail.disabled = true;
+        btnLoginEmail.textContent = "Iniciando sesión…";
+
+        try {
+            await auth.signInWithEmailAndPassword(email, password);
+        } catch (error) {
+            console.error("Error al iniciar sesión con email:", error);
+            if (error.code === "auth/user-not-found" || error.code === "auth/wrong-password" || error.code === "auth/invalid-credential") {
+                errorEl.textContent = "Correo o contraseña incorrectos.";
+            } else if (error.code === "auth/invalid-email") {
+                errorEl.textContent = "El correo no es válido.";
+            } else if (error.code === "auth/too-many-requests") {
+                errorEl.textContent = "Demasiados intentos. Espera un momento.";
+            } else {
+                errorEl.textContent = "No se pudo iniciar sesión. Intenta de nuevo.";
+            }
+        }
+
+        btnLoginEmail.disabled = false;
+        btnLoginEmail.textContent = "Iniciar sesión";
+
+    });
+}
+
+
+// ==========================================================
+// REGISTRO CON EMAIL Y CONTRASEÑA
+// ==========================================================
+
+if (btnRegistroEmail) {
+    btnRegistroEmail.addEventListener("click", async () => {
+
+        const email = (document.getElementById("inputEmailRegistro").value || "").trim();
+        const password = document.getElementById("inputPasswordRegistro").value || "";
+        const confirmPassword = document.getElementById("inputPasswordRegistroConfirm").value || "";
+        const errorEl = document.getElementById("errorRegistroEmail");
+
+        errorEl.textContent = "";
+
+        if (!email || !password || !confirmPassword) {
+            errorEl.textContent = "Completa todos los campos.";
+            return;
+        }
+
+        if (password.length < 6) {
+            errorEl.textContent = "La contraseña debe tener al menos 6 caracteres.";
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            errorEl.textContent = "Las contraseñas no coinciden.";
+            return;
+        }
+
+        btnRegistroEmail.disabled = true;
+        btnRegistroEmail.textContent = "Creando cuenta…";
+
+        try {
+            await auth.createUserWithEmailAndPassword(email, password);
+            // onAuthStateChanged se dispara automáticamente y lleva al registro
+        } catch (error) {
+            console.error("Error al crear cuenta con email:", error);
+            if (error.code === "auth/email-already-in-use") {
+                errorEl.textContent = "Este correo ya tiene una cuenta. Inicia sesión.";
+            } else if (error.code === "auth/invalid-email") {
+                errorEl.textContent = "El correo no es válido.";
+            } else if (error.code === "auth/weak-password") {
+                errorEl.textContent = "La contraseña es muy débil. Usa al menos 6 caracteres.";
+            } else {
+                errorEl.textContent = "No se pudo crear la cuenta. Intenta de nuevo.";
+            }
+        }
+
+        btnRegistroEmail.disabled = false;
+        btnRegistroEmail.textContent = "Crear cuenta";
+
+    });
+}
+
+
+// ==========================================================
+// REDIRECCIÓN POR ROL
+// ==========================================================
+// Después de autenticarse, revisa el rolEscolar del usuario en
+// Firestore y redirige a su panel correspondiente. Si no tiene
+// rol escolar (es participante normal), sigue el flujo estándar.
+
+async function redirigirPorRol(datosUsuario) {
+
+    const rol = datosUsuario.rolEscolar;
+    const enInicio = /index\.html$|\/$/.test(window.location.pathname);
+
+    if (!enInicio) return false; // no redirigir si no estamos en Inicio
+
+    if (rol === "coordinador" && datosUsuario.colegioId) {
+        window.location.href = "coordinador-panel.html";
+        return true;
+    }
+
+    if (rol === "maestro") {
+        window.location.href = "maestro-panel.html";
+        return true;
+    }
+
+    // "alumno" y null/undefined siguen el flujo normal de la app
+    return false;
+
+}
+
+
+// ==========================================================
+// ESTADO DE AUTENTICACIÓN
+// ==========================================================
 // Se ejecuta automáticamente cada vez que carga la página,
 // y detecta si ya había una sesión guardada en este dispositivo.
+
 auth.onAuthStateChanged(async (user) => {
     if (!user) {
         // No hay sesión: mostrar pantalla de login
@@ -68,6 +275,12 @@ auth.onAuthStateChanged(async (user) => {
 
         // Ya está registrado: entra directo, sin pedir nada más.
         usuarioActual = { id: user.uid, ...doc.data() };
+
+        // Redirección por rol: coordinador y maestro van a sus paneles.
+        // Si se redirige, no se sigue con el flujo normal.
+        const redirigido = await redirigirPorRol(usuarioActual);
+        if (redirigido) return;
+
         pantallaLogin.style.display = "none";
         pantallaRegistro.style.display = "none";
         appContenido.style.display = "block";

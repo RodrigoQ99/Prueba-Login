@@ -25,6 +25,7 @@ firebase.initializeApp(firebaseConfig);
 // Referencias globales que usan los demás archivos (auth.js, puntos.js, ranking.js)
 const auth = firebase.auth();
 const db = firebase.firestore();
+const storage = firebase.storage();
 
 // Esto hace que la sesión quede guardada en ESTE dispositivo/navegador.
 // Es lo que evita pedir login de nuevo cada vez que el usuario entra

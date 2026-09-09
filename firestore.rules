@@ -32,6 +32,18 @@ service cloud.firestore {
                 get(/databases/$(database)/documents/configuracion/premiadores).data.emails;
     }
 
+    // ¿El usuario es coordinador de este colegio?
+    function esCoordinadorDe(colegioId) {
+      return request.auth != null
+             && get(/databases/$(database)/documents/colegios/$(colegioId)).data.correoCoordinador == request.auth.token.email;
+    }
+
+    // ¿El usuario es maestro de esta sección en este colegio?
+    function esMaestroDe(colegioId, seccionId) {
+      return request.auth != null
+             && get(/databases/$(database)/documents/colegios/$(colegioId)/secciones/$(seccionId)).data.correoMaestro == request.auth.token.email;
+    }
+
     // Cada usuario solo puede crear/editar SU PROPIO documento.
     // Cualquiera que esté logueado puede leer (para poder calcular el ranking).
     // El administrador también puede actualizar el campo "puntosTotales"
@@ -298,6 +310,55 @@ service cloud.firestore {
     match /analisisIA/{id} {
       allow read: if esAdmin();
       allow write: if false;
+    }
+
+    // Colegios: el admin los crea y administra. El coordinador de cada
+    // colegio puede leer el suyo. Cualquier usuario autenticado puede
+    // leer para comprobar su vinculación.
+    match /colegios/{colegioId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if esAdmin();
+    }
+
+    // Grados dentro de un colegio: el coordinador de ese colegio los
+    // administra; el admin también puede.
+    match /colegios/{colegioId}/grados/{gradoId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if esAdmin() || esCoordinadorDe(colegioId);
+    }
+
+    // Secciones dentro de un colegio: el coordinador las administra,
+    // el maestro asignado puede leer la suya.
+    match /colegios/{colegioId}/secciones/{seccionId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if esAdmin() || esCoordinadorDe(colegioId);
+    }
+
+    // Biblioteca escolar: los maestros suben materiales, los alumnos
+    // y coordinadores leen. El admin puede todo.
+    match /bibliotecaEscolar/{archivoId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null
+                            && (esAdmin() || resource.data.subidoPor == request.auth.uid);
+    }
+
+    // Tareas escolares: los maestros las crean, los alumnos las leen.
+    match /tareasEscolares/{tareaId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null;
+      allow delete: if esAdmin();
+    }
+
+    // Progreso escolar: cada alumno escribe el suyo, el maestro y el
+    // propio alumno pueden leerlo. El admin puede leer todo.
+    match /progresoEscolar/{id} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.uid == request.auth.uid;
+      allow update: if request.auth != null
+                    && resource.data.uid == request.auth.uid;
+      allow delete: if false;
     }
   }
 }
